@@ -1,4 +1,13 @@
+# Set package version in place with 
+install.packages("checkpoint")
+library(checkpoint)
+checkpoint("2015-11-02")
+
+basepath <- "/home/xavi/Estudis/2015-10-NuriaBarbarroja-IMIBIC-A279/"
+
 #se prueba de utilizar biomart para conseguir anotaciones aunque creo que luego no se utilizará.
+source("http://bioconductor.org/biocLite.R")
+biocLite("biomaRt")
 library(biomaRt) 
 mart <- useDataset("hsapiens_gene_ensembl", useMart("ensembl"))
 listAttributes(mart)[1:100,]
@@ -9,7 +18,7 @@ dim(miRNA)#1952 4
 head(miRNA)
 
 #archivo de EC con anotaciones (rma+anotaciones)
-setwd("/home/rgonzalo/Documents/Estudis/2015-07-TeresaGarcia-VHIR-A/dades")
+setwd(paste0(basepath, "dades"))
 anotacion<-read.csv("rma with anotations.csv",sep="\t",header=TRUE)
 dim(anotacion)#36137 6
 head(anotacion)
