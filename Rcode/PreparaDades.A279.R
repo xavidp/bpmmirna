@@ -1,13 +1,17 @@
 # Set package version in place with 
-install.packages("checkpoint")
-library(checkpoint)
-checkpoint("2015-11-02")
+#if (!require("checkpoint")) {
+#  install.packages("checkpoint")
+#}
+#library(checkpoint)
+#checkpoint("2015-11-02")
 
 basepath <- "/home/xavi/Estudis/2015-10-NuriaBarbarroja-IMIBIC-A279/"
 
 #se prueba de utilizar biomart para conseguir anotaciones aunque creo que luego no se utilizará.
 source("http://bioconductor.org/biocLite.R")
-biocLite("biomaRt")
+if (!require("biomaRt")) {
+  biocLite("biomaRt")
+}
 library(biomaRt) 
 mart <- useDataset("hsapiens_gene_ensembl", useMart("ensembl"))
 listAttributes(mart)[1:100,]
@@ -45,44 +49,54 @@ colnames(anota)<-c("Transcript_ID","Probe_Set_ID")
 head(anota)
 
 #preparación archivo Rda
-setwd("/home/rgonzalo/Documents/Estudis/2015-07-TeresaGarcia-VHIR-A/dades")
-x <-read.csv2("rma.csv", row.names=1, sep="\t", dec=".")
+setwd(paste0(basepath, "dades"))
+x <-read.csv2("rma.A279.summary.csv", row.names=1, sep=";", dec=",")
 head(x)
 dim(x)#36249 55
-targets <- read.csv2 ("targets.csv",sep="\t")
+targets <- read.csv2 ("targets.BRB.A279.csv",sep="\t")
 sample.names <- as.character(targets$ShortName)
-save(x, targets, anota, file=file.path("/home/rgonzalo/Documents/Estudis/2015-07-TeresaGarcia-VHIR-A/dades","dades.Rda"))
+save(x, targets, anota, file=file.path(paste0(basepath, "dades"),"dades.BRB.A279.Rda"))
 
 
 #merge x con anota#########################
 expresEG <- merge(x,anota,by="row.names")
-dim(expresEG)#6050 58
+dim(expresEG)#6050 51
 head(expresEG)
 #rownames(expresEG)<-expresEG$Row.names
 rownames(expresEG)<-expresEG$Transcript_ID
-expresEG<-expresEG[,-c(1,57,58)]
-dim(expresEG)#6050 55
+#expresEG<-expresEG[,-c(1,57,58)]
+expresEG<-expresEG[,-c(1,50,51)]
+dim(expresEG)#6050 48
 head(expresEG)
 
 
-save(expresEG, targets,anota, sample.names,  file=file.path("/home/rgonzalo/Documents/Estudis/2015-07-TeresaGarcia-VHIR-A/dades","MicrosTGB_expressEG.Rda"))
+save(expresEG, targets,anota, sample.names,  file=file.path(paste0(basepath, "dades"),"MicrosBRB_expressEG.Rda"))
 
 ##############################################
 ### VSN
 ##############################################
-setwd("/home/rgonzalo/Documents/Estudis/2015-07-TeresaGarcia-VHIR-A/CELFiles")
-biocLite("makecdfenv")
+setwd(paste0(basepath, "celfiles"))
+if (!require("makecdfenv")) {
+  biocLite("makecdfenv")
+}
+if (!require("affxparser")) {
+  biocLite("affxparser")
+}
 library(makecdfenv)    
 library(affxparser)
 convertCdf("miRNA-4_0-st-v1.cdf", "mirna40cdf", version=4, verbose=TRUE) 
-pkgpath <- "/home/rgonzalo/Documents/Estudis/2015-07-TeresaGarcia-VHIR-A/dades"
+pkgpath <- paste0(basepath, "dades")
 make.cdf.package("mirna40cdf", version = packageDescription("makecdfenv", field = "Version"), species="", unlink=TRUE, compress=FALSE, package.path = pkgpath)
 
+system(paste0("R CMD INSTALL \"", pkgpath, "/mirna40cdf", "\""))
 
-
+library(affy)
 require(affy)
 x<- ReadAffy()
 class(x)
+if (!require("vsn")) {
+  biocLite("vsn")
+}
 d_vsn = vsnrma(x)
 meanSdPlot(d_vsn)
 
