@@ -62,7 +62,7 @@ celFilesDir <- file.path(workingDir, "celfiles")
  resultsDir <- file.path(workingDir, "results")
  reportsDir <- file.path(workingDir, "informes")
     tempDir <- file.path(workingDir, "temp")
-    codeDir <- file.path(workingDir, "RCode")  
+    codeDir <- file.path(workingDir, "Rcode")  
 
 setwd(workingDir)
 
@@ -73,7 +73,7 @@ setwd(workingDir)
 ###################################################
 ###line 100 "ComCrearUnProjecteParametres.rnw"
 
-rawDataType <- "affyGeneArray"     # Els tipus previstos son: "text", "affy3primeIVT", "affyGeneArray", "affyExonArray", "illuminaBeadArray"
+rawDataType <- "affyExonArray"     # Els tipus previstos son: "text", "affy3primeIVT", "affyGeneArray", "affyExonArray", "illuminaBeadArray"
 
 exonStudy <- TRUE                  # TRUE => estudi d'exons o genearrays
 
@@ -97,9 +97,9 @@ controlsTableFileName <- "controls.Rda"
 
 ## Els següents parametres si es deixen en NULL s'omplen sols quan s'analitzen Genearrays o arrays d'exons. Per la resta d'arrays encara s'ha de fer manual. Si et vols "saltar" parts del pipeline, s'han d'omplir manualment.
 
-platformDesignPackage <- NULL		        # "pd.ragene.1.1.st.v1"
-orgPackage <- NULL          	                # nom del paquet corresponent a l'organisme, sense .db al final. "org.Rn.eg"
-specie <- NULL		                        # XXX CANVIAR EL NOM DE L'ESPECIE SI CAL
+platformDesignPackage <- "pd.mirna.4.0" #NULL		        # "pd.ragene.1.1.st.v1"
+orgPackage <- "org.Hs.eg" #NULL          	                # nom del paquet corresponent a l'organisme, sense .db al final. "org.Rn.eg"
+specie <- "Homo sapiens" #NULL		                        # XXX CANVIAR EL NOM DE L'ESPECIE SI CAL
 organisme <- NULL                               # CANVIAR L'ABREVIATURA DE L'ORGANISME SI CAL! 
 					        #(e.g: mmu = Mus musculus; rno = Rattus norvegicus;
 
@@ -125,8 +125,8 @@ htmlInfo <- list(To = nomClients,
 targetsFileName <- paste("targets", eP, "txt", sep=".")                      # Nom arxiu targets
 #targetsFileName <- paste("targets", eP, "chipsRemoved", "txt", sep=".")      # Nom arxiu targets sense els xips que s'han eliminat
 
-  MainReportName <- "aaaa-mm-NomCognomInvestigador-CENTRE-999-MainReport.pdf"                                   # Nom de l'arxiu MainReport
-  StudyProposal <- "aaaa-mm-NomCognomInvestigador-CENTRE-999-StudyProposal.pdf"        # Nom de l'arxiu de la proposta
+  MainReportName <- "2015-10-NuriaBarbarroja-IMIBIC-A279-MainReport.pdf"                                   # Nom de l'arxiu MainReport
+  StudyProposal <- "2015-10-NuriaBarbarroja-IMIBIC-A279-StudyBudget.pdf"        # Nom de l'arxiu de la proposta
 
     rawDataFileName <- "rawData.Rda"                          # Nom de l'arxiu de dades crues (llegides del .CEL)
 expres.all.FileName <- "expres.Rda"                           # Nom de l'arxiu on es desen les expressions
@@ -302,10 +302,20 @@ if (!(require("limma", lib = mylib, character.only = TRUE))){
 ### on  AvsD : es el nom de la comparacio
 ###    A - D : es la diferencia a fer entre condicions
 
-contrastsMatrix <- makeContrasts(AvsD = A - D,  ### RECORDAR QUE AIXÒ ES UN EXEMPLE!!!
-                                 BvsD = B - D,
-                                 CvsD = C - D,
-                                 DvsE = D - E,
+contrastsMatrix <- makeContrasts(                   ### RECORDAR QUE AIXÒ ES UN EXEMPLE!!!
+## EstudiA279b:
+#                                 CANvsCTL = CAN - CTL, # Aquesta es fara mes endavant (columna diferent del targets, etc)
+## EstudiA279a:
+                                 CTL.RskvsCAN.Epid  = CTL.Rsk  - CAN.Epid,
+                                 CTL.RskvsCAN.Ade   = CTL.Rsk  - CAN.Ade,
+                                 CTL.RskvsCAN.Mic   = CTL.Rsk  - CAN.Mic,
+                                 CTL.noRvsCAN.Epid  = CTL.noR  - CAN.Epid,
+                                 CTL.noRvsCAN.Ade   = CTL.noR  - CAN.Ade,
+                                 CTL.noRvsCAN.Mic   = CTL.noR  - CAN.Mic,
+                                 CAN.EpidvsCAN.Ade  = CAN.Epid - CAN.Ade,
+                                 CAN.EpidvsCAN.Mic  = CAN.Epid - CAN.Mic,
+                                 CAN.AdevsCAN.Mic   = CAN.Ade  - CAN.Mic,
+                                 CTL.RskvsCTL.noR   = CTL.Rsk  - CTL.noR,
                                  levels = design)
 
 print(contrastsMatrix) #comentar aquesta linia si no es vol visualitzar la matriu de contrasts
@@ -330,7 +340,7 @@ source(file.path(codeDir, "AnalysisFunctions2Pack.R"))
 ###################################################
 ###line 598 "ComCrearUnProjecteParametres.rnw"
 
-comparName <- "Estudi" # XXX Aquest paràmetre es pot editar per ajudar a reconèixer l'estudi en alguns dels pdf's i gràfics. Cal que sigui breu i sense espais.
+comparName <- "EstudiA279a" # XXX Aquest paràmetre es pot editar per ajudar a reconèixer l'estudi en alguns dels pdf's i gràfics. Cal que sigui breu i sense espais.
 
 Estudi <- list(dades = NULL,
                expresFileName = expres.filtered.FileName,
@@ -412,24 +422,30 @@ anotList <- list(fitMain = NULL,
 p <- Estudi
 
 ## Definim els noms dels grups de comparacions i els contrastos associats a cada grup:
-compName <- c("Group1", "Group2", "Group3") # si son comparacions multiples, fer tant noms com grups de comparacions (N) hi hagi
+### 1a part de grups comparacions
+### Correspon a "EstudiA279a"
+compName <- c("G1.CTLRisk.vs.CANtype", "G2.CTLnoR.vs.CANtype", 
+              "G3.CANTypes", "G4.CTLRisk.vs.CTLnoR") # si son comparacions multiples, fer tant noms com grups de comparacions (N) hi hagi
                         # e.g. c("Dose", "Cells", "Time")
+### 2a part de grups comparacions
+### Correspon a "EstudiA279b"
+#compName <- c("G5.CAN.vs.CTL")
 
-wCont <- list(1:3, 4:6, 7:8) # Relacionat amb la contrastsMatrix. 
+wCont <- list(1:3, 4:6, 7:9, 10) # Relacionat amb la contrastsMatrix. 
                    # Llista amb N vectors, que defineixen els N conjunts (grups) de contrastos (comparacions)
                    # si N>1, cal indicar els rangs per separat
                    # e.g. list(1:8, 9:13, 14:17)
                    # Si hi ha només un grup de comparacions (p.e. Estres Termic), i amb dos nivells (estrés versus no estres), aquí es posaria com a:
                    # list(1:1)
 
-pValCutOff <- c(0.01, 0.01, 0.01) # si N>1, indicar el cut-off per cada conjunt de comparacions
+pValCutOff <- c(0.01, 0.01, 0.01, 0.01) # si N>1, indicar el cut-off per cada conjunt de comparacions
                       # e.g. c(0.01, 0.05, 0.01) o bé c(rep(0.01,3))
                       # Com a màxim a la UEB es posa 0.25 i a adjMethod posar no ajustat ("none"). 
-adjMethod <- c("none", "none", "none")  # si N>1, indicar mètode per cada conjunt de comparacions
+adjMethod <- c("none", "none", "none", "none")  # si N>1, indicar mètode per cada conjunt de comparacions
                       # e.g. c("none", "BH", "none") o bé c(rep("BH",3))
 
 ## Posar aqui els valors de minLogFC de cadascuna de les comparacions a fer
-minLogFoldChange <- c(1, 1, 1) # canviar aixo si s'ha decidit considerar sols els casos amb |logFC| >= que un valor minim
+minLogFoldChange <- c(1, 1, 1, 1) # canviar aixo si s'ha decidit considerar sols els casos amb |logFC| >= que un valor minim
                                # e.g. c(1, 2, 1) o be c(rep(0, 3)) indicar minLogFC per cada grup de comparacions
 
 ## Controlem que el nombre d'elements dels parametres anteriors sigui igual
@@ -613,7 +629,7 @@ sample.sizes <- c(2, 3, 4, 5, 6, 7, 8, 9, 10) # llista de possibles mides mostra
 ### chunk number 20: Session Info Parameters
 ###################################################
 
-dataFi <- "2014-02-11"        # format "aaaa-mm-dd"
+dataFi <- "2015-11-09"        # format "aaaa-mm-dd"
 
 sessionInfoFileName <- "sessionInfo.txt"
 outDir <- tempDir

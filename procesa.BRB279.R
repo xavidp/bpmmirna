@@ -8,17 +8,19 @@
 ## Si ??s la primera vegada que vols executar el BasicPipe, cal que posis aquest par??metre seg??ent a TRUE
 TRY2INSTALL <- FALSE
 require(beepr)
-source("parametros.XXXYYY.R") # Canviar XXXnnn per les 3 lletres de l'investigador/a + l'Id numeric de l'estudi
+source("parametros.BRB279.R") # Canviar XXXnnn per les 3 lletres de l'investigador/a + l'Id numeric de l'estudi
 
 #line 13 "ComCrearUnProjecteProcessa.rnw"
 Sys.setlocale('LC_ALL','C') # Per evitar warnings deguts a l'idioma
 
-runParam <- TRUE # From here until the next definition of runParam, sections will be set to this initial value (usally TRUE)
+runParam <- FALSE # From here until the next definition of runParam, sections will be set to this initial value (usally TRUE)
 
   createAnnotations <- runParam   # Si no les crea les ha de carregar
 
+runParam <- TRUE # 
+
   readCELS <- runParam            # runParam => Llegir els fitxers .CEL
-  groupColors <- runParam         # runParam => Usar el vector de colors definits al fitxer 'targets.txt'
+  groupColors <- FALSE #runParam         # runParam => Usar el vector de colors definits al fitxer 'targets.txt'
 
   preProcess <- runParam          # Decideix si es fa el QC amb arrayQualityMetrics
 
@@ -31,7 +33,7 @@ runParam <- TRUE # From here until the next definition of runParam, sections wil
     doReport <- runParam          # runParam => Genra el fitxer report del filtratge
 
   processaLM <- runParam          # Aquest proc??s sol trigar molt.
-  annotateGenes <- runParam       # Aquest proc??s sol trigar molt.
+  annotateGenes <- FALSE #runParam       # S'ha fet a part amb PreparaDades.A279.R"
   processaMultComp <- runParam 
   processaCluster <- runParam     # Si nom??s hi ha una comparaci?? (e.g. ThermalStress: estr??s contra sense estr??s), aqu?? s'ha de posar a FALSE, i per tant, no far?? els diagrames de VENN.
 
@@ -39,8 +41,8 @@ runParam <- TRUE # From here until the next definition of runParam, sections wil
 ###--------------------------------
 runParam <- TRUE  # From here onwards, sections will be set to this other value (usally FALSE)
 ###--------------------------------
-  processaGO <- runParam          # Alternatively, it can be hardcoded to FALSE or TRUE
-  processaKEGG <- runParam        # Alternatively, it can be hardcoded to FALSE or TRUE
+  processaGO <- FALSE #runParam          # Alternatively, it can be hardcoded to FALSE or TRUE
+  processaKEGG <- FALSE #runParam        # Alternatively, it can be hardcoded to FALSE or TRUE
   processaPower <- FALSE	  # TRUE, if power analysis is appropiate
   processaReport <- runParam      # Alternatively, it can be hardcoded to FALSE or TRUE
   processaSessionInfo <- runParam # Alternatively, it can be hardcoded to FALSE or TRUE
@@ -57,6 +59,6 @@ runMulticore <- 0 # 0=none | 1=mclapply | 2=foreach | 3=mcapply & foreach
 ###################################################
 ## #line 44 "ComCrearUnProjecteProcessa.rnw"
 
-source("analisis.XXXYYY.R") # Canviar XXXnnn per les 3 lletres de l'investigador/a + l'Id numeric de l'estudi
-beep(sound = 8, expr = NULL)
+#source("analisis.BRB279.R") # Canviar XXXnnn per les 3 lletres de l'investigador/a + l'Id numeric de l'estudi
+#beep(sound = 8, expr = NULL)
 
