@@ -53,7 +53,7 @@ setwd(paste0(basepath, "dades"))
 x <-read.csv2("rma.A279.summary.csv", row.names=1, sep=";", dec=",")
 head(x)
 dim(x)#36249 55
-targets <- read.csv2 ("targets.BRB.A279.csv",sep="\t")
+targets <- read.csv2 ("targets.BRB279.txt",sep="\t")
 sample.names <- as.character(targets$ShortName)
 save(x, targets, anota, file=file.path(paste0(basepath, "dades"),"dades.BRB.A279.Rda"))
 
@@ -97,6 +97,6 @@ class(x)
 if (!require("vsn")) {
   biocLite("vsn")
 }
-d_vsn = vsnrma(x)
+d_vsn = vsnrma(x) # d_vsn is the expression set
+head(d_vsn)
 meanSdPlot(d_vsn)
-
