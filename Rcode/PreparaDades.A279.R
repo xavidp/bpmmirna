@@ -13,7 +13,10 @@ if (!require("biomaRt")) {
   biocLite("biomaRt")
 }
 library(biomaRt) 
-mart <- useDataset("hsapiens_gene_ensembl", useMart("ensembl"))
+#mart <- useDataset("hsapiens_gene_ensembl", useMart("ensembl"))
+ensembl=useMart("ENSEMBL_MART_ENSEMBL", host="www.ensembl.org")
+dataset="hsapiens_gene_ensembl"
+ensembl=useDataset(dataset, mart=ensembl)
 listAttributes(mart)[1:100,]
 
 miRNA <- getBM(c("mirbase_id", "ensembl_gene_id", "start_position", "chromosome_name"),
