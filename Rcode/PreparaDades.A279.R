@@ -98,5 +98,38 @@ if (!require("vsn")) {
   biocLite("vsn")
 }
 d_vsn = vsnrma(x) # d_vsn is the expression set
-head(d_vsn)
+d_vsn
 meanSdPlot(d_vsn)
+dim(exprs(d_vsn))
+head(exprs(d_vsn))
+save(d_vsn, file = "expres.filtered.Rda")
+
+if (!require("naturalsort")) {
+  install.packages("naturalsort")
+}
+require(naturalsort)
+# order(row.names(pData(d_vsn))) # Wrong sorting with "order"
+row.names(pData(d_vsn))
+colnames(exprs(d_vsn))
+row.names(pData(d_vsn)) == colnames(exprs(d_vsn))
+
+ns.d_vsn <-naturalsort(row.names(pData(d_vsn))) # ns -> natural sort
+idx.d_vsn <- pData(d_vsn)[ns.d_vsn,] # Indexes from d_vsn sorted with natural sort
+d_vsn2 <- d_vsn[,idx.d_vsn]
+rownames(targets) <- as.character(targets$SampleName)
+targets2 <- targets[naturalsort(targets$SampleName),]
+#class(targets$SampleName)
+
+colnames(exprs(d_vsn2)) == rownames(targets2)
+
+pData(d_vsn2) <- targets2
+
+# > order(pData(d_vsn))
+# > pData(d_vsn) <- targets[order(pData(d_vsn)[,1])]
+# Error in `[.data.frame`(targets, order(pData(d_vsn)[, 1])) : 
+#   undefined columns selected
+# > order(pData(d_vsn)[,1])
+# > pData(d_vsn)[,1]
+
+kkvsn<-d_vsn
+kkvsn<-kk_vsn[,VVVV]
