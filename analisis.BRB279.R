@@ -66,6 +66,8 @@ rawData <- readOrLoad.RawData(readCELS = readCELS,
                               dataFName = rawDataFileName,
                               outputDir = dataDir,
                               exonSt = exonStudy)
+#dim(exprs(rawData))
+#head(exprs(rawData))
 
 if(rawDataType=="affy3primeIVT"){
   dates <-  pData(protocolData(rawData))
@@ -161,6 +163,21 @@ eset_norm <- normalization(my.data = rawData,
                            outputDir = dataDir,
                            exonSt = exonStudy)
 
+## XXXX Faig un bypass del eset_norm i li assigno el d_vsn que hem fet amb el PreparaDades.A279.R
+## Tot i que aquest d_vsn té només un feature, i a dins té:
+# assayData: 1 features, 48 samples 
+#> dim(exprs(rawData))
+#[1] 292681     48
+# I després d'assignar "eset_norm <- d_vsn" més avall:
+#> dim(exprs(eset_norm))
+#[1] 36249    48
+
+## i en canvi el rawData dels CEL files llegits pel basic pipe té: 
+# assayData: 292681 features, 48 samples 
+
+eset_norm <- d_vsn2 # d_vsn2 ja té les columnes i files (covariables) coincidint amb la info del targets
+dim(exprs(eset_norm))
+head(exprs(eset_norm))
 
 ## PART QUE ELIMINA LES FILES AMB IDENTICS VALORS D'EXPRESSIO (FERRAN, JUNY 2012)
 ## guardem com a valides les files de exprs(eset_norm) que NO estiguin duplicades
