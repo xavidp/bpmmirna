@@ -225,7 +225,7 @@ variability.Function <- "sdf"
 
 pairing.Function <- NULL
 
-expres.filtered.FileName <- "expres.filtered.Rda"
+expres.filtered.FileName <- "expres.filtered.Rda" # XXXX desar d_vsn a disk amb aquest nom d'arxiu
 normalized.filtered.FileName <- "normalized.filtered"
 
 ### Actualització 2011-8: S'ha afegit la localització explicita de l'arxiu 
@@ -356,8 +356,8 @@ Estudi <- list(dades = NULL,
                block = NULL,
                nDups = 1,
                comparisonName = comparName,  
-               ENTREZIDs = "entrezTable",
-               SYMBOLIDs = "symbolsTable",
+               ENTREZIDs = NULL, #"entrezTable",
+               SYMBOLIDs = NULL, #"symbolsTable",
                fileOfLinks = linksFileName,
                fitFileName = paste("fit", comparName, "Rda", sep = "."),
                csvType=fileType,
