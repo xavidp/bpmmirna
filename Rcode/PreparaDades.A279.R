@@ -16,7 +16,7 @@ library(biomaRt)
 #mart <- useDataset("hsapiens_gene_ensembl", useMart("ensembl"))
 ensembl=useMart("ENSEMBL_MART_ENSEMBL", host="www.ensembl.org")
 dataset="hsapiens_gene_ensembl"
-ensembl=useDataset(dataset, mart=ensembl)
+mart=useDataset(dataset, mart=ensembl)
 listAttributes(mart)[1:100,]
 
 miRNA <- getBM(c("mirbase_id", "ensembl_gene_id", "start_position", "chromosome_name"),
@@ -120,7 +120,7 @@ ns.d_vsn <-naturalsort(row.names(pData(d_vsn))) # ns -> natural sort
 idx.d_vsn <- pData(d_vsn)[ns.d_vsn,] # Indexes from d_vsn sorted with natural sort
 d_vsn2 <- d_vsn[,idx.d_vsn]
 rownames(targets) <- as.character(targets$SampleName)
-targets2 <- targets[naturalsort(targets$SampleName),]
+targets2 <- targets[naturalsort(as.character(targets$SampleName)),]
 #class(targets$SampleName)
 
 colnames(exprs(d_vsn2)) == rownames(targets2)
