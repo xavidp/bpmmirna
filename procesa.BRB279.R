@@ -1,7 +1,8 @@
 ###################################################
 ### chunk number 1: processa
 ###################################################
-
+#getwd()
+setwd("/home/xavi/Estudis/2015-10-NuriaBarbarroja-IMIBIC-A279")
 ## Per anar b??, s'hauria d'especificar el working dir des d'aqu??, per poder llen??ar tot un estudi executant un sol script d'R que ho control??s tot.
 # setwd("/home/ueb/Estudis/2011-05-31-foo-XXX")
 

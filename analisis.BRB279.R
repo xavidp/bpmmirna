@@ -197,6 +197,14 @@ if(!(is.null(pData(eset_norm)$ShortName)))
 
 if(exonStudy)
 {  
+  table(phenoData(eset_norm)$Grupo == targets$Grupo)
+  
+  which((phenoData(eset_norm)$Grupo == targets$Grupo) == FALSE)
+  #targets[21,]
+  #targets[24,]
+  table(phenoData(eset_norm)$ShortName == targets$ShortName)
+  table(phenoData(eset_norm)$Colores == targets$Colores)
+  
   phenoData(eset_norm)$Grupo<-targets$Grupo
   phenoData(eset_norm)$ShortName<-targets$ShortName
   phenoData(eset_norm)$Colores<-targets$Colores
@@ -257,7 +265,12 @@ if(normPlots)
                  outputDir = resultsDir,
                  PCAPlots = TRUE,
                  csv = fileType)
-              
+
+  ## XXXX. BRB279: Això em falla amb:
+  #
+  #16/11/15 10:03:05 - Generating NormPlots...
+  #  Error in svd(x, nu = 0) : infinite or missing values in 'x' 
+  
   addToLinksFile (linksFileName,
                   normalized.Plots.FileName,
                   categ = 'QC',
@@ -300,38 +313,69 @@ if(normPlots)
 ### Els fragment de codi d'aqui sota es redundant.
 ### S'ha d'arreglar treient el filterstring de la funcio filterData
 ######################################################################
+# XXX BRB279: Aquí hauré de fer a ma probablement el filtrat dels microRNA que són controls d'Affymetrix per treure'ls.
+head(exprs(eset_norm))
+dim(exprs(eset_norm))
+#?subset
+## Which miRNA affy probeset names are present in the df of miRNA for Humans created in the PreparaDades.A279.R file? (anotacion.hg)
+## Summary of how many match the condition
+table(rownames(exprs(eset_norm)) %in% as.character(anotacion.hg$Probe.Set.Name)) 
+#
+#FALSE  TRUE 
+#19506  5596
+## Which ones match the condition? 
+# Get their indexes
+set_norm.hg.idx <- which(rownames(exprs(eset_norm)) %in% as.character(anotacion.hg$Probe.Set.Name))
+# check that their are the same amount as in the table above
+length(set_norm.hg.idx)
+#[1] 5596
+dim(exprs(eset_norm))
+eset_norm.hg <- exprs(eset_norm)[set_norm.hg.idx,]
+dim(eset_norm.hg)
+class(eset_norm.hg)
+class(eset_norm)
+# XXX. BRB279: Això ha funcionat per filtrar per humà però els filtrat el tinc com a matrix, i no com a expression set.
 
-if (FILTRAR){
-  if(processaFILTRE)
-    {
-      cat(format(Sys.time(), "%d/%m/%y %H:%M:%S - ") ); cat("Applying filters...\n")
-      exprs.filtered <- filterData(expres = exprs(eset_norm),                     
-                               controls = names(controlsTable),
-                               removeNAs = TRUE, 
-                               entrezs = entrezTable,
-                               bySignal = SignalFilter,
-                               signalThr = signalThreshold,
-                               grups = pData(eset_norm)$Grupo,
-                               sigFun.Name = signalFilter.Function,
-                               sigThr.as.perc = signalThreshold.as.percentage,
-                              
-                               byVar = VarFilter,
-                               variabilityThr = variabilityThreshold,
-                               varFun.Name = variability.Function,
-                               varThr.as.perc = variabilityThreshold.as.percentage,
-                              
-                               pairingFun.Name = pairing.Function,
-                               targets = my.targets,
-
-                               doReport = doReport,
-                               outputDir = tempDir,
-                               filteringReportFName = FilteringReportFileName)
-    }else{
-      load(file.path(resultsDir,expres.filtered.FileName))
-      exprs.filtered <- expres}
-}else{
-  exprs.filtered <- exprs (eset_norm)
-}
+# XXX. BRB279. Repeteixo el process de filtrar d'abans, que sé que es quedan només amb els microRNA d'humans de l'expression set
+# i ho torno a assignar al mateix objecte eset_norm, per a continuar amb el Basic Pipe estandard
+eset_norm.hg <- eset_norm[rownames(exprs(eset_norm)) %in% as.character(anotacion.hg$Probe.Set.Name),]
+class(eset_norm.hg)
+dim(exprs(eset_norm.hg))
+#[1] 5596   48
+# I per tant, creo a ma l'objecte exprs.filtered, a partir dels valors d'expressió dels microRNA d'humans obtinguts en el pas anterior
+exprs.filtered <- eset_norm.hg
+class(exprs.filtered)
+# if (FILTRAR){
+#   if(processaFILTRE)
+#     {
+#       cat(format(Sys.time(), "%d/%m/%y %H:%M:%S - ") ); cat("Applying filters...\n")
+#       exprs.filtered <- filterData(expres = exprs(eset_norm),                     
+#                                controls = names(controlsTable),
+#                                removeNAs = TRUE, 
+#                                entrezs = entrezTable,
+#                                bySignal = SignalFilter,
+#                                signalThr = signalThreshold,
+#                                grups = pData(eset_norm)$Grupo,
+#                                sigFun.Name = signalFilter.Function,
+#                                sigThr.as.perc = signalThreshold.as.percentage,
+#                               
+#                                byVar = VarFilter,
+#                                variabilityThr = variabilityThreshold,
+#                                varFun.Name = variability.Function,
+#                                varThr.as.perc = variabilityThreshold.as.percentage,
+#                               
+#                                pairingFun.Name = pairing.Function,
+#                                targets = my.targets,
+# 
+#                                doReport = doReport,
+#                                outputDir = tempDir,
+#                                filteringReportFName = FilteringReportFileName)
+#     }else{
+#       load(file.path(resultsDir,expres.filtered.FileName))
+#       exprs.filtered <- expres}
+# }else{
+#   exprs.filtered <- exprs (eset_norm)
+# }
 
 
 ###################################################
@@ -349,6 +393,30 @@ if (FILTRAR){
 #################################################################
 
 cat(format(Sys.time(), "%d/%m/%y %H:%M:%S - ") ); cat("Saving Data...\n")
+
+# # XXX. BRB279: hardcoded to NULL
+# symbolsTable <- NULL
+# EntrezTable <- NULL
+# # Load a file downloaded from BioMart with the correspondence values of 
+# # Ensembl Gene ID   Ensembl Transcript ID 	miRBase ID(s) 	EntrezGene ID
+# # http://www.ensembl.org/biomart/martview/ec4274dae6420ffa43e2fb9294a573c3
+# # Dataset
+# ## Homo sapiens genes (GRCh38.p3)
+# # Filters
+# ## Gene type: miRNA
+# # Attributes
+# ## Ensembl Gene ID
+# ## Ensembl Transcript ID
+# ## miRBase ID(s)
+# ## EntrezGene ID
+# getwd()
+# mart.table <- read.csv("dades/151116_mart_export_ensembl_mirna_id_entrez_id_genesymbols_homosapiens_GRCh38.p3.txt", header = TRUE, sep = ",", quote = "\"",
+#          dec = ".", fill = TRUE, comment.char = "")
+# dim(mart.table)
+# head(mart.table)
+# # Quants registres té la taula d'anotacions que continguin entrezId (que sembla que la majoria també contenen gene symbol)
+# table(!is.na(mart.table$EntrezGene.ID))
+# table(mart.table$HGNC.symbol=="")
 
 saveData(expres = exprs(eset_norm),
          expres.csv.FileName = normalized.all.FileName,

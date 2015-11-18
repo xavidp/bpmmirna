@@ -42,6 +42,7 @@ a<-as.vector(anotacion.hg$Transcript_ID)
 length(a)#6631
 length(unique(a))
 anotacion.hg<-anotacion.hg[!duplicated(anotacion.hg[,5]),]
+head(anotacion.hg)
 
 #nuevo data set de anotaciones: Probe.Set.ID + Transcript.ID.Array.Design.
 anota<-data.frame(anotacion.hg$Transcript_ID,anotacion.hg$Probe_Set_ID)
@@ -87,11 +88,13 @@ if (!require("affxparser")) {
 }
 library(makecdfenv)    
 library(affxparser)
-convertCdf("miRNA-4_0-st-v1.cdf", "mirna40cdf", version=4, verbose=TRUE) 
-pkgpath <- paste0(basepath, "dades")
-make.cdf.package("mirna40cdf", version = packageDescription("makecdfenv", field = "Version"), species="", unlink=TRUE, compress=FALSE, package.path = pkgpath)
-
-system(paste0("R CMD INSTALL \"", pkgpath, "/mirna40cdf", "\""))
+if (!require("mirna40cdf")) {
+  convertCdf("miRNA-4_0-st-v1.cdf", "mirna40cdf", version=4, verbose=TRUE) 
+  pkgpath <- paste0(basepath, "dades")
+  make.cdf.package("mirna40cdf", version = packageDescription("makecdfenv", field = "Version"), species="", unlink=TRUE, compress=FALSE, package.path = pkgpath)
+  
+  system(paste0("R CMD INSTALL \"", pkgpath, "/mirna40cdf", "\""))
+}
 
 library(affy)
 require(affy)
@@ -114,6 +117,7 @@ require(naturalsort)
 # order(row.names(pData(d_vsn))) # Wrong sorting with "order"
 row.names(pData(d_vsn))
 colnames(exprs(d_vsn))
+table(row.names(pData(d_vsn)) == colnames(exprs(d_vsn)))
 row.names(pData(d_vsn)) == colnames(exprs(d_vsn))
 
 ns.d_vsn <-naturalsort(row.names(pData(d_vsn))) # ns -> natural sort
@@ -123,6 +127,8 @@ rownames(targets) <- as.character(targets$SampleName)
 targets2 <- targets[naturalsort(as.character(targets$SampleName)),]
 #class(targets$SampleName)
 
+table(colnames(exprs(d_vsn2)) == rownames(targets2))
+table(colnames(exprs(d_vsn2)) == rownames(targets))
 colnames(exprs(d_vsn2)) == rownames(targets2)
 
 pData(d_vsn2) <- targets2
@@ -134,5 +140,3 @@ pData(d_vsn2) <- targets2
 # > order(pData(d_vsn)[,1])
 # > pData(d_vsn)[,1]
 
-kkvsn<-d_vsn
-kkvsn<-kk_vsn[,VVVV]
