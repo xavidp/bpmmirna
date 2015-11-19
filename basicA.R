@@ -19,6 +19,12 @@ installifnot("hwriter")
 installifnot("gplots")
 installifnot("GOstats")
 if(!require(SortableHTMLTables)) install.packages("SortableHTMLTables")
+if(!require(doMC)) install.packages("doMC")
+library(doMC)
+if(!require(devtools)) install.packages("devtools")
+require(devtools)
+install_github('rCharts', 'ramnathv')
+library(rCharts)
 
 ## ----preparaDirectorios, eval=TRUE---------------------------------------
 baseDir <- "/home/xavi/Estudis/2015-10-NuriaBarbarroja-IMIBIC-A279"
@@ -27,6 +33,9 @@ dataDir <-file.path(workingDir, "dades")
 resultsDir <- file.path(workingDir,"results")
 celfilesDir <- file.path(workingDir,"celfiles")
 setwd(workingDir)
+## number of cores to use from your computer (with doMC package)
+nCores <- 4 # 1 # In case of doubt, use just 1 core.
+
 
 ## ----loadData------------------------------------------------------------
 #load(file=file.path(resultsDir, "datos.normalizados.Rda"))
@@ -179,11 +188,11 @@ fit<-lmFit(exprs.filtered, design)
 fit.main<-contrasts.fit(fit, cont.matrix)
 fit.main<-eBayes(fit.main)
 
-compName <- c("G1.CTLRisk.vs.CANtype", "G2.CTLnoR.vs.CANtype", 
+compGroupName <- c("G1.CTLRisk.vs.CANtype", "G2.CTLnoR.vs.CANtype", 
               "G3.CANTypes", "G4.CTLRisk.vs.CTLnoR") # si son comparacions multiples, fer tant noms com grups de comparacions (N) hi hagi
 ### 2a part de grups comparacions
 ### Correspon a "EstudiA279b"
-#compName <- c("G5.CAN.vs.CTL")
+#compGroupName <- c("G5.CAN.vs.CTL")
 
 wCont <- list(1:3, 4:6, 7:9, 10) # Relacionat amb la contrastsMatrix. 
 # Llista amb N vectors, que defineixen els N conjunts (grups) de contrastos (comparacions)
@@ -196,19 +205,19 @@ pValCutOff <- c(0.01, 0.01, 0.01, 0.01) # si N>1, indicar el cut-off per cada co
 
 # e.g. c(0.01, 0.05, 0.01) o bé c(rep(0.01,3))
 # Com a màxim a la UEB es posa 0.25 i a adjMethod posar no ajustat ("none"). 
-adjMethod <- c("none", "none", "none", "none")  # si N>1, indicar mètode per cada conjunt de comparacions
+adjMethod <- rep("none",4)  # si N>1, indicar mètode per cada conjunt de comparacions
 # e.g. c("none", "BH", "none") o bé c(rep("BH",3))
 
 ## Posar aqui els valors de minLogFC de cadascuna de les comparacions a fer
-minLogFoldChange <- c(0, 0, 0, 0) # canviar aixo si s'ha decidit considerar sols els casos amb |logFC| >= que un valor minim
+minLogFoldChange <- c(0, 0, 0, 0) # canviar aixo si s'ha decidit considerar sols els casos amb |logFC| >= que un valor. Si no, només s'empra per als HeatMaps minim
 # e.g. c(1, 2, 1) o be c(rep(0, 3)) indicar minLogFC per cada grup de comparacions
 
 ## Controlem que el nombre d'elements dels parametres anteriors sigui igual
 if(class(wCont)!="list") warning("L'objecte wCont no és una llista! Això pot provocar errors en els passos següents.")
-if(length(wCont)!=length(compName)) warning("L'objecte wCont ha de tenir el mateix nombre d'elements que compName!")
-if(length(pValCutOff)!=length(compName)) warning("L'objecte pValCutOff ha de tenir el mateix nombre d'elements que compName!")
-if(length(adjMethod)!=length(compName)) warning("L'objecte adjMethod ha de tenir el mateix nombre d'elements que compName!")
-if(length(minLogFoldChange)!=length(compName)) warning("L'objecte minLogFoldChange ha de tenir el mateix nombre d'elements que compName!")
+if(length(wCont)!=length(compGroupName)) warning("L'objecte wCont ha de tenir el mateix nombre d'elements que compGroupName!")
+if(length(pValCutOff)!=length(compGroupName)) warning("L'objecte pValCutOff ha de tenir el mateix nombre d'elements que compGroupName!")
+if(length(adjMethod)!=length(compGroupName)) warning("L'objecte adjMethod ha de tenir el mateix nombre d'elements que compGroupName!")
+if(length(minLogFoldChange)!=length(compGroupName)) warning("L'objecte minLogFoldChange ha de tenir el mateix nombre d'elements que compGroupName!")
 
 
 #############################################################
@@ -219,13 +228,15 @@ topTab <- list()
 #class(topTab)
 #str(topTab)
 
-for (ii in 1:length(wCont)) { # ii is the index of the list with the multiple comparison group names
+registerDoMC(nCores)
+
+foreach (ii = 1:length(wCont)) %dopar% { # ii is the index of the list with the multiple comparison group names
   #wCont[ii]
-  for (jj in 1:length(wCont[[ii]])) { # jj is the index of the list with the single comparisons from within each group of comparisons
+  foreach (jj = 1:length(wCont[[ii]])) %dopar% { # jj is the index of the list with the single comparisons from within each group of comparisons
     topTab[[ wCont[[ii]][jj] ]] <-  topTable (fit.main, number=nrow(fit.main), 
                                               coef=colnames(cont.matrix)[ wCont[[ii]][jj] ], 
-                                              adjust=adjMethod[ii], 
-                                              lfc=abs(minLogFoldChange[ii]))
+                                              adjust="fdr", 
+                                              lfc=0)
     # head(topTab[[ wCont[[ii]][jj] ]] )
 
     # Write the resulting topTable to disk
@@ -244,19 +255,38 @@ for (ii in 1:length(wCont)) { # ii is the index of the list with the multiple co
     rm(topTab2)
     topTab2 <- cbind(rownames(topTab[[ wCont[[ii]][jj] ]]), 
                 topTab[[ wCont[[ii]][jj] ]] )
-    colnames(topTab2)[1] <- "featureName"
+    colnames(topTab2)[1] <- "ID"
     #head(topTab2)
+
+# Disabled in favor of the dTable created below
 #     write.htmltable(x = topTab2, 
 #                     file=file.path( resultsDir, outFile ),
 #                     title =  outTitle,
 #                     open = "wt")
-    sortable.html.table(df = topTab2, 
-                        output.file = paste0(outFile, "-sortable.html"),
-                        output.directory = resultsDir,
-                        page.title = outTitle )
+
+# Disabled in favor of the dTable created below
+#      sortable.html.table(df = topTab2, 
+#                          output.file = paste0(outFile, "-sortable.html"),
+#                          output.directory = resultsDir,
+#                          page.title = outTitle )
     
-    #head(topTab)
-    #dim(topTab)
+  # Create a dTable, a filterable html table: sortable columns plus search box that filster records in real time
+  # uses dTable from rCharts.
+  filterable.dTable=dTable(topTab2, sPaginationType = "full_numbers")
+  filterable.dTable$templates$script =  "http://timelyportfolio.github.io/rCharts_dataTable/chart_customsort.html" 
+  filterable.dTable$params$table$aoColumns =
+    list(
+      list(sType = "string_ignore_null", sTitle = "ID"),
+      list(sType = "string_ignore_null", sTitle = "logFC"),
+      list(sType = "string_ignore_null", sTitle = "AveExpr"),
+      list(sType = "string_ignore_null", sTitle = "t"),
+      list(sType = "string_ignore_null", sTitle = "P.Value"),
+      list(sType = "string_ignore_null", sTitle = "adj.P.Val"),
+      list(sType = "string_ignore_null", sTitle = "B")
+    )
+  filterable.dTable$save(file.path(resultsDir, 
+                                   paste0(outFile, "-dTable.html")))
+
   }
 }
 
@@ -277,36 +307,114 @@ require(readr)
 
 numGeneChangedFC(filenames=grep("Selected.Genes.in.comparison.*.csv",dir(),value=TRUE),
                  comparisons= colnames(cont.matrix),
-                 FC=0)
+                 FC=0) # FC needs to be hardcoded to Zero at this step
 
 
 ## ----volcanos, results=tex,echo=FALSE, eval=TRUE-------------------------
-for(i in 1:ncol(cont.matrix)){
-  compName <-colnames(cont.matrix)[i]
-  file=paste("volcanoPlot", compName, ".pdf", sep="")
-  pdf(file=file.path(workingDir, "images", file), paper="special", width=6, height=6)
-  volcanoplot(fit.main, coef=i, highlight=10, names=fit.main$ID, 
-            main=paste("Differentially expressed genes",compName, sep="\n"))
-  abline(v=c(-1,1))
-  dev.off()
-  cat("\\includegraphics{", file, "}\n\n", sep="")
+for (ii in 1:length(wCont)) { # ii is the index of the list with the multiple comparison group names
+  #wCont[ii]
+  for (jj in 1:length(wCont[[ii]])) { # jj is the index of the list with the single comparisons from within each group of comparisons
+  # ii <- 1; jj<- 1
+    my.compName <-colnames(cont.matrix)[ wCont[[ii]][jj] ]
+    file=paste("volcanoPlot", my.compName, ".pdf", sep="")
+    pdf(file=file.path(resultsDir, file), paper="special", width=6, height=6)
+    # Set volcanoPointNames. 
+    ## Recent versions of limma seem to not write the feature name as fitmai$ID anymore, 
+    ## but just provide the feature name as the row.name  
+    if (is.null(fit.main$ID)) {
+      volcanoPointNames <- rownames(fit.main)
+    } else {
+      volcanoPointNames <- fit.main$ID
+    }
+    volcanoplot(fit.main, coef= wCont[[ii]][jj] , highlight=10, names=volcanoPointNames, 
+                main=paste("Differentially expressed genes", my.compName, sep="\n"))
+    abline(v=c(-1,1))
+    dev.off()
+    #cat("\\includegraphics{", file, "}\n\n", sep="")
+    
+  }
 }
 
-## ----CuantosGenes, echo=F, eval=TRUE-------------------------------------
-cat("Numero de genes con un p--valor inferior a 0.05 en cada comparación:\n")
-  cat ("En la comparación 'A vs B': ", sum(topTab_AvsB$adj.P.Val<=0.05),"\n")
-  cat ("En la comparación 'A vs L': ", sum(topTab_AvsL$adj.P.Val<=0.05),"\n")
-  cat ("En la comparación 'B vs L': ", sum(topTab_BvsL$adj.P.Val<=0.05),"\n")  
+# ## ----CuantosGenes, echo=F, eval=TRUE-------------------------------------
+# cat("Numero de genes con un p--valor inferior a 0.05 en cada comparación:\n")
+# cat ("En la comparación 'A vs B': ", sum(topTab_AvsB$adj.P.Val<=0.05),"\n")
+# cat ("En la comparación 'A vs L': ", sum(topTab_AvsL$adj.P.Val<=0.05),"\n")
+# cat ("En la comparación 'B vs L': ", sum(topTab_BvsL$adj.P.Val<=0.05),"\n")  
+
+# 
+# # ## ----decideTests.2, echo=F, eval=TRUE------------------------------------
+# res<-decideTests(fit.main, method="separate", adjust.method="fdr", p.value=0.05, lfc=1)
+# sum.res.rows<-apply(abs(res),1,sum)
+# res.selected<-res[sum.res.rows!=0,] 
+# print(summary(res))
+# 
+# ## ----venn1,fig=T, eval=TRUE----------------------------------------------
+# vennDiagram (res.selected[,1:3], main="Genes in common #1", cex=0.9)
 
 
-## ----decideTests.2, echo=F, eval=TRUE------------------------------------
-res<-decideTests(fit.main, method="separate", adjust.method="fdr", p.value=0.05, lfc=1)
-sum.res.rows<-apply(abs(res),1,sum)
-res.selected<-res[sum.res.rows!=0,] 
-print(summary(res))
+###################################################
+## Venn Diagram
+###################################################
+if(!require(VennDiagram)) install.packages("VennDiagram")
+library(VennDiagram)
 
-## ----venn1,fig=T, eval=TRUE----------------------------------------------
-vennDiagram (res.selected[,1:3], main="Genes in common #1", cex=0.9)
+# Re-set the needed lists to zero just in case
+fileVenn    <- list()
+listVenn    <- list()
+pValType    <- list()
+pValString  <- list()
+
+for (ii in 1:length(wCont)) { # ii is the index of the list with the multiple comparison group names
+  #wCont[ii]
+  for (jj in 1:length(wCont[[ii]])) { # jj is the index of the list with the single comparisons from within each group of comparisons
+    # ii <- 1; jj<- 1
+    ## ------------------------------------------------
+    ## Seleccio toptables i llistat de genes
+    #    fileVenn[ wCont[[ii]][jj] ] <- read.csv("results/TopTable.T1.vs.C.csv")
+    #str(topTab)
+    tmpVenn <- topTab[[wCont[[ii]][jj] ]] 
+    fileVenn[[ wCont[[ii]][jj] ]] <- tmpVenn
+    
+    # head( tmpVenn ) 
+    
+    if ( adjMethod[ii] == "none" ) {
+      listVenn[[ wCont[[ii]][jj] ]] <- as.character(rownames(tmpVenn[tmpVenn$P.Value < pValCutOff[ii],]))
+      pValString[ii]  <- "P.Value"
+    } else {
+      listVenn[[ wCont[[ii]][jj] ]] <- as.character(rownames(tmpVenn[tmpVenn$adj.P.Val < pValCutOff[ii],]))
+      pValString[ii]  <- "Adj.P.Value"
+    }
+    
+#    file2 <- read.csv("results/TopTable.T2.vs.C.csv")
+#    list2 <- as.character(file2$X[file1$Adj.p.val < 0.05])
+    
+#    file3 <- read.csv("resfile3TopTable.T2.vs.T1.csv")
+#    list3 <- as.character(file3$X[file1$Adj.p.val < 0.05])
+  } # end the loop of jj, to have all fileVenn and listVenn created for a multiple comparison
+
+
+    # head(listVenn)
+    # str(listVenn)
+
+    mainTitle <- paste0("Venn diagram for ", compGroupName[ii]," (", pValString[ii]," < ", pValCutOff[ii], ")") ## Titol
+    
+    ## Creació Venn Diagram
+    #head(listVenn)
+    venn.plot <- venn.diagram(listVenn, # The list of DE features in each comparison of each multiple comparison group
+                              category.names = colnames(cont.matrix)[ wCont[[ii]]  ], ## Comparacions
+                              fill = rainbow( length(wCont[[ii]]) ),
+                              #fill = c("tomato", "orchid4", "turquoise3"),
+                              alpha = 0.50,
+                              resolution = 600,
+                              cat.cex = 0.9,
+                              main = mainTitle,
+                              filename = NULL)
+    pdf(file.path(resultsDir , paste( "vennDiagram", compGroupName[ii], 
+                                      pValString[ii], pValCutOff[ii], "pdf", sep=".")))
+    grid.draw(venn.plot)
+    dev.off()
+    
+} # end of ii loop, the index of the list with the multiple comparison group names
 
 
 ## ----htmlPages-----------------------------------------------------------
