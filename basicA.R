@@ -359,10 +359,10 @@ if(!require(VennDiagram)) install.packages("VennDiagram")
 library(VennDiagram)
 
 # Re-set the needed lists to zero just in case
-fileVenn    <- list()
-listVenn    <- list()
-pValType    <- list()
-pValString  <- list()
+rm(fileVenn); fileVenn    <- list()
+rm(listVenn); listVenn    <- list()
+rm(pValString); pValString  <- list()
+rm(tmpVenn)
 
 for (ii in 1:length(wCont)) { # ii is the index of the list with the multiple comparison group names
   #wCont[ii]
@@ -372,7 +372,7 @@ for (ii in 1:length(wCont)) { # ii is the index of the list with the multiple co
     ## Seleccio toptables i llistat de genes
     #    fileVenn[ wCont[[ii]][jj] ] <- read.csv("results/TopTable.T1.vs.C.csv")
     #str(topTab)
-    tmpVenn <- topTab[[wCont[[ii]][jj] ]] 
+    tmpVenn <- topTab[[ wCont[[ii]][jj] ]] 
     fileVenn[[ wCont[[ii]][jj] ]] <- tmpVenn
     
     # head( tmpVenn ) 
@@ -396,11 +396,15 @@ for (ii in 1:length(wCont)) { # ii is the index of the list with the multiple co
     # head(listVenn)
     # str(listVenn)
 
+  # In case there are 2 or more comparisons, create a vennDiagram for them.
+  if (length(wCont[[ii]]) > 1) {
+    
     mainTitle <- paste0("Venn diagram for ", compGroupName[ii]," (", pValString[ii]," < ", pValCutOff[ii], ")") ## Titol
     
     ## Creació Venn Diagram
-    #head(listVenn)
-    venn.plot <- venn.diagram(listVenn, # The list of DE features in each comparison of each multiple comparison group
+    # str(listVenn)
+      
+    venn.plot <- venn.diagram(listVenn[ wCont[[ii]] ], # The list of DE features in each comparison of each multiple comparison group
                               category.names = colnames(cont.matrix)[ wCont[[ii]]  ], ## Comparacions
                               fill = rainbow( length(wCont[[ii]]) ),
                               #fill = c("tomato", "orchid4", "turquoise3"),
@@ -413,7 +417,8 @@ for (ii in 1:length(wCont)) { # ii is the index of the list with the multiple co
                                       pValString[ii], pValCutOff[ii], "pdf", sep=".")))
     grid.draw(venn.plot)
     dev.off()
-    
+  } # end of venn.diagram generation (when appropriate) 
+
 } # end of ii loop, the index of the list with the multiple comparison group names
 
 
