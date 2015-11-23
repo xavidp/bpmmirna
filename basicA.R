@@ -180,7 +180,7 @@ cont.matrix <- makeContrasts(                   ### RECORDAR QUE AIXÒ ES UN EXE
 
 print(cont.matrix) #comentar aquesta linia si no es vol visualitzar la matriu de contrasts
 
-
+condSplitter <- "vs" # Condition splitter in the Comparison String. This param is used later on to obtain the condition names of the comparison
 
 ## ----linearmodelfit,echo=F, eval=TRUE------------------------------------
 require(limma)
@@ -228,6 +228,9 @@ topTab <- list()
 #class(topTab)
 #str(topTab)
 
+# Temporary BD containing the expression values for the selected features
+BD <- exprs(exprs.filtered)
+
 registerDoMC(nCores)
 
 foreach (ii = 1:length(wCont)) %dopar% { # ii is the index of the list with the multiple comparison group names
@@ -237,25 +240,29 @@ foreach (ii = 1:length(wCont)) %dopar% { # ii is the index of the list with the 
                                               coef=colnames(cont.matrix)[ wCont[[ii]][jj] ], 
                                               adjust="fdr", 
                                               lfc=0)
-    # head(topTab[[ wCont[[ii]][jj] ]] )
+
+    my.compName <- colnames(cont.matrix)[ wCont[[ii]][jj] ]
+    my.conds <- unlist(strsplit(my.compName, condSplitter)) 
+    my.cels.idx <- grep( paste0(my.conds[1],"|",my.conds[2]), targets$Grupo)
+    my.cels <- as.character(targets$SampleName[my.cels.idx]) # The list of cel files to be appended to the TopTable object before the csv generation, but avoided when printing the html version
+    
+    #head(topTab[[ wCont[[ii]][jj] ]] )
+    topTab[[ wCont[[ii]][jj] ]] <- cbind(topTab[[ wCont[[ii]][jj] ]],
+                  BD[rownames( topTab[[ wCont[[ii]][jj] ]] ), my.cels])
 
     # Write the resulting topTable to disk
     write.csv2(topTab[[ wCont[[ii]][jj] ]], 
                file=file.path( resultsDir, paste("Selected.Genes.in.comparison.",
                colnames(cont.matrix)[ wCont[[ii]][jj] ], ".csv", sep="")) )
-#     library(xtable)
-#     print( xtable(topTab[[ wCont[[ii]][jj] ]], type="html"), 
-#           file=file.path( resultsDir, paste("Selected.Genes.in.comparison.",
-#                      colnames(cont.matrix)[ wCont[[ii]][jj] ],".html", sep="" ))
-#           )
+
     outFile <- paste("Selected.Genes.in.comparison.",
                      colnames(cont.matrix)[ wCont[[ii]][jj] ], sep="" )
     outTitle <- paste("Selected.Genes.in.comparison: ", colnames(cont.matrix)[ wCont[[ii]][jj] ], sep="")
     # For some reason, the html produced doesn't contain the rownames, so we pre-pend them as the first column
-    rm(topTab2)
-    topTab2 <- cbind(rownames(topTab[[ wCont[[ii]][jj] ]]), 
+    rm(topTab.tmp)
+    topTab.tmp <- cbind(rownames(topTab[[ wCont[[ii]][jj] ]]), 
                 topTab[[ wCont[[ii]][jj] ]] )
-    colnames(topTab2)[1] <- "ID"
+    colnames(topTab.tmp)[1] <- "ID"
     #head(topTab2)
 
 # Disabled in favor of the dTable created below
@@ -272,18 +279,26 @@ foreach (ii = 1:length(wCont)) %dopar% { # ii is the index of the list with the 
     
   # Create a dTable, a filterable html table: sortable columns plus search box that filster records in real time
   # uses dTable from rCharts.
-  filterable.dTable=dTable(topTab2, sPaginationType = "full_numbers")
+  # Only the first 7 are the needed ones for the html file generated. Example:
+  # (rowname)                         ID      logFC  AveExpr         t      P.Value adj.P.Val  B
+  # ENSG00000252190_st ENSG00000252190_st  0.1148340 4.995241  3.976190 0.0001824323 0.3810522  0.6738682
+  filterable.dTable=dTable(topTab.tmp[,1:7], sPaginationType = "full_numbers")
   filterable.dTable$templates$script =  "http://timelyportfolio.github.io/rCharts_dataTable/chart_customsort.html" 
-  filterable.dTable$params$table$aoColumns =
-    list(
-      list(sType = "string_ignore_null", sTitle = "ID"),
-      list(sType = "string_ignore_null", sTitle = "logFC"),
-      list(sType = "string_ignore_null", sTitle = "AveExpr"),
-      list(sType = "string_ignore_null", sTitle = "t"),
-      list(sType = "string_ignore_null", sTitle = "P.Value"),
-      list(sType = "string_ignore_null", sTitle = "adj.P.Val"),
-      list(sType = "string_ignore_null", sTitle = "B")
-    )
+  # colnames(topTab2)
+  for (cc in 1:7) { # XXXX Only the first 7 are the needed ones for the html file generated
+    filterable.dTable$params$table$aoColumns[cc] =
+      list( list(sType = "string_ignore_null", sTitle = colnames(topTab.tmp[cc])) )
+  }
+#    filterable.dTable$params$table$aoColumns =
+#      list(
+#        list(sType = "string_ignore_null", sTitle = "ID"),
+#        list(sType = "string_ignore_null", sTitle = "logFC"),
+#        list(sType = "string_ignore_null", sTitle = "AveExpr"),
+#        list(sType = "string_ignore_null", sTitle = "t"),
+#        list(sType = "string_ignore_null", sTitle = "P.Value"),
+#        list(sType = "string_ignore_null", sTitle = "adj.P.Val"),
+#        list(sType = "string_ignore_null", sTitle = "B")
+#      )
   filterable.dTable$save(file.path(resultsDir, 
                                    paste0(outFile, "-dTable.html")))
 
@@ -291,10 +306,6 @@ foreach (ii = 1:length(wCont)) %dopar% { # ii is the index of the list with the 
 }
 
 
-# ## ----print=FALSE, echo=TRUE, eval=TRUE-----------------------------------
-# topTab_AvsB <- topTable (fit.main, number=nrow(fit.main), coef="AvsB", adjust="fdr")
-# topTab_AvsL <- topTable (fit.main, number=nrow(fit.main), coef="AvsL", adjust="fdr")
-# topTab_BvsL  <- topTable (fit.main, number=nrow(fit.main) , coef="BvsL", adjust="fdr")
 
 setwd(baseDir)
 # Carrega numGeneChangedFC.R
@@ -370,13 +381,11 @@ for (ii in 1:length(wCont)) { # ii is the index of the list with the multiple co
     # ii <- 1; jj<- 1
     ## ------------------------------------------------
     ## Seleccio toptables i llistat de genes
-    #    fileVenn[ wCont[[ii]][jj] ] <- read.csv("results/TopTable.T1.vs.C.csv")
-    #str(topTab)
     tmpVenn <- topTab[[ wCont[[ii]][jj] ]] 
     fileVenn[[ wCont[[ii]][jj] ]] <- tmpVenn
-    
-    # head( tmpVenn ) 
-    
+    head(tmpVenn)
+    head(exprs(exprs.filtered))
+    targets
     if ( adjMethod[ii] == "none" ) {
       listVenn[[ wCont[[ii]][jj] ]] <- as.character(rownames(tmpVenn[tmpVenn$P.Value < pValCutOff[ii],]))
       pValString[ii]  <- "P.Value"
@@ -385,16 +394,7 @@ for (ii in 1:length(wCont)) { # ii is the index of the list with the multiple co
       pValString[ii]  <- "Adj.P.Value"
     }
     
-#    file2 <- read.csv("results/TopTable.T2.vs.C.csv")
-#    list2 <- as.character(file2$X[file1$Adj.p.val < 0.05])
-    
-#    file3 <- read.csv("resfile3TopTable.T2.vs.T1.csv")
-#    list3 <- as.character(file3$X[file1$Adj.p.val < 0.05])
   } # end the loop of jj, to have all fileVenn and listVenn created for a multiple comparison
-
-
-    # head(listVenn)
-    # str(listVenn)
 
   # In case there are 2 or more comparisons, create a vennDiagram for them.
   if (length(wCont[[ii]]) > 1) {
@@ -402,8 +402,6 @@ for (ii in 1:length(wCont)) { # ii is the index of the list with the multiple co
     mainTitle <- paste0("Venn diagram for ", compGroupName[ii]," (", pValString[ii]," < ", pValCutOff[ii], ")") ## Titol
     
     ## Creació Venn Diagram
-    # str(listVenn)
-      
     venn.plot <- venn.diagram(listVenn[ wCont[[ii]] ], # The list of DE features in each comparison of each multiple comparison group
                               category.names = colnames(cont.matrix)[ wCont[[ii]]  ], ## Comparacions
                               fill = rainbow( length(wCont[[ii]]) ),
@@ -422,37 +420,39 @@ for (ii in 1:length(wCont)) { # ii is the index of the list with the multiple co
 } # end of ii loop, the index of the list with the multiple comparison group names
 
 
-## ----htmlPages-----------------------------------------------------------
-listOfTables <- list(AvsB = topTab_AvsB, AvsL = topTab_AvsL, BvsL = topTab_BvsL) 
-for (i in 1:length(listOfTables)){
-  # Seleccionamos la "topTable"
-  topTab <- listOfTables[[i]]
-  # Escogemos los grupos de sondas a incluir en la tabla
-  whichGenes<-topTab["P.Value"]<0.05
-  selectedIDs <- topTab$ID[whichGenes]
-  # Los convertimos a identificadores Entrez ("EG") y a Gene Symbols
-  genes<- getEG(selectedIDs, "hgu133a.db")
-  simbols <-getSYMBOL(selectedIDs, "hgu133a.db")
-  # Haremos la columna de Entrez sea hiperenlazable
-  paraEnlace <- list (misgenes=genes)
-  # Preparamos el data.frame con el que se creará el archivo de resultados
-  otherNames = data.frame(selectedIDs, simbols, topTab[whichGenes,-1])
-  names(otherNames) = c("Affy ID", "Gene Symbol", colnames(topTab)[-1])
-  # Invocamos la función "htmlpage"
-  comparison <- names(listOfTables)[i]
-  htmlpage(paraEnlace, 
-           filename =file.path(resultsDir, 
-           paste("Selected Genes in comparison ",comparison,".html", sep="")) , 
-           title = paste("Diff. expressed genes in comparison ", comparison, sep=""), 
-           othernames = otherNames, 
-           table.head = c("Entrez IDs", names(otherNames)),
-           table.center = TRUE, 
-           repository=list("en"))
-}
+# ## ----htmlPages-----------------------------------------------------------
+# listOfTables <- list(AvsB = topTab_AvsB, AvsL = topTab_AvsL, BvsL = topTab_BvsL) 
+# for (i in 1:length(listOfTables)){
+#   # Seleccionamos la "topTable"
+#   topTab <- listOfTables[[i]]
+#   # Escogemos los grupos de sondas a incluir en la tabla
+#   whichGenes<-topTab["P.Value"]<0.05
+#   selectedIDs <- topTab$ID[whichGenes]
+#   # Los convertimos a identificadores Entrez ("EG") y a Gene Symbols
+#   genes<- getEG(selectedIDs, "hgu133a.db")
+#   simbols <-getSYMBOL(selectedIDs, "hgu133a.db")
+#   # Haremos la columna de Entrez sea hiperenlazable
+#   paraEnlace <- list (misgenes=genes)
+#   # Preparamos el data.frame con el que se creará el archivo de resultados
+#   otherNames = data.frame(selectedIDs, simbols, topTab[whichGenes,-1])
+#   names(otherNames) = c("Affy ID", "Gene Symbol", colnames(topTab)[-1])
+#   # Invocamos la función "htmlpage"
+#   comparison <- names(listOfTables)[i]
+#   htmlpage(paraEnlace, 
+#            filename =file.path(resultsDir, 
+#            paste("Selected Genes in comparison ",comparison,".html", sep="")) , 
+#            title = paste("Diff. expressed genes in comparison ", comparison, sep=""), 
+#            othernames = otherNames, 
+#            table.head = c("Entrez IDs", names(otherNames)),
+#            table.center = TRUE, 
+#            repository=list("en"))
+# }
 
 ## ----prepareData, eval=TRUE----------------------------------------------
 probeNames<-rownames(res)
 probeNames.selected<-probeNames[sum.res.rows!=0]
+
+topTable
 exprs2cluster <-exprs(eset_rma)[probeNames.selected,]
 colnames(exprs2cluster)<-sampleNames
 color.map <- function(grupo) { 
