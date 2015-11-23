@@ -25,6 +25,13 @@ if(!require(devtools)) install.packages("devtools")
 require(devtools)
 install_github('rCharts', 'ramnathv')
 library(rCharts)
+#if(!require(plotly)) install.packages("plotly")
+if(!require(devtools)) install.packages("devtools")
+if(!require(plotly)) devtools::install_github("ropensci/plotly")
+if(!require(Nozzle.R1)) install.packages( "Nozzle.R1", type="source" );
+# "Nozzle: a report generation toolkit for data analysis pipelines"
+# http://bioinformatics.oxfordjournals.org/content/early/2013/02/17/bioinformatics.btt085
+require( Nozzle.R1 )
 
 ## ----preparaDirectorios, eval=TRUE---------------------------------------
 baseDir <- "/home/xavi/Estudis/2015-10-NuriaBarbarroja-IMIBIC-A279"
@@ -36,6 +43,10 @@ setwd(workingDir)
 ## number of cores to use from your computer (with doMC package)
 nCores <- 4 # 1 # In case of doubt, use just 1 core.
 
+# Report with Nozzle.R1
+# Phase 1: create report elements
+r <- newCustomReport( "My Report BRB A279" );
+s <- newSection( "Files Generated" );
 
 ## ----loadData------------------------------------------------------------
 #load(file=file.path(resultsDir, "datos.normalizados.Rda"))
@@ -105,6 +116,8 @@ eset_norm.hg.nc <- eset_norm.hg[-control.idx,] # .nc stands for "No Controls"
 # I per tant, creo a ma l'objecte exprs.filtered, a partir dels valors d'expressió dels microRNA d'humans obtinguts en el pas anterior
 exprs.filtered <- eset_norm.hg.nc
 
+# Report
+ss1 <- newSection( "Targets" );
 
 ## ----matDesign, eval=TRUE------------------------------------------------
 #design<-matrix(
@@ -119,6 +132,9 @@ setwd(baseDir)
 targetsFileName <-"targets.BRB279.txt"
 targets <- read.table(file = file.path(dataDir, targetsFileName),
                       header = TRUE, sep = "\t")
+
+f <- newTable( targets, "Targets file" ); # w/ caption
+p <- newParagraph( "Sample names, groups and color codes used in the analysis" );
 
 column2design <- 4   # Columna del ''targets'' en que es basa la matriu de disseny
 # En dissenys d'un factor el nombre de grups = nombre de nivells
@@ -477,20 +493,55 @@ for (ii in 1:length(wCont)) { # ii is the index of the list with the multiple co
               density.info="none", trace="none", cexCol=1, main = mainTitle)    
     
     dev.off()
+
+    ## ----plotHeatMap2, fig=T, eval=TRUE--------------------------------------
+#     require(plotly)
+#     # remove.packages("plotly")
+#     #install.packages("plotly")
+#     require(scales)
+#    py <- plot_ly(username="ueb", key="yourpass") # open plotly connection
+#    mainTitle <- paste0(my.compName) ## Titol
+    # Save Heatmap to file on disk
+    # Testing Plotly
+    #?plot_ly
+    # It works in the laptop with VHIR_Externa, but not with the desktop (using ethernet cable behind proxy)
+#     m <- matrix(rnorm(9), nrow = 3, ncol = 3)
+#     plot_ly(z = m,
+#             x = c("a", "b", "c"), y = c("d", "e", "f"),
+#             type = "heatmap")
+#     dev.off()
+# 
+#     plot_ly(z = exprs2cluster[[ wCont[[ii]][jj] ]],
+#             x = colnames(exprs2cluster[[ wCont[[ii]][jj] ]]),
+#             y = rownames(exprs2cluster[[ wCont[[ii]][jj] ]]),
+#             type = "heatmap", out_dir = resultsDir)
+# 
+#     dev.off()
+
   } # end the loop of jj
 } # end of ii loop, the index of the list with the multiple comparison group names
 
 
-## ----listaArchivos,echo=FALSE,print=FALSE,results=tex, eval=TRUE---------
-require(gdata)
-listaArchivos <-read.table(file.path(resultsDir,"listaArchivos.txt"), head=TRUE, sep="\t") 
-stopifnot(require(xtable))
-x.big<-xtable(listaArchivos,
-    label='listaArchivos',
-    caption='Lista de archivos generados en este análisis')
-print(x.big,tabular.environment='longtable',floating=FALSE)
+# ## ----listaArchivos,echo=FALSE,print=FALSE,results=tex, eval=TRUE---------
+# require(gdata)
+# listaArchivos <-read.table(file.path(resultsDir,"listaArchivos.txt"), head=TRUE, sep="\t") 
+# stopifnot(require(xtable))
+# x.big<-xtable(listaArchivos,
+#     label='listaArchivos',
+#     caption='Lista de archivos generados en este análisis')
+# print(x.big,tabular.environment='longtable',floating=FALSE)
+# 
+# ## ----listaArchivos2html,echo=FALSE,print=FALSE, eval=TRUE----------------
+# require(hwriter)
+# hwrite(listaArchivos,file.path(resultsDir, "listaArchivos.html"))
 
-## ----listaArchivos2html,echo=FALSE,print=FALSE, eval=TRUE----------------
-require(hwriter)
-hwrite(listaArchivos,file.path(resultsDir, "listaArchivos.html"))
+# Report with Nozzle.R1
+# Phase 2: assemble report structure bottom-up
+ss1 <- addTo( ss1, f ); # parent, child_1, ..., child_n 
+ss1 <- addTo( ss1, p );
+s <- addTo( s, ss1 );
+r <- addTo( r, s );
 
+# Phase 3: render report to file
+writeReport( r, filename="my_report" ); # w/o extension
+#Two files called my_report.html and my_report.RData will be written to the current working directory.
