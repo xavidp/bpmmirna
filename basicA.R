@@ -219,19 +219,20 @@ if(length(pValCutOff)!=length(compGroupName)) warning("L'objecte pValCutOff ha d
 if(length(adjMethod)!=length(compGroupName)) warning("L'objecte adjMethod ha de tenir el mateix nombre d'elements que compGroupName!")
 if(length(minLogFoldChange)!=length(compGroupName)) warning("L'objecte minLogFoldChange ha de tenir el mateix nombre d'elements que compGroupName!")
 
+# Set the number of cores to use
+registerDoMC(nCores)
 
 #############################################################
 # TOP TABLES
 #############################################################
-
-topTab <- list()
+rm(topTab);topTab <- list()
 #class(topTab)
 #str(topTab)
 
 # Temporary BD containing the expression values for the selected features
 BD <- exprs(exprs.filtered)
-
-registerDoMC(nCores)
+rm(my.cels.idx); my.cels.idx <- list()
+rm(my.cels); my.cels <- list()
 
 foreach (ii = 1:length(wCont)) %dopar% { # ii is the index of the list with the multiple comparison group names
   #wCont[ii]
@@ -243,12 +244,20 @@ foreach (ii = 1:length(wCont)) %dopar% { # ii is the index of the list with the 
 
     my.compName <- colnames(cont.matrix)[ wCont[[ii]][jj] ]
     my.conds <- unlist(strsplit(my.compName, condSplitter)) 
-    my.cels.idx <- grep( paste0(my.conds[1],"|",my.conds[2]), targets$Grupo)
-    my.cels <- as.character(targets$SampleName[my.cels.idx]) # The list of cel files to be appended to the TopTable object before the csv generation, but avoided when printing the html version
+    # my.cels.idx and my.cels below are the list of cel files to be appended to the TopTable object
+    # before the csv generation, but avoided when printing the html version
+    # We keep the values in a list since we will use this info later when creating heatmaps
+    my.cels.idx[[ wCont[[ii]][jj] ]] <- grep( paste0(my.conds[1],"|",my.conds[2]), targets$Grupo)
+    my.cels[[ wCont[[ii]][jj] ]] <- as.character(targets$SampleName[ my.cels.idx[[ wCont[[ii]][jj] ]] ] ) 
+    write.csv2(cbind(my.cels.idx[[ wCont[[ii]][jj] ]], my.cels[[ wCont[[ii]][jj] ]]), 
+               file=file.path( resultsDir, paste("my.cels.in.comparison.",
+                                                 my.compName, ".csv", sep="")) )
     
     #head(topTab[[ wCont[[ii]][jj] ]] )
     topTab[[ wCont[[ii]][jj] ]] <- cbind(topTab[[ wCont[[ii]][jj] ]],
-                  BD[rownames( topTab[[ wCont[[ii]][jj] ]] ), my.cels])
+                  BD[rownames( topTab[[ wCont[[ii]][jj] ]] ),
+                     my.cels[[ wCont[[ii]][jj] ]] 
+                     ])
 
     # Write the resulting topTable to disk
     write.csv2(topTab[[ wCont[[ii]][jj] ]], 
@@ -276,31 +285,24 @@ foreach (ii = 1:length(wCont)) %dopar% { # ii is the index of the list with the 
 #                          output.file = paste0(outFile, "-sortable.html"),
 #                          output.directory = resultsDir,
 #                          page.title = outTitle )
-    
-  # Create a dTable, a filterable html table: sortable columns plus search box that filster records in real time
-  # uses dTable from rCharts.
-  # Only the first 7 are the needed ones for the html file generated. Example:
-  # (rowname)                         ID      logFC  AveExpr         t      P.Value adj.P.Val  B
-  # ENSG00000252190_st ENSG00000252190_st  0.1148340 4.995241  3.976190 0.0001824323 0.3810522  0.6738682
-  filterable.dTable=dTable(topTab.tmp[,1:7], sPaginationType = "full_numbers")
-  filterable.dTable$templates$script =  "http://timelyportfolio.github.io/rCharts_dataTable/chart_customsort.html" 
-  # colnames(topTab2)
-  for (cc in 1:7) { # XXXX Only the first 7 are the needed ones for the html file generated
-    filterable.dTable$params$table$aoColumns[cc] =
-      list( list(sType = "string_ignore_null", sTitle = colnames(topTab.tmp[cc])) )
-  }
-#    filterable.dTable$params$table$aoColumns =
-#      list(
-#        list(sType = "string_ignore_null", sTitle = "ID"),
-#        list(sType = "string_ignore_null", sTitle = "logFC"),
-#        list(sType = "string_ignore_null", sTitle = "AveExpr"),
-#        list(sType = "string_ignore_null", sTitle = "t"),
-#        list(sType = "string_ignore_null", sTitle = "P.Value"),
-#        list(sType = "string_ignore_null", sTitle = "adj.P.Val"),
-#        list(sType = "string_ignore_null", sTitle = "B")
-#      )
-  filterable.dTable$save(file.path(resultsDir, 
-                                   paste0(outFile, "-dTable.html")))
+
+    # When requested, create the dTable, filterable and sortable, etc.
+    create.dTable <- F
+    if (create.dTable == TRUE) {
+      # Create a dTable, a filterable html table: sortable columns plus search box that filster records in real time
+      # uses dTable from rCharts.
+      # Only the first 7 are the needed ones for the html file generated. Example:
+      # (rowname)                         ID      logFC  AveExpr         t      P.Value adj.P.Val  B
+      # ENSG00000252190_st ENSG00000252190_st  0.1148340 4.995241  3.976190 0.0001824323 0.3810522  0.6738682
+      filterable.dTable=dTable(topTab.tmp[,1:7], sPaginationType = "full_numbers")
+      filterable.dTable$templates$script =  "http://timelyportfolio.github.io/rCharts_dataTable/chart_customsort.html" 
+      for (cc in 1:7) { # XXXX Only the first 7 are the needed ones for the html file generated
+        filterable.dTable$params$table$aoColumns[cc] =
+          list( list(sType = "string_ignore_null", sTitle = colnames(topTab.tmp[cc])) )
+      }
+      filterable.dTable$save(file.path(resultsDir, 
+                                       paste0(outFile, "-dTable.html")))    
+    } # end of if create.dTable
 
   }
 }
@@ -345,23 +347,6 @@ for (ii in 1:length(wCont)) { # ii is the index of the list with the multiple co
     
   }
 }
-
-# ## ----CuantosGenes, echo=F, eval=TRUE-------------------------------------
-# cat("Numero de genes con un p--valor inferior a 0.05 en cada comparación:\n")
-# cat ("En la comparación 'A vs B': ", sum(topTab_AvsB$adj.P.Val<=0.05),"\n")
-# cat ("En la comparación 'A vs L': ", sum(topTab_AvsL$adj.P.Val<=0.05),"\n")
-# cat ("En la comparación 'B vs L': ", sum(topTab_BvsL$adj.P.Val<=0.05),"\n")  
-
-# 
-# # ## ----decideTests.2, echo=F, eval=TRUE------------------------------------
-# res<-decideTests(fit.main, method="separate", adjust.method="fdr", p.value=0.05, lfc=1)
-# sum.res.rows<-apply(abs(res),1,sum)
-# res.selected<-res[sum.res.rows!=0,] 
-# print(summary(res))
-# 
-# ## ----venn1,fig=T, eval=TRUE----------------------------------------------
-# vennDiagram (res.selected[,1:3], main="Genes in common #1", cex=0.9)
-
 
 ###################################################
 ## Venn Diagram
@@ -449,35 +434,51 @@ for (ii in 1:length(wCont)) { # ii is the index of the list with the multiple co
 # }
 
 ## ----prepareData, eval=TRUE----------------------------------------------
-probeNames<-rownames(res)
-probeNames.selected<-probeNames[sum.res.rows!=0]
+rm(exprs2cluster); exprs2cluster <- list()
+rm(groupColors); groupColors <- list()
+rm(my.cels.df); my.cels.df <- list()
+rm(my.cels.idx); my.cels.idx <- list()
+rm(my.cels); my.cels <- list()
+#str(listVenn)
 
-topTable
-exprs2cluster <-exprs(eset_rma)[probeNames.selected,]
-colnames(exprs2cluster)<-sampleNames
-color.map <- function(grupo) { 
-  if (grupo=="A"){
-    c<- "yellow" 
-  }else{ 
-    if (grupo=="B"){
-      c<- "red"
-    }else{
-      c<- "blue"
-   }
-  }
-return(c)}
+for (ii in 1:length(wCont)) { # ii is the index of the list with the multiple comparison group names
+  #wCont[ii]
+  for (jj in 1:length(wCont[[ii]])) { # jj is the index of the list with the single comparisons from within each group of comparisons
+    # ii <- 1; jj<- 1
+    my.compName <-colnames(cont.matrix)[ wCont[[ii]][jj] ]
+    # read mycels from the stored file on disk, created in the section related to TopTables
+    my.cels.df[[ wCont[[ii]][jj] ]] <-read.table(file.path(resultsDir, 
+                                                        paste0("my.cels.in.comparison.", my.compName, ".csv")
+                                                        ),
+                                              head=TRUE, sep=";") 
+    my.cels.idx[[ wCont[[ii]][jj] ]] <- as.numeric(as.character(my.cels.df[[ wCont[[ii]][jj] ]] [,2]))
+    my.cels[[ wCont[[ii]][jj] ]] <- as.character(my.cels.df[[ wCont[[ii]][jj] ]] [,3])
+    
+    exprs2cluster[[ wCont[[ii]][jj] ]] <- exprs(exprs.filtered)[listVenn[[ wCont[[ii]][jj] ]] ,
+                                           my.cels[[ wCont[[ii]][jj] ]]   ]
+    #str(exprs2cluster[[ wCont[[ii]][jj] ]])
+  
+#     ## ----plotHeatMap1, fig=T, eval=TRUE--------------------------------------
+#     groupColors[[ wCont[[ii]][jj] ]] <-  as.character(pData(exprs.filtered)$ColoresTipoT[ my.cels.idx[[ wCont[[ii]][jj] ]] ])
+#     heatmap(exprs2cluster[[ wCont[[ii]][jj] ]], col=rainbow(100),
+#             ColSideColors=groupColors[[ wCont[[ii]][jj] ]], cexCol=0.9)
+#     
 
-## ----plotHeatMap1, fig=T, eval=TRUE--------------------------------------
-grupColors <- unlist(lapply(pData(eset_rma)$Group, color.map))
-heatmap(exprs2cluster, col=rainbow(100), ColSideColors=grupColors, cexCol=0.9)
-
-## ----plotHeatMap2, fig=T, eval=TRUE--------------------------------------
-grupColors <- unlist(lapply(pData(eset_rma)$Group, color.map))
-require("gplots")
-heatmap.2(exprs2cluster, 
-          col=bluered(75), scale="row",
-          ColSideColors=grupColors, key=TRUE, symkey=FALSE, 
-          density.info="none", trace="none", cexCol=1)
+    ## ----plotHeatMap2, fig=T, eval=TRUE--------------------------------------
+    groupColors[[ wCont[[ii]][jj] ]] <-  as.character(pData(exprs.filtered)$ColoresTipoT[ my.cels.idx[[ wCont[[ii]][jj] ]] ])
+    require("gplots")
+    mainTitle <- paste0(my.compName) ## Titol
+    # Save Heatmap to file on disk
+    pdf(file.path(resultsDir , paste( "heatmap", my.compName, 
+                                      pValString[ii], pValCutOff[ii], "pdf", sep=".")))
+    heatmap.2(exprs2cluster[[ wCont[[ii]][jj] ]], 
+              col=bluered(75), scale="row",
+              ColSideColors=groupColors[[ wCont[[ii]][jj] ]], key=TRUE, symkey=FALSE, 
+              density.info="none", trace="none", cexCol=1, main = mainTitle)    
+    
+    dev.off()
+  } # end the loop of jj
+} # end of ii loop, the index of the list with the multiple comparison group names
 
 
 ## ----listaArchivos,echo=FALSE,print=FALSE,results=tex, eval=TRUE---------
