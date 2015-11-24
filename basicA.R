@@ -36,7 +36,7 @@ require( Nozzle.R1 )
 
 ## ----preparaDirectorios, eval=TRUE---------------------------------------
 baseDir <- "/home/xavi/Estudis/2015-10-NuriaBarbarroja-IMIBIC-A279"
-workingDir <-setwd(baseDir)
+workingDir <- baseDir
 dataDir <-file.path(workingDir, "dades")
 resultsDir <- file.path(workingDir,"results")
 celfilesDir <- file.path(workingDir,"celfiles")
@@ -221,7 +221,7 @@ compGroupName <- c("G1.CAN.vs.CTL", "G2.CTLRisk.vs.CANtype", "G3.CTLnoR.vs.CANty
 ### Correspon a "EstudiA279b"
 #compGroupName <- c("G5.CAN.vs.CTL")
 
-wCont <- list(1:1, 2:4, 5:7, 9:10, 11) # Relacionat amb la contrastsMatrix. 
+wCont <- list(1:1, 2:4, 5:7, 8:10, 11) # Relacionat amb la contrastsMatrix. 
 # Llista amb N vectors, que defineixen els N conjunts (grups) de contrastos (comparacions)
 # si N>1, cal indicar els rangs per separat
 # e.g. list(1:8, 9:13, 14:17)
@@ -276,6 +276,7 @@ registerDoMC(nCores)
 # TOP TABLES
 #############################################################
 if (exists("topTab")) rm(topTab);topTab <- list()
+if (exists("topTabExtended")) rm(topTabExtended);topTabExtended <- list()
 #class(topTab)
 #str(topTab)
 
@@ -284,13 +285,23 @@ BD <- exprs(exprs.filtered)
 if (exists("my.cels.idx")) rm(my.cels.idx); my.cels.idx <- list()
 if (exists("my.cels")) rm(my.cels); my.cels <- list()
 
+# Create topTab object in memory
+# ----------------------
+# Simple loop first out of parallel execution so that object topTab is kept in memory later on further down in the analysis
+for (ii in 1:length(wCont)) { # ii is the index of the list with the multiple comparison group names
+  #wCont[ii]
+  for (jj in 1:length(wCont[[ii]])) { # jj is the index of the list with the single comparisons from within each group of comparisons
+
+    topTab[[ wCont[[ii]][jj] ]] <-  topTable (fit.main, number=nrow(fit.main), 
+                                          coef=colnames(cont.matrix)[ wCont[[ii]][jj] ], 
+                                          adjust="fdr", 
+                                          lfc=0)
+  }
+}
+
 foreach (ii = 1:length(wCont)) %dopar% { # ii is the index of the list with the multiple comparison group names
   #wCont[ii]
   foreach (jj = 1:length(wCont[[ii]])) %dopar% { # jj is the index of the list with the single comparisons from within each group of comparisons
-    topTab[[ wCont[[ii]][jj] ]] <-  topTable (fit.main, number=nrow(fit.main), 
-                                              coef=colnames(cont.matrix)[ wCont[[ii]][jj] ], 
-                                              adjust="fdr", 
-                                              lfc=0)
 
     my.compName <- colnames(cont.matrix)[ wCont[[ii]][jj] ]
     my.conds <- unlist(strsplit(my.compName, condSplitter)) 
@@ -304,13 +315,13 @@ foreach (ii = 1:length(wCont)) %dopar% { # ii is the index of the list with the 
                                                  my.compName, ".csv", sep="")) )
     
     #head(topTab[[ wCont[[ii]][jj] ]] )
-    topTab[[ wCont[[ii]][jj] ]] <- cbind(topTab[[ wCont[[ii]][jj] ]],
+    topTabExtended[[ wCont[[ii]][jj] ]] <- cbind(topTab[[ wCont[[ii]][jj] ]],
                   BD[rownames( topTab[[ wCont[[ii]][jj] ]] ),
                      my.cels[[ wCont[[ii]][jj] ]] 
                      ])
 
     # Write the resulting topTable to disk
-    write.csv2(topTab[[ wCont[[ii]][jj] ]], 
+    write.csv2(topTabExtended[[ wCont[[ii]][jj] ]], 
                file=file.path( resultsDir, paste("Selected.Genes.in.comparison.",
                colnames(cont.matrix)[ wCont[[ii]][jj] ], ".csv", sep="")) )
 
@@ -337,7 +348,7 @@ foreach (ii = 1:length(wCont)) %dopar% { # ii is the index of the list with the 
 #                          page.title = outTitle )
 
     # When requested, create the dTable, filterable and sortable, etc.
-    create.dTable <- F
+    create.dTable <- T
     if (create.dTable == TRUE) {
       # Create a dTable, a filterable html table: sortable columns plus search box that filster records in real time
       # uses dTable from rCharts.
@@ -358,7 +369,9 @@ foreach (ii = 1:length(wCont)) %dopar% { # ii is the index of the list with the 
 }
 
 
-
+###################################################
+## NumGeneChanged
+###################################################
 setwd(baseDir)
 # Carrega numGeneChangedFC.R
 source("numGeneChangedFC.R")
@@ -373,6 +386,9 @@ numGeneChangedFC(filenames=grep("Selected.Genes.in.comparison.*.csv",dir(),value
                  FC=0) # FC needs to be hardcoded to Zero at this step
 
 
+###################################################
+## Volcano Plots
+###################################################
 ## ----volcanos, results=tex,echo=FALSE, eval=TRUE-------------------------
 for (ii in 1:length(wCont)) { # ii is the index of the list with the multiple comparison group names
   #wCont[ii]
@@ -418,9 +434,9 @@ for (ii in 1:length(wCont)) { # ii is the index of the list with the multiple co
     ## Seleccio toptables i llistat de genes
     tmpVenn <- topTab[[ wCont[[ii]][jj] ]] 
     fileVenn[[ wCont[[ii]][jj] ]] <- tmpVenn
-    head(tmpVenn)
-    head(exprs(exprs.filtered))
-    targets
+    #head(tmpVenn)
+    #head(exprs(exprs.filtered))
+    #targets
     if ( adjMethod[ii] == "none" ) {
       listVenn[[ wCont[[ii]][jj] ]] <- as.character(rownames(tmpVenn[tmpVenn$P.Value < pValCutOff[ii],]))
       pValString[ii]  <- "P.Value"
@@ -545,13 +561,25 @@ for (ii in 1:length(wCont)) { # ii is the index of the list with the multiple co
             x = colnames(exprs2cluster[[ wCont[[ii]][jj] ]]),
             y = rownames(exprs2cluster[[ wCont[[ii]][jj] ]]),
             type = "heatmap")
-    plotly_POST(py, filename=mainTitle, world_readable=FALSE)
+    plotly_POST(py, filename=mainTitle, world_readable=TRUE)
     # url of the files generated:
     ## Private image:
     # https://plot.ly/~ueb/55.embed (private image, non edited)
     ## Public image:
     #plotly_POST(py, filename=mainTitle, world_readable=TRUE)
     # https://plot.ly/~ueb/52.embed (public image, non edited)
+
+# Success! Created a new plotly here -> https://plot.ly/~ueb/61
+# Success! Created a new plotly here -> https://plot.ly/~ueb/63
+# Success! Created a new plotly here -> https://plot.ly/~ueb/65
+# Success! Created a new plotly here -> https://plot.ly/~ueb/67
+# Success! Created a new plotly here -> https://plot.ly/~ueb/69
+# Success! Created a new plotly here -> https://plot.ly/~ueb/71
+# Success! Created a new plotly here -> https://plot.ly/~ueb/73
+# Success! Created a new plotly here -> https://plot.ly/~ueb/75
+# Success! Created a new plotly here -> https://plot.ly/~ueb/77
+# Success! Created a new plotly here -> https://plot.ly/~ueb/79
+# Success! Created a new plotly here -> https://plot.ly/~ueb/81
 
   } # end the loop of jj
 } # end of ii loop, the index of the list with the multiple comparison group names
