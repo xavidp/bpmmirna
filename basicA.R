@@ -20,17 +20,18 @@ installifnot("gplots")
 installifnot("GOstats")
 if(!require(SortableHTMLTables)) install.packages("SortableHTMLTables")
 if(!require(doMC)) install.packages("doMC")
-library(doMC)
 if(!require(devtools)) install.packages("devtools")
-require(devtools)
-install_github('rCharts', 'ramnathv')
-library(rCharts)
-#if(!require(plotly)) install.packages("plotly")
-if(!require(devtools)) install.packages("devtools")
-if(!require(plotly)) devtools::install_github("ropensci/plotly")
+if(!require(rCharts)) install_github('rCharts', 'ramnathv')
+if(!require(plotly)) install.packages("plotly")
+#if(!require(plotly)) devtools::install_github("ropensci/plotly")
 if(!require(Nozzle.R1)) install.packages( "Nozzle.R1", type="source" );
+
+#Load required libraries
 # "Nozzle: a report generation toolkit for data analysis pipelines"
 # http://bioinformatics.oxfordjournals.org/content/early/2013/02/17/bioinformatics.btt085
+library(doMC)
+require(devtools)
+library(rCharts)
 require( Nozzle.R1 )
 
 ## ----preparaDirectorios, eval=TRUE---------------------------------------
@@ -44,9 +45,14 @@ setwd(workingDir)
 nCores <- 4 # 1 # In case of doubt, use just 1 core.
 
 # Report with Nozzle.R1
+report.filename <- "my_report_brba279"
+# Remove any previous leftover
+if (file.exists(paste0(report.filename, ".html"))) file.remove(paste0(report.filename, ".html"))
+if (file.exists(paste0(report.filename, ".RData"))) file.remove(paste0(report.filename, ".RData"))
+
 # Phase 1: create report elements
 report.r <- newCustomReport( "My Report BRB A279" );
-report.s <- newSection( "Files Generated" );
+report.s <- newSection( "Results Generated (Files, Tables and Figures)" );
 
 ## ----loadData------------------------------------------------------------
 #load(file=file.path(resultsDir, "datos.normalizados.Rda"))
@@ -195,6 +201,7 @@ cont.matrix <- makeContrasts(                   ### RECORDAR QUE AIXÒ ES UN EXE
   levels = design)
 
 #print(cont.matrix) #comentar aquesta linia si no es vol visualitzar la matriu de contrasts
+report.ss2 <- newSection( "Contrasts Matrix" );
 report.p2 <- newParagraph( "Contrasts matrix: which sample types (groups) are used in each comparison" );
 report.t2 <- newTable( cont.matrix, "Contrasts Matrix" ); # w/ caption
 
@@ -226,7 +233,11 @@ for (ii in 1:length(wCont)) {
   compNamesAll[[ii]] <- colnames(cont.matrix)[ wCont[[ii]] ]
   names(compNamesAll)[ii] <- compGroupName[[ii]]  
 }
-#compNamesAll
+report.ss3 <- newSection( "Comparisons performed" );
+report.p3 <- newParagraph( "Multiple Comparison groups, with the comparisons they contain each" );
+# convert the list of All comparison names into a data frame so that it can be printed easily in the html report with Nozzle
+df.compNamesAll <- data.frame(t(sapply(compNamesAll,c)))
+report.t3 <- newTable( df.compNamesAll, "Multiple comparison groups" ); # w/ caption
 
 pValCutOff <- c(0.01, 0.01, 0.01, 0.01) # si N>1, indicar el cut-off per cada conjunt de comparacions
 
@@ -238,6 +249,16 @@ adjMethod <- rep("none",4)  # si N>1, indicar mètode per cada conjunt de compar
 ## Posar aqui els valors de minLogFC de cadascuna de les comparacions a fer
 minLogFoldChange <- c(0, 0, 0, 0) # canviar aixo si s'ha decidit considerar sols els casos amb |logFC| >= que un valor. Si no, només s'empra per als HeatMaps minim
 # e.g. c(1, 2, 1) o be c(rep(0, 3)) indicar minLogFC per cada grup de comparacions
+
+# Place the previous key parameters together in a single df so that they can be easily printed lataer on in the report with Nozzle
+key.params <- rbind(pValCutOff, adjMethod, minLogFoldChange)
+# Row names need to be added as the first column, in order to be shown in the Report with Nozzle
+key.params <- cbind(rownames(key.params), key.params)
+colnames(key.params) <- c("Parameter", colnames(df.compNamesAll))
+
+report.ss4 <- newSection( "Filtering" );
+report.p4 <- newParagraph( "Filtering was performed with the following parameters");
+report.t4 <- newTable( key.params, "Key parameters used");
 
 ## Controlem que el nombre d'elements dels parametres anteriors sigui igual
 if(class(wCont)!="list") warning("L'objecte wCont no és una llista! Això pot provocar errors en els passos següents.")
@@ -506,28 +527,29 @@ for (ii in 1:length(wCont)) { # ii is the index of the list with the multiple co
     dev.off()
 
     ## ----plotHeatMap2, fig=T, eval=TRUE--------------------------------------
-#     require(plotly)
-#     # remove.packages("plotly")
-#     #install.packages("plotly")
-#     require(scales)
-#    py <- plot_ly(username="ueb", key="yourpass") # open plotly connection
-#    mainTitle <- paste0(my.compName) ## Titol
-    # Save Heatmap to file on disk
+    require(plotly)
+    # remove.packages("plotly")
+    #install.packages("plotly")
+    require(scales)
+    py <- plot_ly(username='ueb', key='2gfg7ckkuz') # open plotly connection
+    # See: https://plot.ly/r/getting-started/ for setting plotly variables for the R session
+    Sys.setenv("plotly_username"="ueb") # it shouldn't be needed but it is in my machine "pentinella", for some reason
+    Sys.setenv("plotly_api_key"="2gfg7ckkuz") # it shouldn't be needed but it is in my machine "pentinella", for some reason
+    mainTitle <- paste0("Heatmap_dynamic_", my.compName) ## Titol
+    # Save Heatmap to file online (it can't be saved on disk, it seems, other than in temporary session)
     # Testing Plotly
-    #?plot_ly
-    # It works in the laptop with VHIR_Externa, but not with the desktop (using ethernet cable behind proxy)
-#     m <- matrix(rnorm(9), nrow = 3, ncol = 3)
-#     plot_ly(z = m,
-#             x = c("a", "b", "c"), y = c("d", "e", "f"),
-#             type = "heatmap")
-#     dev.off()
-# 
-#     plot_ly(z = exprs2cluster[[ wCont[[ii]][jj] ]],
-#             x = colnames(exprs2cluster[[ wCont[[ii]][jj] ]]),
-#             y = rownames(exprs2cluster[[ wCont[[ii]][jj] ]]),
-#             type = "heatmap", out_dir = resultsDir)
-# 
-#     dev.off()
+    # It works in the laptop with VHIR_Externa or MainHead, but not with the desktop (using ethernet cable behind proxy)
+    py <- plot_ly(z = exprs2cluster[[ wCont[[ii]][jj] ]],
+            x = colnames(exprs2cluster[[ wCont[[ii]][jj] ]]),
+            y = rownames(exprs2cluster[[ wCont[[ii]][jj] ]]),
+            type = "heatmap")
+    plotly_POST(py, filename=mainTitle, world_readable=FALSE)
+    # url of the files generated:
+    ## Private image:
+    # https://plot.ly/~ueb/55.embed (private image, non edited)
+    ## Public image:
+    #plotly_POST(py, filename=mainTitle, world_readable=TRUE)
+    # https://plot.ly/~ueb/52.embed (public image, non edited)
 
   } # end the loop of jj
 } # end of ii loop, the index of the list with the multiple comparison group names
@@ -548,11 +570,14 @@ for (ii in 1:length(wCont)) { # ii is the index of the list with the multiple co
 
 # Report with Nozzle.R1
 # Phase 2: assemble report structure bottom-up
-report.ss1 <- addTo( report.ss1, report.t1 ); # parent, child_1, ..., child_n 
-report.ss1 <- addTo( report.ss1, report.p1 );
-report.s <- addTo( report.s, report.ss1 );
+report.ss1 <- addTo( report.ss1, report.p1, report.t1 )
+report.ss2 <- addTo( report.ss2, report.p2, report.t2 )
+report.ss3 <- addTo( report.ss3, report.p3, report.t3 )
+report.ss4 <- addTo( report.ss4, report.p4, report.t4) # parent, child_1, ..., child_n 
+
+report.s <- addTo( report.s, report.ss1, report.ss2, report.ss3, report.ss4 );
 report.r <- addTo( report.r, report.s );
 
 # Phase 3: render report to file
-writeReport( report.r, filename="my_report" ); # w/o extension
+writeReport( report.r, filename=report.filename ); # w/o extension
 #Two files called my_report.html and my_report.RData will be written to the current working directory.
