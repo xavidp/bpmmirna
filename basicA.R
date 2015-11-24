@@ -1,3 +1,18 @@
+###################################################
+## BasicA.R
+##
+## Basic Analysis of Microarrays when the standard 
+## "BasicPipe" pipeline from the UEB-VHIR cannot be used
+## See git hostory to see contributors
+## to this script.
+##
+## UEB-VHIR (2015) http://ueb.vhir.org 
+##
+###################################################
+
+#############################
+# Package dependencies
+#############################
 ## ----librerias, eval=TRUE------------------------------------------------
 installifnot <- function (pckgName){
   if(!(require(pckgName, character.only=TRUE))){
@@ -34,6 +49,9 @@ require(devtools)
 library(rCharts)
 require( Nozzle.R1 )
 
+###################################
+# Basic parameters for the script
+###################################
 ## ----preparaDirectorios, eval=TRUE---------------------------------------
 baseDir <- "/home/xavi/Estudis/2015-10-NuriaBarbarroja-IMIBIC-A279"
 workingDir <- baseDir
@@ -52,11 +70,16 @@ if (file.exists(paste0(report.filename, ".RData"))) file.remove(paste0(report.fi
 
 # Phase 1: create report elements
 report.r <- newCustomReport( "My Report BRB A279" );
-report.s <- newSection( "Results Generated (Files, Tables and Figures)" );
+report.s1 <- newSection( "Base information" );
 
+#############################
+# DATA LOADING
+#############################
 ## ----loadData------------------------------------------------------------
 #load(file=file.path(resultsDir, "datos.normalizados.Rda"))
 source("Rcode/PreparaDades.A279.R")
+
+# The Previous file created the expression set.
 
 #############################
 # FILTRATION
@@ -123,7 +146,7 @@ eset_norm.hg.nc <- eset_norm.hg[-control.idx,] # .nc stands for "No Controls"
 exprs.filtered <- eset_norm.hg.nc
 
 # Report
-report.ss1 <- newSection( "Targets" );
+report.s1s1 <- newSection( "Targets" );
 
 ## ----matDesign, eval=TRUE------------------------------------------------
 #design<-matrix(
@@ -139,8 +162,8 @@ targetsFileName <-"targets.BRB279.txt"
 targets <- read.table(file = file.path(dataDir, targetsFileName),
                       header = TRUE, sep = "\t")
 
-report.p1 <- newParagraph( "Sample names, groups and color codes used in the analysis" );
-report.t1 <- newTable( targets, "Targets file" ); # w/ caption
+report.s1p1 <- newParagraph( "Sample names, groups and color codes used in the analysis" );
+report.s1t1 <- newTable( targets, "Targets file" ); # w/ caption
 
 column2design <- 4   # Columna del ''targets'' en que es basa la matriu de disseny
 # En dissenys d'un factor el nombre de grups = nombre de nivells
@@ -202,10 +225,16 @@ cont.matrix <- makeContrasts(                   ### RECORDAR QUE AIXÒ ES UN EXE
   CTL.RskvsCTL.noR   = CTL.Rsk  - CTL.noR,
   levels = design)
 
+cont.matrix.file <- "contrasts.matrix.csv"
+write.csv2(cont.matrix, 
+           file=file.path( resultsDir, cont.matrix.file) )
+
 #print(cont.matrix) #comentar aquesta linia si no es vol visualitzar la matriu de contrasts
-report.ss2 <- newSection( "Contrasts Matrix" );
-report.p2 <- newParagraph( "Contrasts matrix: which sample types (groups) are used in each comparison" );
-report.t2 <- newTable( cont.matrix, "Contrasts Matrix" ); # w/ caption
+report.s1s2 <- newSection( "Contrasts Matrix" );
+report.s1p2 <- newParagraph( "Contrasts matrix: which sample types (groups) are used in each comparison" );
+report.s1t2 <- newTable( colnames( cont.matrix ), 
+                         file=file.path( resultsDir, cont.matrix.file),
+                         "Contrasts Matrix" ); # w/ caption
 
 condSplitter <- "vs" # Condition splitter in the Comparison String. This param is used later on to obtain the condition names of the comparison
 
@@ -235,11 +264,11 @@ for (ii in 1:length(wCont)) {
   compNamesAll[[ii]] <- colnames(cont.matrix)[ wCont[[ii]] ]
   names(compNamesAll)[ii] <- compGroupName[[ii]]  
 }
-report.ss3 <- newSection( "Comparisons performed" );
-report.p3 <- newParagraph( "Multiple Comparison groups, with the comparisons they contain each" );
+report.s1s3 <- newSection( "Comparisons performed" );
+report.s1p3 <- newParagraph( "Multiple Comparison groups, with the comparisons they contain each" );
 # convert the list of All comparison names into a data frame so that it can be printed easily in the html report with Nozzle
 df.compNamesAll <- data.frame(t(sapply(compNamesAll,c)))
-report.t3 <- newTable( df.compNamesAll, "Multiple comparison groups" ); # w/ caption
+report.s1t3 <- newTable( df.compNamesAll, "Multiple comparison groups" ); # w/ caption
 
 pValCutOff <- rep(0.01, 5) # c(0.01, 0.01, 0.01, 0.01, 0.01) # si N>1, indicar el cut-off per cada conjunt de comparacions
 
@@ -258,9 +287,20 @@ key.params <- rbind(pValCutOff, adjMethod, minLogFoldChange)
 key.params <- cbind(rownames(key.params), key.params)
 colnames(key.params) <- c("Parameter", colnames(df.compNamesAll))
 
-report.ss4 <- newSection( "Filtering" );
-report.p4 <- newParagraph( "Filtering was performed with the following parameters");
-report.t4 <- newTable( key.params, "Key parameters used");
+#############################
+# Quality Control
+#############################
+# So far performed with the standard Basic Pipe code.
+# You need to run that part with those R scripts, for the time being.
+report.s1s4 <- newSection( "Quality control" );
+report.s1p4 <- newParagraph( "Quality control results based on the ArrayQualityMEtrics Bioconductor Package");
+
+#############################
+# Display filtering Parameters
+#############################
+report.s1s5 <- newSection( "Filtering" );
+report.s1p5 <- newParagraph( "Filtering was performed with the following parameters");
+report.s1t5 <- newTable( key.params, "Key parameters used");
 
 ## Controlem que el nombre d'elements dels parametres anteriors sigui igual
 if(class(wCont)!="list") warning("L'objecte wCont no és una llista! Això pot provocar errors en els passos següents.")
@@ -275,6 +315,11 @@ registerDoMC(nCores)
 #############################################################
 # TOP TABLES
 #############################################################
+# Add it to the report
+report.s2 <- newSection( "Results (Files)" );
+report.s2s1 <- newSection( "Top Tables" );
+report.s2p1 <- newParagraph( "Tables with the top features for each comparison ");
+
 if (exists("topTab")) rm(topTab);topTab <- list()
 if (exists("topTabExtended")) rm(topTabExtended);topTabExtended <- list()
 #class(topTab)
@@ -372,6 +417,10 @@ foreach (ii = 1:length(wCont)) %dopar% { # ii is the index of the list with the 
 ###################################################
 ## NumGeneChanged
 ###################################################
+# Add it to the report
+report.s2s2 <- newSection( "Number of features changed in each case" );
+report.s2p2 <- newParagraph( "Summary table with the number of features changed in each case for each pValue Type (adjusted or not) and Cutoff");
+
 setwd(baseDir)
 # Carrega numGeneChangedFC.R
 source("numGeneChangedFC.R")
@@ -389,6 +438,10 @@ numGeneChangedFC(filenames=grep("Selected.Genes.in.comparison.*.csv",dir(),value
 ###################################################
 ## Volcano Plots
 ###################################################
+# Add it to the report
+report.s2s3 <- newSection( "Volcano plots" );
+report.s2p3 <- newParagraph( "Files with the volcano plot for each comparison");
+
 ## ----volcanos, results=tex,echo=FALSE, eval=TRUE-------------------------
 for (ii in 1:length(wCont)) { # ii is the index of the list with the multiple comparison group names
   #wCont[ii]
@@ -417,6 +470,10 @@ for (ii in 1:length(wCont)) { # ii is the index of the list with the multiple co
 ###################################################
 ## Venn Diagram
 ###################################################
+# Add it to the report
+report.s2s4 <- newSection( "Venn Diagrams" );
+report.s2p4 <- newParagraph( "Files with the Venn Diagrams for the groups of multiple comparisons (cases of more than one comparison in each group)");
+
 if(!require(VennDiagram)) install.packages("VennDiagram")
 require(VennDiagram)
 
@@ -499,6 +556,13 @@ for (ii in 1:length(wCont)) { # ii is the index of the list with the multiple co
 #            repository=list("en"))
 # }
 
+###################################################
+## Heatmaps
+###################################################
+# Add it to the report
+report.s2s5 <- newSection( "Heatmap plots" );
+report.s2p5 <- newParagraph( "Files with the Heatmap plots for each comparison");
+
 ## ----prepareData, eval=TRUE----------------------------------------------
 if (exists("exprs2cluster")) rm(exprs2cluster); exprs2cluster <- list()
 if (exists("groupColors")) rm(groupColors); groupColors <- list()
@@ -544,42 +608,74 @@ for (ii in 1:length(wCont)) { # ii is the index of the list with the multiple co
     
     dev.off()
 
-    ## ----plotHeatMap2, fig=T, eval=TRUE--------------------------------------
-    require(plotly)
-    # remove.packages("plotly")
-    #install.packages("plotly")
-    require(scales)
-    py <- plot_ly(username='ueb', key='2gfg7ckkuz') # open plotly connection
-    # See: https://plot.ly/r/getting-started/ for setting plotly variables for the R session
-    Sys.setenv("plotly_username"="ueb") # it shouldn't be needed but it is in my machine "pentinella", for some reason
-    Sys.setenv("plotly_api_key"="2gfg7ckkuz") # it shouldn't be needed but it is in my machine "pentinella", for some reason
-    mainTitle <- paste0("Heatmap_dynamic_", my.compName) ## Titol
-    # Save Heatmap to file online (it can't be saved on disk, it seems, other than in temporary session)
-    # Testing Plotly
-    # It works in the laptop with VHIR_Externa or MainHead, but not with the desktop (using ethernet cable behind proxy)
-    py <- plot_ly(z = exprs2cluster[[ wCont[[ii]][jj] ]],
-            x = colnames(exprs2cluster[[ wCont[[ii]][jj] ]]),
-            y = rownames(exprs2cluster[[ wCont[[ii]][jj] ]]),
-            type = "heatmap")
-    plotly_POST(py, filename=mainTitle, world_readable=TRUE)
-    # url of the files generated:
-    ## Private image:
-    # https://plot.ly/~ueb/55.embed (private image, non edited)
-    ## Public image:
-    #plotly_POST(py, filename=mainTitle, world_readable=TRUE)
-    # https://plot.ly/~ueb/52.embed (public image, non edited)
+    # When requested, create the plotly heatmap locally as png
+    plotly.heatmaps.create <- TRUE # Disabled to avoid re-genearing them each time the script is rerun
+    # When requested, create the dynamic plotly heatmap posted in the plot.ly server
+    plotly.heatmaps.post <- FALSE # Disabled to avoid re-genearing them each time the script is rerun
 
-# Success! Created a new plotly here -> https://plot.ly/~ueb/61
-# Success! Created a new plotly here -> https://plot.ly/~ueb/63
-# Success! Created a new plotly here -> https://plot.ly/~ueb/65
-# Success! Created a new plotly here -> https://plot.ly/~ueb/67
-# Success! Created a new plotly here -> https://plot.ly/~ueb/69
-# Success! Created a new plotly here -> https://plot.ly/~ueb/71
-# Success! Created a new plotly here -> https://plot.ly/~ueb/73
-# Success! Created a new plotly here -> https://plot.ly/~ueb/75
-# Success! Created a new plotly here -> https://plot.ly/~ueb/77
-# Success! Created a new plotly here -> https://plot.ly/~ueb/79
-# Success! Created a new plotly here -> https://plot.ly/~ueb/81
+    if (plotly.heatmaps.create == TRUE) {
+      ## ----plotHeatMap2, fig=T, eval=TRUE--------------------------------------
+      require(plotly)
+      # remove.packages("plotly")
+      #install.packages("plotly")
+      require(scales)
+      py <- plot_ly(username='ueb', key='2gfg7ckkuz') # open plotly connection
+      # See: https://plot.ly/r/getting-started/ for setting plotly variables for the R session
+      Sys.setenv("plotly_username"="ueb") # it shouldn't be needed but it is in my machine "pentinella", for some reason
+      Sys.setenv("plotly_api_key"="2gfg7ckkuz") # it shouldn't be needed but it is in my machine "pentinella", for some reason
+      mainTitle <- paste0("Heatmap_plotly", my.compName) ## Titol
+      # Save Heatmap to file online (it can't be saved on disk, it seems, other than in temporary session)
+      # Testing Plotly
+      # It works in the laptop with VHIR_Externa or MainHead, but not with the desktop (using ethernet cable behind proxy)
+      py <- plot_ly(z = exprs2cluster[[ wCont[[ii]][jj] ]],
+                    x = colnames(exprs2cluster[[ wCont[[ii]][jj] ]]),
+                    y = rownames(exprs2cluster[[ wCont[[ii]][jj] ]]),
+                    type = "heatmap")
+      # Create a new local plot.ly heatmap as png
+      Png <- plotly_IMAGE(py, out_file = file.path(resultsDir, paste0(mainTitle, ".png")))
+
+      # POST (create) a new plot.ly heatmap in plot.ly server only when requested
+      if (plotly.heatmaps.post == TRUE) {
+        plotly_POST(py, filename=mainTitle, world_readable=TRUE)
+      }
+      
+      # url of the files generated:
+      ## Private image:
+      # https://plot.ly/~ueb/55.embed (private image, non edited)
+      ## Public image:
+      #plotly_POST(py, filename=mainTitle, world_readable=TRUE)
+      # https://plot.ly/~ueb/52.embed (public image, non edited)
+  
+      # Success! Created a new plotly here -> https://plot.ly/~ueb/61
+      # Success! Created a new plotly here -> https://plot.ly/~ueb/63
+      # Success! Created a new plotly here -> https://plot.ly/~ueb/65
+      # Success! Created a new plotly here -> https://plot.ly/~ueb/67
+      # Success! Created a new plotly here -> https://plot.ly/~ueb/69
+      # Success! Created a new plotly here -> https://plot.ly/~ueb/71
+      # Success! Created a new plotly here -> https://plot.ly/~ueb/73
+      # Success! Created a new plotly here -> https://plot.ly/~ueb/75
+      # Success! Created a new plotly here -> https://plot.ly/~ueb/77
+      # Success! Created a new plotly here -> https://plot.ly/~ueb/79
+      # Success! Created a new plotly here -> https://plot.ly/~ueb/81
+      
+    } # end of chunk to create plotly heatmaps when requested
+
+    # Add it to the report
+    # create a figure and make it available for exporting
+    # figure file paths
+    figureFile1 <- file.path(resultsDir, paste0(mainTitle, ".png"));
+    figureFileHighRes1a <- file.path(resultsDir , paste( "heatmap", my.compName, 
+                                                        pValString[ii], pValCutOff[ii], "pdf", sep="."));
+    figureFileHighRes1b <- "https://plot.ly/~ueb/61.embed";
+
+    report.s2f5a <- newFigure( figureFile1, fileHighRes=figureFileHighRes1a, exportId="FIGURE_1a",
+                      "An example for a figure. Everything that is shown in the figure should be explained\
+	                			in the caption. The figure needs to have axis labels and a legend." );
+    report.s2f5b <- newFigure( figureFile1, fileHighRes=figureFileHighRes1b, exportId="FIGURE_1b",
+                            "An example for a figure. Everything that is shown in the figure should be explained\
+                  			in the caption. The figure needs to have axis labels and a legend." );
+
+    report.s2p6 <- newParagraph( "Heatmaps produced. See ", asReference( report.s2f5a ), "for instance");
 
   } # end the loop of jj
 } # end of ii loop, the index of the list with the multiple comparison group names
@@ -598,15 +694,26 @@ for (ii in 1:length(wCont)) { # ii is the index of the list with the multiple co
 # require(hwriter)
 # hwrite(listaArchivos,file.path(resultsDir, "listaArchivos.html"))
 
+###################################################
+## Make the report
+###################################################
 # Report with Nozzle.R1
 # Phase 2: assemble report structure bottom-up
-report.ss1 <- addTo( report.ss1, report.p1, report.t1 )
-report.ss2 <- addTo( report.ss2, report.p2, report.t2 )
-report.ss3 <- addTo( report.ss3, report.p3, report.t3 )
-report.ss4 <- addTo( report.ss4, report.p4, report.t4) # parent, child_1, ..., child_n 
+report.s1s1 <- addTo( report.s1s1, report.s1p1, report.s1t1 )
+report.s1s2 <- addTo( report.s1s2, report.s1p2, report.s1t2 )
+report.s1s3 <- addTo( report.s1s3, report.s1p3, report.s1t3 )
+report.s1s4 <- addTo( report.s1s4, report.s1p4 ) 
+report.s1s4 <- addTo( report.s1s5, report.s1p5, report.s1t5 ) # parent, child_1, ..., child_n 
 
-report.s <- addTo( report.s, report.ss1, report.ss2, report.ss3, report.ss4 );
-report.r <- addTo( report.r, report.s );
+report.s2s1 <- addTo( report.s2s1, report.s2p1)
+report.s2s2 <- addTo( report.s2s2, report.s2p2)
+report.s2s3 <- addTo( report.s2s3, report.s2p3)
+report.s2s4 <- addTo( report.s2s4, report.s2p4)
+report.s2s5 <- addTo( report.s2s5, report.s2p5, report.s2f5a, report.s2f5b, report.s2p6)
+
+report.s1 <- addTo( report.s1, report.s1s1, report.s1s2, report.s1s3, report.s1s4);
+report.s2 <- addTo( report.s2, report.s2s1, report.s2s2, report.s2s3, report.s2s4, report.s2s5 );
+report.r <- addTo( report.r, report.s1, report.s2 );
 
 # Phase 3: render report to file
 writeReport( report.r, filename=report.filename ); # w/o extension
