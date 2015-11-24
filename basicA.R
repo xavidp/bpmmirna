@@ -45,8 +45,8 @@ nCores <- 4 # 1 # In case of doubt, use just 1 core.
 
 # Report with Nozzle.R1
 # Phase 1: create report elements
-r <- newCustomReport( "My Report BRB A279" );
-s <- newSection( "Files Generated" );
+report.r <- newCustomReport( "My Report BRB A279" );
+report.s <- newSection( "Files Generated" );
 
 ## ----loadData------------------------------------------------------------
 #load(file=file.path(resultsDir, "datos.normalizados.Rda"))
@@ -117,7 +117,7 @@ eset_norm.hg.nc <- eset_norm.hg[-control.idx,] # .nc stands for "No Controls"
 exprs.filtered <- eset_norm.hg.nc
 
 # Report
-ss1 <- newSection( "Targets" );
+report.ss1 <- newSection( "Targets" );
 
 ## ----matDesign, eval=TRUE------------------------------------------------
 #design<-matrix(
@@ -133,8 +133,8 @@ targetsFileName <-"targets.BRB279.txt"
 targets <- read.table(file = file.path(dataDir, targetsFileName),
                       header = TRUE, sep = "\t")
 
-f <- newTable( targets, "Targets file" ); # w/ caption
-p <- newParagraph( "Sample names, groups and color codes used in the analysis" );
+report.p1 <- newParagraph( "Sample names, groups and color codes used in the analysis" );
+report.t1 <- newTable( targets, "Targets file" ); # w/ caption
 
 column2design <- 4   # Columna del ''targets'' en que es basa la matriu de disseny
 # En dissenys d'un factor el nombre de grups = nombre de nivells
@@ -194,7 +194,9 @@ cont.matrix <- makeContrasts(                   ### RECORDAR QUE AIXÒ ES UN EXE
   CTL.RskvsCTL.noR   = CTL.Rsk  - CTL.noR,
   levels = design)
 
-print(cont.matrix) #comentar aquesta linia si no es vol visualitzar la matriu de contrasts
+#print(cont.matrix) #comentar aquesta linia si no es vol visualitzar la matriu de contrasts
+report.p2 <- newParagraph( "Contrasts matrix: which sample types (groups) are used in each comparison" );
+report.t2 <- newTable( cont.matrix, "Contrasts Matrix" ); # w/ caption
 
 condSplitter <- "vs" # Condition splitter in the Comparison String. This param is used later on to obtain the condition names of the comparison
 
@@ -216,6 +218,15 @@ wCont <- list(1:3, 4:6, 7:9, 10) # Relacionat amb la contrastsMatrix.
 # e.g. list(1:8, 9:13, 14:17)
 # Si hi ha només un grup de comparacions (p.e. Estres Termic), i amb dos nivells (estrés versus no estres), aquí es posaria com a:
 # list(1:1)
+
+# make a simple list with multiple comparison names and the single comparisons that they contain
+if (exists("compNamesAll")) rm(compNamesAll)
+compNamesAll <- list()
+for (ii in 1:length(wCont)) {
+  compNamesAll[[ii]] <- colnames(cont.matrix)[ wCont[[ii]] ]
+  names(compNamesAll)[ii] <- compGroupName[[ii]]  
+}
+#compNamesAll
 
 pValCutOff <- c(0.01, 0.01, 0.01, 0.01) # si N>1, indicar el cut-off per cada conjunt de comparacions
 
@@ -241,14 +252,14 @@ registerDoMC(nCores)
 #############################################################
 # TOP TABLES
 #############################################################
-rm(topTab);topTab <- list()
+if (exists("topTab")) rm(topTab);topTab <- list()
 #class(topTab)
 #str(topTab)
 
 # Temporary BD containing the expression values for the selected features
 BD <- exprs(exprs.filtered)
-rm(my.cels.idx); my.cels.idx <- list()
-rm(my.cels); my.cels <- list()
+if (exists("my.cels.idx")) rm(my.cels.idx); my.cels.idx <- list()
+if (exists("my.cels")) rm(my.cels); my.cels <- list()
 
 foreach (ii = 1:length(wCont)) %dopar% { # ii is the index of the list with the multiple comparison group names
   #wCont[ii]
@@ -284,7 +295,7 @@ foreach (ii = 1:length(wCont)) %dopar% { # ii is the index of the list with the 
                      colnames(cont.matrix)[ wCont[[ii]][jj] ], sep="" )
     outTitle <- paste("Selected.Genes.in.comparison: ", colnames(cont.matrix)[ wCont[[ii]][jj] ], sep="")
     # For some reason, the html produced doesn't contain the rownames, so we pre-pend them as the first column
-    rm(topTab.tmp)
+    if (exists("topTab.tmp")) rm(topTab.tmp)
     topTab.tmp <- cbind(rownames(topTab[[ wCont[[ii]][jj] ]]), 
                 topTab[[ wCont[[ii]][jj] ]] )
     colnames(topTab.tmp)[1] <- "ID"
@@ -371,10 +382,10 @@ if(!require(VennDiagram)) install.packages("VennDiagram")
 library(VennDiagram)
 
 # Re-set the needed lists to zero just in case
-rm(fileVenn); fileVenn    <- list()
-rm(listVenn); listVenn    <- list()
-rm(pValString); pValString  <- list()
-rm(tmpVenn)
+if (exists("fileVenn")) rm(fileVenn); fileVenn    <- list()
+if (exists("listVenn")) rm(listVenn); listVenn    <- list()
+if (exists("pValString")) rm(pValString); pValString  <- list()
+if (exists("tmpVenn")) rm(tmpVenn)
 
 for (ii in 1:length(wCont)) { # ii is the index of the list with the multiple comparison group names
   #wCont[ii]
@@ -450,11 +461,11 @@ for (ii in 1:length(wCont)) { # ii is the index of the list with the multiple co
 # }
 
 ## ----prepareData, eval=TRUE----------------------------------------------
-rm(exprs2cluster); exprs2cluster <- list()
-rm(groupColors); groupColors <- list()
-rm(my.cels.df); my.cels.df <- list()
-rm(my.cels.idx); my.cels.idx <- list()
-rm(my.cels); my.cels <- list()
+if (exists("exprs2cluster")) rm(exprs2cluster); exprs2cluster <- list()
+if (exists("groupColors")) rm(groupColors); groupColors <- list()
+if (exists("my.cels.df")) rm(my.cels.df); my.cels.df <- list()
+if (exists("my.cels.idx")) rm(my.cels.idx); my.cels.idx <- list()
+if (exists("my.cels")) rm(my.cels); my.cels <- list()
 #str(listVenn)
 
 for (ii in 1:length(wCont)) { # ii is the index of the list with the multiple comparison group names
@@ -537,11 +548,11 @@ for (ii in 1:length(wCont)) { # ii is the index of the list with the multiple co
 
 # Report with Nozzle.R1
 # Phase 2: assemble report structure bottom-up
-ss1 <- addTo( ss1, f ); # parent, child_1, ..., child_n 
-ss1 <- addTo( ss1, p );
-s <- addTo( s, ss1 );
-r <- addTo( r, s );
+report.ss1 <- addTo( report.ss1, report.t1 ); # parent, child_1, ..., child_n 
+report.ss1 <- addTo( report.ss1, report.p1 );
+report.s <- addTo( report.s, report.ss1 );
+report.r <- addTo( report.r, report.s );
 
 # Phase 3: render report to file
-writeReport( r, filename="my_report" ); # w/o extension
+writeReport( report.r, filename="my_report" ); # w/o extension
 #Two files called my_report.html and my_report.RData will be written to the current working directory.
