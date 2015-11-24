@@ -186,7 +186,9 @@ require(limma)
 #print(cont.matrix)
 cont.matrix <- makeContrasts(                   ### RECORDAR QUE AIXÒ ES UN EXEMPLE!!!
   ## EstudiA279b:
-  #                                 CANvsCTL = CAN - CTL, # Aquesta es fara mes endavant (columna diferent del targets, etc)
+#  CANvsCTL           = CAN - CTL, # Aquesta es fara mes endavant (columna diferent del targets, etc)
+  CANvsCTL           = ( (CAN.Epid*9/24) + (CAN.Ade*12/24) + (CAN.Mic*3/24) ) 
+                        - ( (CTL.noR*16/24) + (CTL.Rsk*8/24) ), # Aquesta es fara mes endavant (columna diferent del targets, etc)
   ## EstudiA279a:
   CTL.RskvsCAN.Epid  = CTL.Rsk  - CAN.Epid,
   CTL.RskvsCAN.Ade   = CTL.Rsk  - CAN.Ade,
@@ -213,13 +215,13 @@ fit<-lmFit(exprs.filtered, design)
 fit.main<-contrasts.fit(fit, cont.matrix)
 fit.main<-eBayes(fit.main)
 
-compGroupName <- c("G1.CTLRisk.vs.CANtype", "G2.CTLnoR.vs.CANtype", 
-              "G3.CANTypes", "G4.CTLRisk.vs.CTLnoR") # si son comparacions multiples, fer tant noms com grups de comparacions (N) hi hagi
+compGroupName <- c("G1.CAN.vs.CTL", "G2.CTLRisk.vs.CANtype", "G3.CTLnoR.vs.CANtype", 
+              "G4.CANTypes", "G5.CTLRisk.vs.CTLnoR") # si son comparacions multiples, fer tant noms com grups de comparacions (N) hi hagi
 ### 2a part de grups comparacions
 ### Correspon a "EstudiA279b"
 #compGroupName <- c("G5.CAN.vs.CTL")
 
-wCont <- list(1:3, 4:6, 7:9, 10) # Relacionat amb la contrastsMatrix. 
+wCont <- list(1:1, 2:4, 5:7, 9:10, 11) # Relacionat amb la contrastsMatrix. 
 # Llista amb N vectors, que defineixen els N conjunts (grups) de contrastos (comparacions)
 # si N>1, cal indicar els rangs per separat
 # e.g. list(1:8, 9:13, 14:17)
@@ -239,15 +241,15 @@ report.p3 <- newParagraph( "Multiple Comparison groups, with the comparisons the
 df.compNamesAll <- data.frame(t(sapply(compNamesAll,c)))
 report.t3 <- newTable( df.compNamesAll, "Multiple comparison groups" ); # w/ caption
 
-pValCutOff <- c(0.01, 0.01, 0.01, 0.01) # si N>1, indicar el cut-off per cada conjunt de comparacions
+pValCutOff <- rep(0.01, 5) # c(0.01, 0.01, 0.01, 0.01, 0.01) # si N>1, indicar el cut-off per cada conjunt de comparacions
 
 # e.g. c(0.01, 0.05, 0.01) o bé c(rep(0.01,3))
 # Com a màxim a la UEB es posa 0.25 i a adjMethod posar no ajustat ("none"). 
-adjMethod <- rep("none",4)  # si N>1, indicar mètode per cada conjunt de comparacions
+adjMethod <- rep("none",5)  # si N>1, indicar mètode per cada conjunt de comparacions
 # e.g. c("none", "BH", "none") o bé c(rep("BH",3))
 
 ## Posar aqui els valors de minLogFC de cadascuna de les comparacions a fer
-minLogFoldChange <- c(0, 0, 0, 0) # canviar aixo si s'ha decidit considerar sols els casos amb |logFC| >= que un valor. Si no, només s'empra per als HeatMaps minim
+minLogFoldChange <- rep(0, 5) #c(0, 0, 0, 0, 0) # canviar aixo si s'ha decidit considerar sols els casos amb |logFC| >= que un valor. Si no, només s'empra per als HeatMaps minim
 # e.g. c(1, 2, 1) o be c(rep(0, 3)) indicar minLogFC per cada grup de comparacions
 
 # Place the previous key parameters together in a single df so that they can be easily printed lataer on in the report with Nozzle
@@ -400,7 +402,7 @@ for (ii in 1:length(wCont)) { # ii is the index of the list with the multiple co
 ## Venn Diagram
 ###################################################
 if(!require(VennDiagram)) install.packages("VennDiagram")
-library(VennDiagram)
+require(VennDiagram)
 
 # Re-set the needed lists to zero just in case
 if (exists("fileVenn")) rm(fileVenn); fileVenn    <- list()
