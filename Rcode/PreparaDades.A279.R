@@ -5,7 +5,8 @@
 #library(checkpoint)
 #checkpoint("2015-11-02")
 
-basepath <- "/home/xavi/Estudis/2015-10-NuriaBarbarroja-IMIBIC-A279/"
+#basepath <- "/home/xavi/Estudis/2015-10-NuriaBarbarroja-IMIBIC-A279/"
+basepath <- baseDir
 
 #se prueba de utilizar biomart para conseguir anotaciones aunque creo que luego no se utilizará.
 source("http://bioconductor.org/biocLite.R")
@@ -25,7 +26,7 @@ dim(miRNA)#1952 4
 head(miRNA)
 
 #archivo de EC con anotaciones (rma+anotaciones)
-setwd(paste0(basepath, "dades"))
+setwd(file.path(basepath, "dades"))
 anotacion<-read.csv("rma with anotations.csv",sep="\t",header=TRUE)
 dim(anotacion)#36137 6
 head(anotacion)
@@ -40,7 +41,7 @@ head(anotacion.hg)
 #rownames(anotacion.hg)<-anotacion.hg$Transcript_ID
 a<-as.vector(anotacion.hg$Transcript_ID)
 length(a)#6631
-length(unique(a))
+length(unique(a)) #6050
 anotacion.hg<-anotacion.hg[!duplicated(anotacion.hg[,5]),]
 head(anotacion.hg)
 
@@ -53,33 +54,48 @@ colnames(anota)<-c("Transcript_ID","Probe_Set_ID")
 head(anota)
 
 #preparación archivo Rda
-setwd(paste0(basepath, "dades"))
-x <-read.csv2("rma.A279.summary.csv", row.names=1, sep=";", dec=",")
-head(x)
-dim(x)#36249 55
-targets <- read.csv2 ("targets.BRB279.txt",sep="\t")
+setwd(file.path(basepath, "dades"))
+xx <-read.csv2("rma.A279.summary.csv", header = TRUE, row.names=1, sep=";", dec=",")
+head(xx)
+dim(xx)#36249 48
+targets <- read.csv2 (targetsFileName, sep="\t")
+# Remove the rows containing the samples indicated in this param "samples2remove" 
+# since we do not want to consider them in the analysis
+row2remove.idx <- which(targets$SampleName %in% samples2remove)  
+targets <- targets[-row2remove.idx,]
 sample.names <- as.character(targets$ShortName)
-save(x, targets, anota, file=file.path(paste0(basepath, "dades"),"dades.BRB.A279.Rda"))
+# Get rid of samples that are eliminated from the targets
+# In this run, 41.CEL, 42.CEL, 44.CEL files are eliminated
+# samples2remove is defined in the basicA.R file, with some content like:
+# samples2remove <- c("41.CEL","42.CEL","44.CEL")
+# samplesX2remove <- c("X41.CEL","X42.CEL","X44.CEL")
+samplesX2remove <- paste0("X", samples2remove)
+col2remove.idx <- which(colnames(xx) %in% samplesX2remove)  
+xx <- xx[-col2remove.idx]
+dim(xx) #36249    45
+save(xx, targets, anota, file=file.path(basepath, "dades","dades.BRB.A279.Rda"))
 
 
-#merge x con anota#########################
-expresEG <- merge(x,anota,by="row.names")
-dim(expresEG)#6050 51
+#merge xx con anota#########################
+expresEG <- merge(xx,anota,by="row.names")
+dim(expresEG)#6050 48
 head(expresEG)
 #rownames(expresEG)<-expresEG$Row.names
 rownames(expresEG)<-expresEG$Transcript_ID
 #expresEG<-expresEG[,-c(1,57,58)]
-expresEG<-expresEG[,-c(1,50,51)]
-dim(expresEG)#6050 48
+ncol(expresEG) # 48
+# Remove the first column and the last 2
+expresEG<-expresEG[,-c(1,ncol(expresEG)-1,ncol(expresEG))]
+dim(expresEG)#6050 45
 head(expresEG)
 
 
-save(expresEG, targets,anota, sample.names,  file=file.path(paste0(basepath, "dades"),"MicrosBRB_expressEG.Rda"))
+save(expresEG, targets,anota, sample.names,  file=file.path(basepath, "dades","MicrosBRB_expressEG.Rda"))
 
 ##############################################
 ### VSN
 ##############################################
-setwd(paste0(basepath, "celfiles"))
+setwd(file.path(basepath, "celfiles"))
 if (!require("makecdfenv")) {
   biocLite("makecdfenv")
 }
@@ -90,7 +106,7 @@ library(makecdfenv)
 library(affxparser)
 if (!require("mirna40cdf")) {
   convertCdf("miRNA-4_0-st-v1.cdf", "mirna40cdf", version=4, verbose=TRUE) 
-  pkgpath <- paste0(basepath, "dades")
+  pkgpath <- file.path(basepath, "dades")
   make.cdf.package("mirna40cdf", version = packageDescription("makecdfenv", field = "Version"), species="", unlink=TRUE, compress=FALSE, package.path = pkgpath)
   
   system(paste0("R CMD INSTALL \"", pkgpath, "/mirna40cdf", "\""))
@@ -98,12 +114,21 @@ if (!require("mirna40cdf")) {
 
 library(affy)
 require(affy)
-x<- ReadAffy()
-class(x)
+# Before reading the celfiles through ReadAffy, limit the filenames to get rid of the ones in samples2remove
+fns <- list.celfiles(path=file.path(basepath, "celfiles"),full.names=TRUE)
+cel2remove.idx <- match(unique(grep(paste(samples2remove,collapse="|"),
+                                    fns, value=TRUE)), fns)
+fns <- fns[-cel2remove.idx]
+cat("Reading files:\n",paste(fns,collapse="\n"),"\n")
+cat("Removed from the analysis:\n",paste(samples2remove,collapse="\n"),"\n")
+##read a binary celfile
+xx <- ReadAffy(filenames=fns)
+#class(xx)
+#str(xx)
 if (!require("vsn")) {
   biocLite("vsn")
 }
-d_vsn = vsnrma(x) # d_vsn is the expression set
+d_vsn = vsnrma(xx) # d_vsn is the expression set
 d_vsn
 meanSdPlot(d_vsn)
 dim(exprs(d_vsn))
@@ -140,3 +165,4 @@ pData(d_vsn2) <- targets2
 # > order(pData(d_vsn)[,1])
 # > pData(d_vsn)[,1]
 
+setwd(basepath)

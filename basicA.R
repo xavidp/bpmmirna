@@ -40,6 +40,8 @@ if(!require(rCharts)) install_github('rCharts', 'ramnathv')
 if(!require(plotly)) install.packages("plotly")
 #if(!require(plotly)) devtools::install_github("ropensci/plotly")
 if(!require(Nozzle.R1)) install.packages( "Nozzle.R1", type="source" );
+if(!require(VennDiagram)) install.packages("VennDiagram")
+#if(!require(venneuler)) install.packages("venneuler")
 
 #Load required libraries
 # "Nozzle: a report generation toolkit for data analysis pipelines"
@@ -49,11 +51,44 @@ require(devtools)
 library(rCharts)
 require( Nozzle.R1 )
 
+#########################################################
+# Needed functions (thanks Miriam!) 
+#########################################################
+#source("https://raw.githubusercontent.com/miriamMota/scripts/master/Bioinf/VennDiagram.R")
+## Funcions necessaries per extreure la llista d'elements 
+## tant x com y en tots els casos es una llista de caracters.
+Intersect <- function (x) {  
+  if (length(x) == 1) {
+    unlist(x)
+  } else if (length(x) == 2) {
+    intersect(x[[1]], x[[2]])
+  } else if (length(x) > 2){
+    intersect(x[[1]], Intersect(x[-1]))
+  }
+}
+
+Union <- function (x) {  
+  if (length(x) == 1) {
+    unlist(x)
+  } else if (length(x) == 2) {
+    union(x[[1]], x[[2]])
+  } else if (length(x) > 2) {
+    union(x[[1]], Union(x[-1]))
+  }
+}
+
+Setdiff <- function (x, y) {
+  xx <- Intersect(x)
+  yy <- Union(y)
+  setdiff(xx, yy)
+}
+
 ###################################
 # Basic parameters for the script
 ###################################
 ## ----preparaDirectorios, eval=TRUE---------------------------------------
-baseDir <- "/home/xavi/Estudis/2015-10-NuriaBarbarroja-IMIBIC-A279"
+#baseDir <- "/home/xavi/Estudis/2015-10-NuriaBarbarroja-IMIBIC-A279"
+baseDir <- "."
 workingDir <- baseDir
 dataDir <-file.path(workingDir, "dades")
 resultsDir <- file.path(workingDir,"results")
@@ -62,14 +97,21 @@ setwd(workingDir)
 ## number of cores to use from your computer (with doMC package)
 nCores <- 4 # 1 # In case of doubt, use just 1 core.
 
+targetsFileName <-"targets.BRB279.txt"
+
+# If some samples were too rare in the PCA from the ArrayQualityMetrics report (even at the raw report), consider
+# running the script again removing those from the analysis. You can define which samples to be taken out of the 
+# analysis through this parameter.
+samples2remove <- c("41.CEL","42.CEL","44.CEL")
+
 # Report with Nozzle.R1
-report.filename <- "my_report_brba279"
+report.filename <- "report_results_brba279"
 # Remove any previous leftover
 if (file.exists(paste0(report.filename, ".html"))) file.remove(paste0(report.filename, ".html"))
 if (file.exists(paste0(report.filename, ".RData"))) file.remove(paste0(report.filename, ".RData"))
 
 # Phase 1: create report elements
-report.r <- newCustomReport( "My Report BRB A279" );
+report.r <- newCustomReport( "Result Files for analysis BRB A279" );
 report.s1 <- newSection( "Base information" );
 
 #############################
@@ -158,12 +200,16 @@ report.s1s1 <- newSection( "Targets" );
 #rownames(design) <-  sampleNames 
 #print(design)
 setwd(baseDir)
-targetsFileName <-"targets.BRB279.txt"
 targets <- read.table(file = file.path(dataDir, targetsFileName),
                       header = TRUE, sep = "\t")
+# Remove the rows containing the samples indicated in this param "samples2remove" 
+# since we do not want to consider them in the analysis
+row2remove.idx <- which(targets$SampleName %in% samples2remove)  
+targets <- targets[-row2remove.idx,]
 
 report.s1p1 <- newParagraph( "Sample names, groups and color codes used in the analysis" );
 report.s1t1 <- newTable( targets, "Targets file" ); # w/ caption
+report.s1s1 <- addTo( report.s1s1, report.s1p1, report.s1t1 )
 
 column2design <- 4   # Columna del ''targets'' en que es basa la matriu de disseny
 # En dissenys d'un factor el nombre de grups = nombre de nivells
@@ -209,9 +255,9 @@ require(limma)
 #print(cont.matrix)
 cont.matrix <- makeContrasts(                   ### RECORDAR QUE AIXÒ ES UN EXEMPLE!!!
   ## EstudiA279b:
-#  CANvsCTL           = CAN - CTL, # Aquesta es fara mes endavant (columna diferent del targets, etc)
+  #  CANvsCTL           = CAN - CTL, # Aquesta es fara mes endavant (columna diferent del targets, etc)
   CANvsCTL           = ( (CAN.Epid*9/24) + (CAN.Ade*12/24) + (CAN.Mic*3/24) ) 
-                        - ( (CTL.noR*16/24) + (CTL.Rsk*8/24) ), # Aquesta es fara mes endavant (columna diferent del targets, etc)
+  - ( (CTL.noR*16/24) + (CTL.Rsk*8/24) ), # Aquesta es fara mes endavant (columna diferent del targets, etc)
   ## EstudiA279a:
   CTL.RskvsCAN.Epid  = CTL.Rsk  - CAN.Epid,
   CTL.RskvsCAN.Ade   = CTL.Rsk  - CAN.Ade,
@@ -226,15 +272,16 @@ cont.matrix <- makeContrasts(                   ### RECORDAR QUE AIXÒ ES UN EXE
   levels = design)
 
 cont.matrix.file <- "contrasts.matrix.csv"
-write.csv2(cont.matrix, 
-           file=file.path( resultsDir, cont.matrix.file) )
+outFileNameRelPath <- file.path( resultsDir, cont.matrix.file )
+write.csv2(cont.matrix, file=outFileNameRelPath )
 
 #print(cont.matrix) #comentar aquesta linia si no es vol visualitzar la matriu de contrasts
 report.s1s2 <- newSection( "Contrasts Matrix" );
 report.s1p2 <- newParagraph( "Contrasts matrix: which sample types (groups) are used in each comparison" );
 report.s1t2 <- newTable( colnames( cont.matrix ), 
-                         file=file.path( resultsDir, cont.matrix.file),
+                         file=outFileNameRelPath,
                          "Contrasts Matrix" ); # w/ caption
+report.s1s2 <- addTo( report.s1s2, report.s1p2, report.s1t2 )
 
 condSplitter <- "vs" # Condition splitter in the Comparison String. This param is used later on to obtain the condition names of the comparison
 
@@ -245,7 +292,7 @@ fit.main<-contrasts.fit(fit, cont.matrix)
 fit.main<-eBayes(fit.main)
 
 compGroupName <- c("G1.CAN.vs.CTL", "G2.CTLRisk.vs.CANtype", "G3.CTLnoR.vs.CANtype", 
-              "G4.CANTypes", "G5.CTLRisk.vs.CTLnoR") # si son comparacions multiples, fer tant noms com grups de comparacions (N) hi hagi
+                   "G4.CANTypes", "G5.CTLRisk.vs.CTLnoR") # si son comparacions multiples, fer tant noms com grups de comparacions (N) hi hagi
 ### 2a part de grups comparacions
 ### Correspon a "EstudiA279b"
 #compGroupName <- c("G5.CAN.vs.CTL")
@@ -269,6 +316,7 @@ report.s1p3 <- newParagraph( "Multiple Comparison groups, with the comparisons t
 # convert the list of All comparison names into a data frame so that it can be printed easily in the html report with Nozzle
 df.compNamesAll <- data.frame(t(sapply(compNamesAll,c)))
 report.s1t3 <- newTable( df.compNamesAll, "Multiple comparison groups" ); # w/ caption
+report.s1s3 <- addTo( report.s1s3, report.s1p3, report.s1t3 )
 
 pValCutOff <- rep(0.01, 5) # c(0.01, 0.01, 0.01, 0.01, 0.01) # si N>1, indicar el cut-off per cada conjunt de comparacions
 
@@ -293,14 +341,17 @@ colnames(key.params) <- c("Parameter", colnames(df.compNamesAll))
 # So far performed with the standard Basic Pipe code.
 # You need to run that part with those R scripts, for the time being.
 report.s1s4 <- newSection( "Quality control" );
-report.s1p4 <- newParagraph( "Quality control results based on the ArrayQualityMEtrics Bioconductor Package");
+report.s1p4 <- newParagraph( "Quality control results based on the ArrayQualityMetrics Bioconductor Package. See it at QCDir.norm/index.html");
+report.s1h4 <- newHtml( "<iframe src=\"QCDir.norm/index.html\" frameborder=0 height=600 scrolling=auto width=\"100\"></iframe>", style="background-color: lightgrey;" )
+report.s1s4 <- addTo( report.s1s4, report.s1p4, report.s1h4 ) 
 
 #############################
-# Display filtering Parameters
+# Display Gene selection Parameters
 #############################
-report.s1s5 <- newSection( "Filtering" );
-report.s1p5 <- newParagraph( "Filtering was performed with the following parameters");
+report.s1s5 <- newSection( "Gene selection" );
+report.s1p5 <- newParagraph( "Gene selection was performed with the following parameters");
 report.s1t5 <- newTable( key.params, "Key parameters used");
+report.s1s5 <- addTo( report.s1s5, report.s1p5, report.s1t5 ) # parent, child_1, ..., child_n 
 
 ## Controlem que el nombre d'elements dels parametres anteriors sigui igual
 if(class(wCont)!="list") warning("L'objecte wCont no és una llista! Això pot provocar errors en els passos següents.")
@@ -319,6 +370,7 @@ registerDoMC(nCores)
 report.s2 <- newSection( "Results (Files)" );
 report.s2s1 <- newSection( "Top Tables" );
 report.s2p1 <- newParagraph( "Tables with the top features for each comparison ");
+report.s2s1 <- addTo( report.s2s1, report.s2p1)
 
 if (exists("topTab")) rm(topTab);topTab <- list()
 if (exists("topTabExtended")) rm(topTabExtended);topTabExtended <- list()
@@ -336,18 +388,18 @@ if (exists("my.cels")) rm(my.cels); my.cels <- list()
 for (ii in 1:length(wCont)) { # ii is the index of the list with the multiple comparison group names
   #wCont[ii]
   for (jj in 1:length(wCont[[ii]])) { # jj is the index of the list with the single comparisons from within each group of comparisons
-
+    
     topTab[[ wCont[[ii]][jj] ]] <-  topTable (fit.main, number=nrow(fit.main), 
-                                          coef=colnames(cont.matrix)[ wCont[[ii]][jj] ], 
-                                          adjust="fdr", 
-                                          lfc=0)
+                                              coef=colnames(cont.matrix)[ wCont[[ii]][jj] ], 
+                                              adjust="fdr", 
+                                              lfc=0)
   }
 }
 
 foreach (ii = 1:length(wCont)) %dopar% { # ii is the index of the list with the multiple comparison group names
   #wCont[ii]
   foreach (jj = 1:length(wCont[[ii]])) %dopar% { # jj is the index of the list with the single comparisons from within each group of comparisons
-
+    
     my.compName <- colnames(cont.matrix)[ wCont[[ii]][jj] ]
     my.conds <- unlist(strsplit(my.compName, condSplitter)) 
     # my.cels.idx and my.cels below are the list of cel files to be appended to the TopTable object
@@ -356,42 +408,51 @@ foreach (ii = 1:length(wCont)) %dopar% { # ii is the index of the list with the 
     my.cels.idx[[ wCont[[ii]][jj] ]] <- grep( paste0(my.conds[1],"|",my.conds[2]), targets$Grupo)
     my.cels[[ wCont[[ii]][jj] ]] <- as.character(targets$SampleName[ my.cels.idx[[ wCont[[ii]][jj] ]] ] ) 
     write.csv2(cbind(my.cels.idx[[ wCont[[ii]][jj] ]], my.cels[[ wCont[[ii]][jj] ]]), 
-               file=file.path( resultsDir, paste("my.cels.in.comparison.",
+               file=file.path( resultsDir, paste("celfiles.in.comparison.",
                                                  my.compName, ".csv", sep="")) )
     
     #head(topTab[[ wCont[[ii]][jj] ]] )
     topTabExtended[[ wCont[[ii]][jj] ]] <- cbind(topTab[[ wCont[[ii]][jj] ]],
-                  BD[rownames( topTab[[ wCont[[ii]][jj] ]] ),
-                     my.cels[[ wCont[[ii]][jj] ]] 
-                     ])
-
+                                                 BD[rownames( topTab[[ wCont[[ii]][jj] ]] ),
+                                                    my.cels[[ wCont[[ii]][jj] ]] 
+                                                    ])
+    
     # Write the resulting topTable to disk
-    write.csv2(topTabExtended[[ wCont[[ii]][jj] ]], 
-               file=file.path( resultsDir, paste("Selected.Genes.in.comparison.",
-               colnames(cont.matrix)[ wCont[[ii]][jj] ], ".csv", sep="")) )
-
     outFile <- paste("Selected.Genes.in.comparison.",
-                     colnames(cont.matrix)[ wCont[[ii]][jj] ], sep="" )
+                     colnames(cont.matrix)[ wCont[[ii]][jj] ], sep="")
+    outFileName <- paste0(outFile, ".csv")
+    outFileNameRelPath <- file.path( resultsDir, outFileName )
+    
+    
+    write.csv2(topTabExtended[[ wCont[[ii]][jj] ]], 
+               file=outFileNameRelPath )
+    # Write the resulting files to the report
+    report.s2file1a <- newHtml( paste0("File: ", 
+                                       "<a href=\"", outFileName,"\">",
+                                       outFileName, "</a>"),
+                                style="background-color: lightgrey;" )
+    report.s2s1 <- addTo( report.s2s1, report.s2file1a)
+    
     outTitle <- paste("Selected.Genes.in.comparison: ", colnames(cont.matrix)[ wCont[[ii]][jj] ], sep="")
     # For some reason, the html produced doesn't contain the rownames, so we pre-pend them as the first column
     if (exists("topTab.tmp")) rm(topTab.tmp)
     topTab.tmp <- cbind(rownames(topTab[[ wCont[[ii]][jj] ]]), 
-                topTab[[ wCont[[ii]][jj] ]] )
+                        topTab[[ wCont[[ii]][jj] ]] )
     colnames(topTab.tmp)[1] <- "ID"
     #head(topTab2)
-
-# Disabled in favor of the dTable created below
-#     write.htmltable(x = topTab2, 
-#                     file=file.path( resultsDir, outFile ),
-#                     title =  outTitle,
-#                     open = "wt")
-
-# Disabled in favor of the dTable created below
-#      sortable.html.table(df = topTab2, 
-#                          output.file = paste0(outFile, "-sortable.html"),
-#                          output.directory = resultsDir,
-#                          page.title = outTitle )
-
+    
+    # Disabled in favor of the dTable created below
+    #     write.htmltable(x = topTab2, 
+    #                     file=file.path( resultsDir, outFile ),
+    #                     title =  outTitle,
+    #                     open = "wt")
+    
+    # Disabled in favor of the dTable created below
+    #      sortable.html.table(df = topTab2, 
+    #                          output.file = paste0(outFile, "-sortable.html"),
+    #                          output.directory = resultsDir,
+    #                          page.title = outTitle )
+    
     # When requested, create the dTable, filterable and sortable, etc.
     create.dTable <- T
     if (create.dTable == TRUE) {
@@ -406,10 +467,16 @@ foreach (ii = 1:length(wCont)) %dopar% { # ii is the index of the list with the 
         filterable.dTable$params$table$aoColumns[cc] =
           list( list(sType = "string_ignore_null", sTitle = colnames(topTab.tmp[cc])) )
       }
-      filterable.dTable$save(file.path(resultsDir, 
-                                       paste0(outFile, "-dTable.html")))    
+      outFileName <- paste0(outFile, "-dTable.html")
+      outFileNameRelPath <- file.path( resultsDir, outFileName )
+      filterable.dTable$save(outFileNameRelPath) 
+      # Write the resulting topTable files to the report
+      report.s2file1b <- newHtml( paste0("File: ", 
+                                         "<a href=\"", outFileNameRelPath,"\">", outFileNameRelPath, "</a>"),
+                                  style="background-color: lightgrey;" )
+      report.s2s1 <- addTo( report.s2s1, report.s2file1b)
     } # end of if create.dTable
-
+    
   }
 }
 
@@ -420,6 +487,7 @@ foreach (ii = 1:length(wCont)) %dopar% { # ii is the index of the list with the 
 # Add it to the report
 report.s2s2 <- newSection( "Number of features changed in each case" );
 report.s2p2 <- newParagraph( "Summary table with the number of features changed in each case for each pValue Type (adjusted or not) and Cutoff");
+report.s2s2 <- addTo( report.s2s2, report.s2p2)
 
 setwd(baseDir)
 # Carrega numGeneChangedFC.R
@@ -434,6 +502,14 @@ numGeneChangedFC(filenames=grep("Selected.Genes.in.comparison.*.csv",dir(),value
                  comparisons= colnames(cont.matrix),
                  FC=0) # FC needs to be hardcoded to Zero at this step
 
+outFileName <- paste("numGenesChangedFC",FC,".csv",sep="")
+
+# Write the resulting files to the report
+report.s2file <- newHtml( paste0("File: ", 
+                                 "<a href=\"", outFileName,"\">",
+                                 outFileName, "</a>"),
+                          style="background-color: lightgrey;" )
+report.s2s2 <- addTo( report.s2s2, report.s2file)
 
 ###################################################
 ## Volcano Plots
@@ -441,15 +517,20 @@ numGeneChangedFC(filenames=grep("Selected.Genes.in.comparison.*.csv",dir(),value
 # Add it to the report
 report.s2s3 <- newSection( "Volcano plots" );
 report.s2p3 <- newParagraph( "Files with the volcano plot for each comparison");
+report.s2s3 <- addTo( report.s2s3, report.s2p3)
 
 ## ----volcanos, results=tex,echo=FALSE, eval=TRUE-------------------------
 for (ii in 1:length(wCont)) { # ii is the index of the list with the multiple comparison group names
   #wCont[ii]
   for (jj in 1:length(wCont[[ii]])) { # jj is the index of the list with the single comparisons from within each group of comparisons
-  # ii <- 1; jj<- 1
+    # ii <- 1; jj<- 1
     my.compName <-colnames(cont.matrix)[ wCont[[ii]][jj] ]
-    file=paste("volcanoPlot", my.compName, ".pdf", sep="")
-    pdf(file=file.path(resultsDir, file), paper="special", width=6, height=6)
+    # Compose the filename
+    outFileName <- paste("volcanoPlot", my.compName, ".pdf", sep="")
+    outFileNameRelPath <- file.path( resultsDir, outFileName )
+    # Generate the pdf
+    pdf(file=outFileNameRelPath, paper="special", width=6, height=6)
+    
     # Set volcanoPointNames. 
     ## Recent versions of limma seem to not write the feature name as fitmai$ID anymore, 
     ## but just provide the feature name as the row.name  
@@ -464,6 +545,12 @@ for (ii in 1:length(wCont)) { # ii is the index of the list with the multiple co
     dev.off()
     #cat("\\includegraphics{", file, "}\n\n", sep="")
     
+    # Write the resulting files to the report
+    report.s2file <- newHtml( paste0("File: ", 
+                                     "<a href=\"", outFileName,"\">",
+                                     outFileName, "</a>"),
+                              style="background-color: lightgrey;" )
+    report.s2s3 <- addTo( report.s2s3, report.s2file)
   }
 }
 
@@ -473,6 +560,7 @@ for (ii in 1:length(wCont)) { # ii is the index of the list with the multiple co
 # Add it to the report
 report.s2s4 <- newSection( "Venn Diagrams" );
 report.s2p4 <- newParagraph( "Files with the Venn Diagrams for the groups of multiple comparisons (cases of more than one comparison in each group)");
+report.s2s4 <- addTo( report.s2s4, report.s2p4)
 
 if(!require(VennDiagram)) install.packages("VennDiagram")
 require(VennDiagram)
@@ -503,7 +591,7 @@ for (ii in 1:length(wCont)) { # ii is the index of the list with the multiple co
     }
     
   } # end the loop of jj, to have all fileVenn and listVenn created for a multiple comparison
-
+  
   # In case there are 2 or more comparisons, create a vennDiagram for them.
   if (length(wCont[[ii]]) > 1) {
     
@@ -519,12 +607,68 @@ for (ii in 1:length(wCont)) { # ii is the index of the list with the multiple co
                               cat.cex = 0.9,
                               main = mainTitle,
                               filename = NULL)
-    pdf(file.path(resultsDir , paste( "vennDiagram", compGroupName[ii], 
-                                      pValString[ii], pValCutOff[ii], "pdf", sep=".")))
+    # Compose the filename
+    outFileName <- paste( "vennDiagram", compGroupName[ii], 
+                          pValString[ii], pValCutOff[ii], "pdf", sep=".")
+    outFileNameRelPath <- file.path( resultsDir, outFileName )
+    # Generate the pdf
+    pdf(outFileNameRelPath)
     grid.draw(venn.plot)
     dev.off()
+    
+    # Write the resulting files to the report
+    report.s2file <- newHtml( paste0("File: ", 
+                                     "<a href=\"", outFileName,"\">",
+                                     outFileName, "</a>"),
+                              style="background-color: lightgrey;" )
+    report.s2s4 <- addTo( report.s2s4, report.s2file)
+    
+    ############################
+    ## Save on disk the list of genes for each group of multiple comparisons
+    ## Derived from 
+    ## https://github.com/miriamMota/scripts/blob/master/Bioinf/VennDiagram.R
+    ############################
+    xx.1 <- listVenn[ wCont[[ii]] ]
+    names(xx.1) <- compNamesAll[[ii]]
+    combs <-  unlist(lapply(1:length(xx.1), 
+                            function(j) combn(names(xx.1), j, simplify = FALSE)),
+                     recursive = FALSE)
+    names(combs) <- sapply(combs, function(i) paste0(i, collapse = ""))
+    #str(combs)
+    
+    elements <- lapply(combs, function(i) Setdiff(xx.1[i], xx.1[setdiff(names(xx.1), i)]))
+    n.elements <- sapply(elements, length)
+    list_res <- list(elements= elements, n.elements=n.elements) 
+    
+    # Create a df with the list of features present in each area of the venn diagram sections
+    seq.max <- seq_len(max(n.elements))
+    mat <- sapply(elements, "[", i = seq.max)
+    mat[is.na(mat)]<-""
+    mat <- data.frame(mat)
+    
+    # Add the first line with the number of elements in each group of features
+    # check that col names are in the same order before merging the rows from the 2 objects
+    table(colnames(t(data.frame(n.elements)[1])) == colnames(mat)) 
+    # merge the values of the two objects and store them inthe same mat object
+    mat <- rbind( t(data.frame(n.elements)[1]) , mat)
+    
+    # Compose the filename
+    outFileName <- paste( "vennDiagram", compGroupName[ii],
+                          pValString[ii], pValCutOff[ii], "csv", sep=".")
+    outFileNameRelPath <- file.path( resultsDir, outFileName )
+    
+    # Write results to disk
+    write.csv2(mat, outFileNameRelPath, row.names=FALSE)
+    
+    # Write the resulting files to the report
+    report.s2file <- newHtml( paste0("File: ", 
+                                     "<a href=\"", outFileName,"\">",
+                                     outFileName, "</a>"),
+                              style="background-color: lightgrey;" )
+    report.s2s1 <- addTo( report.s2s1, report.s2file)
+    
   } # end of venn.diagram generation (when appropriate) 
-
+  
 } # end of ii loop, the index of the list with the multiple comparison group names
 
 
@@ -562,6 +706,7 @@ for (ii in 1:length(wCont)) { # ii is the index of the list with the multiple co
 # Add it to the report
 report.s2s5 <- newSection( "Heatmap plots" );
 report.s2p5 <- newParagraph( "Files with the Heatmap plots for each comparison");
+report.s2s5 <- addTo( report.s2s5, report.s2p5)
 
 ## ----prepareData, eval=TRUE----------------------------------------------
 if (exists("exprs2cluster")) rm(exprs2cluster); exprs2cluster <- list()
@@ -578,41 +723,51 @@ for (ii in 1:length(wCont)) { # ii is the index of the list with the multiple co
     my.compName <-colnames(cont.matrix)[ wCont[[ii]][jj] ]
     # read mycels from the stored file on disk, created in the section related to TopTables
     my.cels.df[[ wCont[[ii]][jj] ]] <-read.table(file.path(resultsDir, 
-                                                        paste0("my.cels.in.comparison.", my.compName, ".csv")
-                                                        ),
-                                              head=TRUE, sep=";") 
+                                                           paste0("celsfiles.in.comparison.", my.compName, ".csv")
+    ),
+    head=TRUE, sep=";") 
     my.cels.idx[[ wCont[[ii]][jj] ]] <- as.numeric(as.character(my.cels.df[[ wCont[[ii]][jj] ]] [,2]))
     my.cels[[ wCont[[ii]][jj] ]] <- as.character(my.cels.df[[ wCont[[ii]][jj] ]] [,3])
     
     exprs2cluster[[ wCont[[ii]][jj] ]] <- exprs(exprs.filtered)[listVenn[[ wCont[[ii]][jj] ]] ,
-                                           my.cels[[ wCont[[ii]][jj] ]]   ]
+                                                                my.cels[[ wCont[[ii]][jj] ]]   ]
     #str(exprs2cluster[[ wCont[[ii]][jj] ]])
-  
-#     ## ----plotHeatMap1, fig=T, eval=TRUE--------------------------------------
-#     groupColors[[ wCont[[ii]][jj] ]] <-  as.character(pData(exprs.filtered)$ColoresTipoT[ my.cels.idx[[ wCont[[ii]][jj] ]] ])
-#     heatmap(exprs2cluster[[ wCont[[ii]][jj] ]], col=rainbow(100),
-#             ColSideColors=groupColors[[ wCont[[ii]][jj] ]], cexCol=0.9)
-#     
-
+    
+    #     ## ----plotHeatMap1, fig=T, eval=TRUE--------------------------------------
+    #     groupColors[[ wCont[[ii]][jj] ]] <-  as.character(pData(exprs.filtered)$ColoresTipoT[ my.cels.idx[[ wCont[[ii]][jj] ]] ])
+    #     heatmap(exprs2cluster[[ wCont[[ii]][jj] ]], col=rainbow(100),
+    #             ColSideColors=groupColors[[ wCont[[ii]][jj] ]], cexCol=0.9)
+    #     
+    
     ## ----plotHeatMap2, fig=T, eval=TRUE--------------------------------------
     groupColors[[ wCont[[ii]][jj] ]] <-  as.character(pData(exprs.filtered)$ColoresTipoT[ my.cels.idx[[ wCont[[ii]][jj] ]] ])
     require("gplots")
     mainTitle <- paste0(my.compName) ## Titol
+    # Compose the filename
+    outFileName <- paste( "heatmap", my.compName, 
+                          pValString[ii], pValCutOff[ii], "pdf", sep=".")
+    outFileNameRelPath <- file.path( resultsDir, outFileName )
     # Save Heatmap to file on disk
-    pdf(file.path(resultsDir , paste( "heatmap", my.compName, 
-                                      pValString[ii], pValCutOff[ii], "pdf", sep=".")))
+    pdf(outFileNameRelPath)
     heatmap.2(exprs2cluster[[ wCont[[ii]][jj] ]], 
               col=bluered(75), scale="row",
               ColSideColors=groupColors[[ wCont[[ii]][jj] ]], key=TRUE, symkey=FALSE, 
               density.info="none", trace="none", cexCol=1, main = mainTitle)    
     
     dev.off()
-
+    
+    # Write the resulting files to the report
+    report.s2file <- newHtml( paste0("File: ", 
+                                     "<a href=\"", outFileName,"\">",
+                                     outFileName, "</a>"),
+                              style="background-color: lightgrey;" )
+    report.s2s5 <- addTo( report.s2s5, report.s2file)
+    
     # When requested, create the plotly heatmap locally as png
     plotly.heatmaps.create <- TRUE # Disabled to avoid re-genearing them each time the script is rerun
     # When requested, create the dynamic plotly heatmap posted in the plot.ly server
     plotly.heatmaps.post <- FALSE # Disabled to avoid re-genearing them each time the script is rerun
-
+    
     if (plotly.heatmaps.create == TRUE) {
       ## ----plotHeatMap2, fig=T, eval=TRUE--------------------------------------
       require(plotly)
@@ -633,7 +788,7 @@ for (ii in 1:length(wCont)) { # ii is the index of the list with the multiple co
                     type = "heatmap")
       # Create a new local plot.ly heatmap as png
       Png <- plotly_IMAGE(py, out_file = file.path(resultsDir, paste0(mainTitle, ".png")))
-
+      
       # POST (create) a new plot.ly heatmap in plot.ly server only when requested
       if (plotly.heatmaps.post == TRUE) {
         plotly_POST(py, filename=mainTitle, world_readable=TRUE)
@@ -645,7 +800,7 @@ for (ii in 1:length(wCont)) { # ii is the index of the list with the multiple co
       ## Public image:
       #plotly_POST(py, filename=mainTitle, world_readable=TRUE)
       # https://plot.ly/~ueb/52.embed (public image, non edited)
-  
+      
       # Success! Created a new plotly here -> https://plot.ly/~ueb/61
       # Success! Created a new plotly here -> https://plot.ly/~ueb/63
       # Success! Created a new plotly here -> https://plot.ly/~ueb/65
@@ -659,24 +814,25 @@ for (ii in 1:length(wCont)) { # ii is the index of the list with the multiple co
       # Success! Created a new plotly here -> https://plot.ly/~ueb/81
       
     } # end of chunk to create plotly heatmaps when requested
-
+    
     # Add it to the report
     # create a figure and make it available for exporting
     # figure file paths
     figureFile1 <- file.path(resultsDir, paste0(mainTitle, ".png"));
     figureFileHighRes1a <- file.path(resultsDir , paste( "heatmap", my.compName, 
-                                                        pValString[ii], pValCutOff[ii], "pdf", sep="."));
+                                                         pValString[ii], pValCutOff[ii], "pdf", sep="."));
     figureFileHighRes1b <- "https://plot.ly/~ueb/61.embed";
-
+    
     report.s2f5a <- newFigure( figureFile1, fileHighRes=figureFileHighRes1a, exportId="FIGURE_1a",
-                      "An example for a figure. Everything that is shown in the figure should be explained\
-	                			in the caption. The figure needs to have axis labels and a legend." );
+                               "An example for a figure. Everything that is shown in the figure should be explained\
+                               in the caption. The figure needs to have axis labels and a legend." );
     report.s2f5b <- newFigure( figureFile1, fileHighRes=figureFileHighRes1b, exportId="FIGURE_1b",
-                            "An example for a figure. Everything that is shown in the figure should be explained\
-                  			in the caption. The figure needs to have axis labels and a legend." );
-
+                               "An example for a figure. Everything that is shown in the figure should be explained\
+                               in the caption. The figure needs to have axis labels and a legend." );
+    
     report.s2p6 <- newParagraph( "Heatmaps produced. See ", asReference( report.s2f5a ), "for instance");
-
+    report.s2s5 <- addTo( report.s2s5, report.s2f5a, report.s2f5b, report.s2p6)
+    
   } # end the loop of jj
 } # end of ii loop, the index of the list with the multiple comparison group names
 
@@ -699,22 +855,12 @@ for (ii in 1:length(wCont)) { # ii is the index of the list with the multiple co
 ###################################################
 # Report with Nozzle.R1
 # Phase 2: assemble report structure bottom-up
-report.s1s1 <- addTo( report.s1s1, report.s1p1, report.s1t1 )
-report.s1s2 <- addTo( report.s1s2, report.s1p2, report.s1t2 )
-report.s1s3 <- addTo( report.s1s3, report.s1p3, report.s1t3 )
-report.s1s4 <- addTo( report.s1s4, report.s1p4 ) 
-report.s1s4 <- addTo( report.s1s5, report.s1p5, report.s1t5 ) # parent, child_1, ..., child_n 
-
-report.s2s1 <- addTo( report.s2s1, report.s2p1)
-report.s2s2 <- addTo( report.s2s2, report.s2p2)
-report.s2s3 <- addTo( report.s2s3, report.s2p3)
-report.s2s4 <- addTo( report.s2s4, report.s2p4)
-report.s2s5 <- addTo( report.s2s5, report.s2p5, report.s2f5a, report.s2f5b, report.s2p6)
-
 report.s1 <- addTo( report.s1, report.s1s1, report.s1s2, report.s1s3, report.s1s4);
 report.s2 <- addTo( report.s2, report.s2s1, report.s2s2, report.s2s3, report.s2s4, report.s2s5 );
 report.r <- addTo( report.r, report.s1, report.s2 );
 
+# Ensure that the report is created at the baseDir, and not at resultsDir
+setwd(baseDir)
 # Phase 3: render report to file
 writeReport( report.r, filename=report.filename ); # w/o extension
 #Two files called my_report.html and my_report.RData will be written to the current working directory.
