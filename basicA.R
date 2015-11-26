@@ -344,14 +344,16 @@ key.params <- cbind(rownames(key.params), key.params)
 colnames(key.params) <- c("Parameter", colnames(df.compNamesAll))
 
 #############################
-# Quality Control
+# Quality Control (raw)
 #############################
 # So far performed with the standard Basic Pipe code.
 # You need to run that part with those R scripts, for the time being.
-report.s1s4 <- newSection( "Quality control" );
-report.s1p4 <- newParagraph( "Quality control results based on the ArrayQualityMetrics Bioconductor Package. See it at QCDir.norm/index.html");
-report.s1h4 <- newHtml( "<iframe src=\"", resultsRelDir, "/QCDir.norm/index.html\" frameborder=1 height=600 scrolling=auto width=\"900\"></iframe>", style="background-color: snow;" )
-report.s1s4 <- addTo( report.s1s4, report.s1p4, report.s1h4 ) 
+report.s1s4 <- newSection( "Quality control (raw data)" );
+report.s1p4a <- newParagraph( "Quality control results based on the ArrayQualityMetrics Bioconductor Package. See it at results/QCDir.raw/index.html");
+report.s1p4b <- newParagraph( "Samples removed (if any) from further analysis:", samples2remove );
+report.s1h4 <- newHtml( "<iframe src=\"", resultsRelDir, "/QCDir.raw/index.html\" frameborder=1 height=600 scrolling=auto width=\"900\"></iframe>", style="background-color: snow;" )
+report.s1s4 <- addTo( report.s1s4, report.s1p4a, report.s1p4b, report.s1h4 ) 
+
 
 #############################
 # Display Gene selection Parameters
