@@ -87,16 +87,24 @@ Setdiff <- function (x, y) {
 # Basic parameters for the script
 ###################################
 ## ----preparaDirectorios, eval=TRUE---------------------------------------
-#baseDir <- "/home/xavi/Estudis/2015-10-NuriaBarbarroja-IMIBIC-A279"
-baseDir <- "."
+baseDir <- "/home/xavi/Estudis/2015-10-NuriaBarbarroja-IMIBIC-A279" # Pentinella
+#baseDir <- "/mnt/magatzem02/tmp/2015-10-NuriaBarbarroja-IMIBIC-A279" # MainHead
+#baseDir <- "."
 workingDir <- baseDir
-dataDir <-file.path(workingDir, "dades")
-resultsDir <- file.path(workingDir,"results")
-celfilesDir <- file.path(workingDir,"celfiles")
 setwd(workingDir)
+# Relative Paths to subdirs
+dataRelDir <- "dades"
+resultsRelDir <- "results"
+celfilesRelDir <- "celfiles"
+# Absolute Paths to subdirs
+dataDir <-file.path(workingDir, dataRelDir)
+resultsDir <- file.path(workingDir, resultsRelDir)
+celfilesDir <- file.path(workingDir, celfilesDir)
+
 ## number of cores to use from your computer (with doMC package)
 nCores <- 4 # 1 # In case of doubt, use just 1 core.
 
+# Name of the targets file
 targetsFileName <-"targets.BRB279.txt"
 
 # If some samples were too rare in the PCA from the ArrayQualityMetrics report (even at the raw report), consider
@@ -119,7 +127,7 @@ report.s1 <- newSection( "Base information" );
 #############################
 ## ----loadData------------------------------------------------------------
 #load(file=file.path(resultsDir, "datos.normalizados.Rda"))
-source("Rcode/PreparaDades.A279.R")
+#source("Rcode/PreparaDades.A279.R")
 
 # The Previous file created the expression set.
 
@@ -342,7 +350,7 @@ colnames(key.params) <- c("Parameter", colnames(df.compNamesAll))
 # You need to run that part with those R scripts, for the time being.
 report.s1s4 <- newSection( "Quality control" );
 report.s1p4 <- newParagraph( "Quality control results based on the ArrayQualityMetrics Bioconductor Package. See it at QCDir.norm/index.html");
-report.s1h4 <- newHtml( "<iframe src=\"QCDir.norm/index.html\" frameborder=0 height=600 scrolling=auto width=\"100\"></iframe>", style="background-color: lightgrey;" )
+report.s1h4 <- newHtml( "<iframe src=\"", resultsRelDir, "/QCDir.norm/index.html\" frameborder=1 height=600 scrolling=auto width=\"900\"></iframe>", style="background-color: snow;" )
 report.s1s4 <- addTo( report.s1s4, report.s1p4, report.s1h4 ) 
 
 #############################
@@ -396,9 +404,9 @@ for (ii in 1:length(wCont)) { # ii is the index of the list with the multiple co
   }
 }
 
-foreach (ii = 1:length(wCont)) %dopar% { # ii is the index of the list with the multiple comparison group names
+topTabLoop <- foreach (ii = 1:length(wCont)) %do% { # ii is the index of the list with the multiple comparison group names
   #wCont[ii]
-  foreach (jj = 1:length(wCont[[ii]])) %dopar% { # jj is the index of the list with the single comparisons from within each group of comparisons
+  foreach (jj = 1:length(wCont[[ii]])) %do% { # jj is the index of the list with the single comparisons from within each group of comparisons
     
     my.compName <- colnames(cont.matrix)[ wCont[[ii]][jj] ]
     my.conds <- unlist(strsplit(my.compName, condSplitter)) 
@@ -421,16 +429,15 @@ foreach (ii = 1:length(wCont)) %dopar% { # ii is the index of the list with the 
     outFile <- paste("Selected.Genes.in.comparison.",
                      colnames(cont.matrix)[ wCont[[ii]][jj] ], sep="")
     outFileName <- paste0(outFile, ".csv")
-    outFileNameRelPath <- file.path( resultsDir, outFileName )
+    outFileNameRelPath <- file.path( resultsRelDir, outFileName )
     
     
     write.csv2(topTabExtended[[ wCont[[ii]][jj] ]], 
                file=outFileNameRelPath )
     # Write the resulting files to the report
-    report.s2file1a <- newHtml( paste0("File: ", 
-                                       "<a href=\"", outFileName,"\">",
-                                       outFileName, "</a>"),
-                                style="background-color: lightgrey;" )
+    report.s2file1a <- newHtml( "File: <a href=", outFileNameRelPath,">",
+                                       outFileNameRelPath, "</a>",
+                                style="background-color: snow;" )
     report.s2s1 <- addTo( report.s2s1, report.s2file1a)
     
     outTitle <- paste("Selected.Genes.in.comparison: ", colnames(cont.matrix)[ wCont[[ii]][jj] ], sep="")
@@ -454,7 +461,7 @@ foreach (ii = 1:length(wCont)) %dopar% { # ii is the index of the list with the 
     #                          page.title = outTitle )
     
     # When requested, create the dTable, filterable and sortable, etc.
-    create.dTable <- T
+    create.dTable <- F
     if (create.dTable == TRUE) {
       # Create a dTable, a filterable html table: sortable columns plus search box that filster records in real time
       # uses dTable from rCharts.
@@ -468,18 +475,23 @@ foreach (ii = 1:length(wCont)) %dopar% { # ii is the index of the list with the 
           list( list(sType = "string_ignore_null", sTitle = colnames(topTab.tmp[cc])) )
       }
       outFileName <- paste0(outFile, "-dTable.html")
-      outFileNameRelPath <- file.path( resultsDir, outFileName )
+      outFileNameRelPath <- file.path( resultsRelDir, outFileName )
       filterable.dTable$save(outFileNameRelPath) 
       # Write the resulting topTable files to the report
-      report.s2file1b <- newHtml( paste0("File: ", 
-                                         "<a href=\"", outFileNameRelPath,"\">", outFileNameRelPath, "</a>"),
-                                  style="background-color: lightgrey;" )
+      report.s2file1b <- newHtml( "File: <a href=\"", outFileNameRelPath,"\">", outFileNameRelPath, "</a>",
+                                  style="background-color: snow;" )
       report.s2s1 <- addTo( report.s2s1, report.s2file1b)
     } # end of if create.dTable
     
-  }
-}
+  } # end of the jj loop
+  return( c(topTabExtended, report.s2s1) )
+  #return( c(topTabExtended) )
+} # end of the ii loop
 
+#str(topTabLoop)
+#topTabLoop[[1]]$elements[[2]]$text
+#rm(report.s2s1)
+#report.s2s1
 
 ###################################################
 ## NumGeneChanged
@@ -502,14 +514,18 @@ numGeneChangedFC(filenames=grep("Selected.Genes.in.comparison.*.csv",dir(),value
                  comparisons= colnames(cont.matrix),
                  FC=0) # FC needs to be hardcoded to Zero at this step
 
-outFileName <- paste("numGenesChangedFC",FC,".csv",sep="")
-
+outFileName <- paste("numGenesChangedFC0.csv",sep="")
+outFileNameRelPath <- file.path( resultsRelDir, outFileName )
+numGeneChangedFC.df <- read.table(file = file.path(resultsDir, outFileName),
+                                  header = TRUE, sep = ";")
 # Write the resulting files to the report
-report.s2file <- newHtml( paste0("File: ", 
-                                 "<a href=\"", outFileName,"\">",
-                                 outFileName, "</a>"),
-                          style="background-color: lightgrey;" )
-report.s2s2 <- addTo( report.s2s2, report.s2file)
+report.s2t2 <- newTable( numGeneChangedFC.df, 
+                         file=outFileNameRelPath,
+                         "Number of features changed between comparisons for given p.value cutoffs and methods (adjusted p.value or not" ); # w/ caption
+report.s2s2 <- addTo( report.s2s2, report.s2t2)
+#report.s2file <- newParagraph( "File: <a href=\"", outFileNameRelPath,"\">",
+#                                 outFileNameRelPath, "</a>")
+#report.s2s2 <- addTo( report.s2s2, report.s2file)
 
 ###################################################
 ## Volcano Plots
@@ -527,9 +543,9 @@ for (ii in 1:length(wCont)) { # ii is the index of the list with the multiple co
     my.compName <-colnames(cont.matrix)[ wCont[[ii]][jj] ]
     # Compose the filename
     outFileName <- paste("volcanoPlot", my.compName, ".pdf", sep="")
-    outFileNameRelPath <- file.path( resultsDir, outFileName )
+    outFileNameRelPath <- file.path( resultsRelDir, outFileName )
     # Generate the pdf
-    pdf(file=outFileNameRelPath, paper="special", width=6, height=6)
+    pdf(file=outFileName, paper="special", width=6, height=6)
     
     # Set volcanoPointNames. 
     ## Recent versions of limma seem to not write the feature name as fitmai$ID anymore, 
@@ -546,10 +562,9 @@ for (ii in 1:length(wCont)) { # ii is the index of the list with the multiple co
     #cat("\\includegraphics{", file, "}\n\n", sep="")
     
     # Write the resulting files to the report
-    report.s2file <- newHtml( paste0("File: ", 
-                                     "<a href=\"", outFileName,"\">",
-                                     outFileName, "</a>"),
-                              style="background-color: lightgrey;" )
+    report.s2file <- newHtml( "File: <a href=\"", outFileNameRelPath,"\">",
+                                     outFileNameRelPath, "</a>",
+                              style="background-color: snow;" )
     report.s2s3 <- addTo( report.s2s3, report.s2file)
   }
 }
@@ -610,17 +625,16 @@ for (ii in 1:length(wCont)) { # ii is the index of the list with the multiple co
     # Compose the filename
     outFileName <- paste( "vennDiagram", compGroupName[ii], 
                           pValString[ii], pValCutOff[ii], "pdf", sep=".")
-    outFileNameRelPath <- file.path( resultsDir, outFileName )
+    outFileNameRelPath <- file.path( resultsRelDir, outFileName )
     # Generate the pdf
-    pdf(outFileNameRelPath)
+    pdf(outFileName)
     grid.draw(venn.plot)
     dev.off()
     
     # Write the resulting files to the report
-    report.s2file <- newHtml( paste0("File: ", 
-                                     "<a href=\"", outFileName,"\">",
-                                     outFileName, "</a>"),
-                              style="background-color: lightgrey;" )
+    report.s2file <- newHtml( "File: <a href=\"", outFileNameRelPath,"\">",
+                                     outFileNameRelPath, "</a>",
+                              style="background-color: snow;" )
     report.s2s4 <- addTo( report.s2s4, report.s2file)
     
     ############################
@@ -655,17 +669,16 @@ for (ii in 1:length(wCont)) { # ii is the index of the list with the multiple co
     # Compose the filename
     outFileName <- paste( "vennDiagram", compGroupName[ii],
                           pValString[ii], pValCutOff[ii], "csv", sep=".")
-    outFileNameRelPath <- file.path( resultsDir, outFileName )
+    outFileNameRelPath <- file.path( resultsRelDir, outFileName )
     
     # Write results to disk
-    write.csv2(mat, outFileNameRelPath, row.names=FALSE)
+    write.csv2(mat, outFileName, row.names=FALSE)
     
     # Write the resulting files to the report
-    report.s2file <- newHtml( paste0("File: ", 
-                                     "<a href=\"", outFileName,"\">",
-                                     outFileName, "</a>"),
-                              style="background-color: lightgrey;" )
-    report.s2s1 <- addTo( report.s2s1, report.s2file)
+    report.s2file <- newHtml( "File: <a href=\"", outFileNameRelPath,"\">",
+                                     outFileNameRelPath, "</a>",
+                              style="background-color: snow;" )
+    report.s2s4 <- addTo( report.s2s4, report.s2file)
     
   } # end of venn.diagram generation (when appropriate) 
   
@@ -723,7 +736,7 @@ for (ii in 1:length(wCont)) { # ii is the index of the list with the multiple co
     my.compName <-colnames(cont.matrix)[ wCont[[ii]][jj] ]
     # read mycels from the stored file on disk, created in the section related to TopTables
     my.cels.df[[ wCont[[ii]][jj] ]] <-read.table(file.path(resultsDir, 
-                                                           paste0("celsfiles.in.comparison.", my.compName, ".csv")
+                                                           paste0("celfiles.in.comparison.", my.compName, ".csv")
     ),
     head=TRUE, sep=";") 
     my.cels.idx[[ wCont[[ii]][jj] ]] <- as.numeric(as.character(my.cels.df[[ wCont[[ii]][jj] ]] [,2]))
@@ -746,9 +759,9 @@ for (ii in 1:length(wCont)) { # ii is the index of the list with the multiple co
     # Compose the filename
     outFileName <- paste( "heatmap", my.compName, 
                           pValString[ii], pValCutOff[ii], "pdf", sep=".")
-    outFileNameRelPath <- file.path( resultsDir, outFileName )
+    outFileNameRelPath <- file.path( resultsRelDir, outFileName )
     # Save Heatmap to file on disk
-    pdf(outFileNameRelPath)
+    pdf(outFileName)
     heatmap.2(exprs2cluster[[ wCont[[ii]][jj] ]], 
               col=bluered(75), scale="row",
               ColSideColors=groupColors[[ wCont[[ii]][jj] ]], key=TRUE, symkey=FALSE, 
@@ -757,16 +770,17 @@ for (ii in 1:length(wCont)) { # ii is the index of the list with the multiple co
     dev.off()
     
     # Write the resulting files to the report
-    report.s2file <- newHtml( paste0("File: ", 
-                                     "<a href=\"", outFileName,"\">",
-                                     outFileName, "</a>"),
-                              style="background-color: lightgrey;" )
+    report.s2file <- newHtml( "File: <a href=\"", outFileNameRelPath,"\">",
+                                     outFileNameRelPath, "</a>",
+                              style="background-color: snow;" )
     report.s2s5 <- addTo( report.s2s5, report.s2file)
     
     # When requested, create the plotly heatmap locally as png
-    plotly.heatmaps.create <- TRUE # Disabled to avoid re-genearing them each time the script is rerun
+    plotly.heatmaps.create <- FALSE # Disabled to avoid re-genearing them each time the script is rerun
     # When requested, create the dynamic plotly heatmap posted in the plot.ly server
     plotly.heatmaps.post <- FALSE # Disabled to avoid re-genearing them each time the script is rerun
+    # When requested, report the dynamic plotly heatmap posted in the plot.ly server
+    plotly.heatmaps.report <- FALSE # Disabled to avoid re-genearing them each time the script is rerun
     
     if (plotly.heatmaps.create == TRUE) {
       ## ----plotHeatMap2, fig=T, eval=TRUE--------------------------------------
@@ -815,23 +829,25 @@ for (ii in 1:length(wCont)) { # ii is the index of the list with the multiple co
       
     } # end of chunk to create plotly heatmaps when requested
     
-    # Add it to the report
-    # create a figure and make it available for exporting
-    # figure file paths
-    figureFile1 <- file.path(resultsDir, paste0(mainTitle, ".png"));
-    figureFileHighRes1a <- file.path(resultsDir , paste( "heatmap", my.compName, 
+    if (plotly.heatmaps.report == TRUE) {
+      # Add it to the report
+      # create a figure and make it available for exporting
+      # figure file paths
+      figureFile1 <- file.path(resultsRelDir, paste0(mainTitle, ".png"));
+      figureFileHighRes1a <- file.path(resultsRelDir , paste( "heatmap", my.compName, 
                                                          pValString[ii], pValCutOff[ii], "pdf", sep="."));
-    figureFileHighRes1b <- "https://plot.ly/~ueb/61.embed";
+      figureFileHighRes1b <- "https://plot.ly/~ueb/61.embed";
     
-    report.s2f5a <- newFigure( figureFile1, fileHighRes=figureFileHighRes1a, exportId="FIGURE_1a",
+      report.s2f5a <- newFigure( figureFile1, fileHighRes=figureFileHighRes1a, exportId="FIGURE_1a",
                                "An example for a figure. Everything that is shown in the figure should be explained\
                                in the caption. The figure needs to have axis labels and a legend." );
-    report.s2f5b <- newFigure( figureFile1, fileHighRes=figureFileHighRes1b, exportId="FIGURE_1b",
+      report.s2f5b <- newFigure( figureFile1, fileHighRes=figureFileHighRes1b, exportId="FIGURE_1b",
                                "An example for a figure. Everything that is shown in the figure should be explained\
                                in the caption. The figure needs to have axis labels and a legend." );
     
-    report.s2p6 <- newParagraph( "Heatmaps produced. See ", asReference( report.s2f5a ), "for instance");
-    report.s2s5 <- addTo( report.s2s5, report.s2f5a, report.s2f5b, report.s2p6)
+      report.s2p6 <- newParagraph( "Heatmaps produced. See ", asReference( report.s2f5a ), "for instance");
+      report.s2s5 <- addTo( report.s2s5, report.s2f5a, report.s2f5b, report.s2p6)
+    } # end of plotly.heatmaps.report
     
   } # end the loop of jj
 } # end of ii loop, the index of the list with the multiple comparison group names
@@ -855,12 +871,28 @@ for (ii in 1:length(wCont)) { # ii is the index of the list with the multiple co
 ###################################################
 # Report with Nozzle.R1
 # Phase 2: assemble report structure bottom-up
-report.s1 <- addTo( report.s1, report.s1s1, report.s1s2, report.s1s3, report.s1s4);
+report.s1 <- addTo( report.s1, report.s1s1, report.s1s2, report.s1s3, report.s1s4, report.s1s5);
 report.s2 <- addTo( report.s2, report.s2s1, report.s2s2, report.s2s3, report.s2s4, report.s2s5 );
 report.r <- addTo( report.r, report.s1, report.s2 );
 
 # Ensure that the report is created at the baseDir, and not at resultsDir
 setwd(baseDir)
+
+# Settings
+# set report maintainer information
+report.r <- setMaintainerName( report.r, "UEB - VHIR" );
+report.r <- setMaintainerEmail( report.r, "ueb@vhir.org" );
+report.r <- setMaintainerAffiliation( report.r, "Statistics and Bioinformatics Unit - Vall d'Hebron Research Institute" );
+
+# set the copyright notice for this report
+report.r <- setCopyright( report.r, owner="UEB - VHIR", year=2015, statement="Some rights reserved.", url="http://ueb.vhir.org" ); 
+
+# set contact information for error reports
+report.r <- setContactInformation( report.r, email="ueb@vhir.org", subject="Problem with this Report", message="Hello!\n\nPlease describe the issue here.", label="Report an Issue" );
+
+#report.r <- setCustomScreenCss( report.r, "paper.css" );
+
 # Phase 3: render report to file
-writeReport( report.r, filename=report.filename ); # w/o extension
+writeReport( report.r, filename= report.filename ); # w/o extension
 #Two files called my_report.html and my_report.RData will be written to the current working directory.
+

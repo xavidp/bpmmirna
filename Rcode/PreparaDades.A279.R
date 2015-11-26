@@ -5,7 +5,8 @@
 #library(checkpoint)
 #checkpoint("2015-11-02")
 
-#basepath <- "/home/xavi/Estudis/2015-10-NuriaBarbarroja-IMIBIC-A279/"
+#basepath <- "/home/xavi/Estudis/2015-10-NuriaBarbarroja-IMIBIC-A279" # Pentinella
+#basepath <- "/mnt/magatzem02/tmp/2015-10-NuriaBarbarroja-IMIBIC-A279" # MainHead
 basepath <- baseDir
 
 #se prueba de utilizar biomart para conseguir anotaciones aunque creo que luego no se utilizará.
