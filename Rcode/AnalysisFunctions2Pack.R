@@ -4664,6 +4664,37 @@ doGeneAnnotation <- function(AnotList)
   return(genesAnnotated)
 }
 
+#########################################################
+# Needed functions (thanks Miriam!) 
+#########################################################
+#source("https://raw.githubusercontent.com/miriamMota/scripts/master/Bioinf/VennDiagram.R")
+## Funcions necessaries per extreure la llista d'elements 
+## tant x com y en tots els casos es una llista de caracters.
+Intersect <- function (x) {  
+  if (length(x) == 1) {
+    unlist(x)
+  } else if (length(x) == 2) {
+    intersect(x[[1]], x[[2]])
+  } else if (length(x) > 2){
+    intersect(x[[1]], Intersect(x[-1]))
+  }
+}
+
+Union <- function (x) {  
+  if (length(x) == 1) {
+    unlist(x)
+  } else if (length(x) == 2) {
+    union(x[[1]], x[[2]])
+  } else if (length(x) > 2) {
+    union(x[[1]], Union(x[-1]))
+  }
+}
+
+Setdiff <- function (x, y) {
+  xx <- Intersect(x)
+  yy <- Union(y)
+  setdiff(xx, yy)
+}
 
 
 ### save.sessionInfo: Desa en un arxiu de text la informacio sobre la sessio de R amb la que s'ha processat

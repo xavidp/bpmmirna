@@ -126,11 +126,12 @@ cat("Removed from the analysis:\n",paste(samples2remove,collapse="\n"),"\n")
 xx <- ReadAffy(filenames=fns)
 #class(xx)
 #str(xx)
+# exprs(xx)
 if (!require("vsn")) {
   biocLite("vsn")
 }
 d_vsn = vsnrma(xx) # d_vsn is the expression set
-d_vsn
+class(d_vsn)
 meanSdPlot(d_vsn)
 dim(exprs(d_vsn))
 head(exprs(d_vsn))

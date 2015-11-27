@@ -51,37 +51,6 @@ require(devtools)
 library(rCharts)
 require( Nozzle.R1 )
 
-#########################################################
-# Needed functions (thanks Miriam!) 
-#########################################################
-#source("https://raw.githubusercontent.com/miriamMota/scripts/master/Bioinf/VennDiagram.R")
-## Funcions necessaries per extreure la llista d'elements 
-## tant x com y en tots els casos es una llista de caracters.
-Intersect <- function (x) {  
-  if (length(x) == 1) {
-    unlist(x)
-  } else if (length(x) == 2) {
-    intersect(x[[1]], x[[2]])
-  } else if (length(x) > 2){
-    intersect(x[[1]], Intersect(x[-1]))
-  }
-}
-
-Union <- function (x) {  
-  if (length(x) == 1) {
-    unlist(x)
-  } else if (length(x) == 2) {
-    union(x[[1]], x[[2]])
-  } else if (length(x) > 2) {
-    union(x[[1]], Union(x[-1]))
-  }
-}
-
-Setdiff <- function (x, y) {
-  xx <- Intersect(x)
-  yy <- Union(y)
-  setdiff(xx, yy)
-}
 
 ###################################
 # Basic parameters for the script
@@ -99,7 +68,10 @@ celfilesRelDir <- "celfiles"
 # Absolute Paths to subdirs
 dataDir <-file.path(workingDir, dataRelDir)
 resultsDir <- file.path(workingDir, resultsRelDir)
-celfilesDir <- file.path(workingDir, celfilesDir)
+celfilesDir <- file.path(workingDir, celfilesRelDir)
+
+# Sourcing the whole set of functions from the standard Basic Pipe: AnalysisFunctions2Pack.R 
+source(file.path(baseDir,"Rcode", "AnalysisFunctions2Pack.R"))
 
 ## number of cores to use from your computer (with doMC package)
 nCores <- 4 # 1 # In case of doubt, use just 1 core.
@@ -127,12 +99,12 @@ report.s1 <- newSection( "Base information" );
 #############################
 ## ----loadData------------------------------------------------------------
 #load(file=file.path(resultsDir, "datos.normalizados.Rda"))
-#source("Rcode/PreparaDades.A279.R")
+source("Rcode/PreparaDades.A279.R")
 
 # The Previous file created the expression set.
 
 #############################
-# FILTRATION
+# GENE SELECTION
 #############################
 eset_norm <- d_vsn2 # d_vsn2 ja té les columnes i files (covariables) coincidint amb la info del targets
 dim(exprs(eset_norm))
@@ -346,23 +318,58 @@ colnames(key.params) <- c("Parameter", colnames(df.compNamesAll))
 #############################
 # Quality Control (raw)
 #############################
-# So far performed with the standard Basic Pipe code.
-# You need to run that part with those R scripts, for the time being.
+# Section borrowed from the the standard Basic Pipe code.
+rawData <- xx
+
+phenoData(rawData)$Grupo<-targets$Grupo
+phenoData(rawData)$ShortName<-targets$ShortName
+phenoData(rawData)$Colores<-targets$Colores
+
+# arrayQualityMetrics(expressionset =rawData,
+#                     outdir = file.path(resultsDir, "QCDir.raw"),
+#                     force = TRUE,
+#                     intgroup = "Grupo",
+#                     do.logtransform = FALSE)
+
+# Add the section to the report 
 report.s1s4 <- newSection( "Quality control (raw data)" );
 report.s1p4a <- newParagraph( "Quality control results based on the ArrayQualityMetrics Bioconductor Package. See it at results/QCDir.raw/index.html");
 samples2remove.collapsed <- paste(samples2remove, collapse=", ") 
-report.s1p4b <- newParagraph( "Samples removed (if any) from further analysis: ", samples2remove.collapsed );
+report.s1p4b <- newParagraph( "Samples removed (if any) from further analysis after QC: ", asStrong( samples2remove.collapsed ));
 report.s1h4 <- newHtml( "<iframe src=\"", resultsRelDir, "/QCDir.raw/index.html\" frameborder=1 height=600 scrolling=auto width=\"900\"></iframe>", style="background-color: snow;" )
 report.s1s4 <- addTo( report.s1s4, report.s1p4a, report.s1p4b, report.s1h4 ) 
 
 
 #############################
+# Quality Control (norm)
+#############################
+# Section borrowed from the the standard Basic Pipe code.
+
+phenoData(exprs.filtered)$Grupo<-targets$Grupo
+phenoData(exprs.filtered)$ShortName<-targets$ShortName
+phenoData(exprs.filtered)$Colores<-targets$Colores
+
+# arrayQualityMetrics(expressionset =exprs.filtered,
+#                     outdir = file.path(resultsDir, "QCDir.norm"),
+#                     force = TRUE,
+#                     intgroup = "Grupo",
+#                     do.logtransform = FALSE)
+
+# Add the section to the report 
+report.s1s5 <- newSection( "Quality control (normalized data)" );
+report.s1p5a <- newParagraph( "Quality control results based on the ArrayQualityMetrics Bioconductor Package. See it at results/QCDir.norm/index.html");
+samples2remove.collapsed <- paste(samples2remove, collapse=", ") 
+report.s1p5b <- newParagraph( "Samples removed (if any) from further analysis after QC: ", asStrong( samples2remove.collapsed ));
+report.s1h5 <- newHtml( "<iframe src=\"", resultsRelDir, "/QCDir.norm/index.html\" frameborder=1 height=600 scrolling=auto width=\"900\"></iframe>", style="background-color: snow;" )
+report.s1s5 <- addTo( report.s1s5, report.s1p5a, report.s1p5b, report.s1h5 ) 
+
+#############################
 # Display Gene selection Parameters
 #############################
-report.s1s5 <- newSection( "Gene selection" );
-report.s1p5 <- newParagraph( "Gene selection was performed with the following parameters");
-report.s1t5 <- newTable( key.params, "Key parameters used");
-report.s1s5 <- addTo( report.s1s5, report.s1p5, report.s1t5 ) # parent, child_1, ..., child_n 
+report.s1s6 <- newSection( "Gene selection" );
+report.s1p6 <- newParagraph( "Gene selection was performed with the following parameters");
+report.s1t6 <- newTable( key.params, "Key parameters used");
+report.s1s6 <- addTo( report.s1s6, report.s1p6, report.s1t6 ) # parent, child_1, ..., child_n 
 
 ## Controlem que el nombre d'elements dels parametres anteriors sigui igual
 if(class(wCont)!="list") warning("L'objecte wCont no és una llista! Això pot provocar errors en els passos següents.")
@@ -438,8 +445,8 @@ topTabLoop <- foreach (ii = 1:length(wCont)) %do% { # ii is the index of the lis
     write.csv2(topTabExtended[[ wCont[[ii]][jj] ]], 
                file=outFileNameRelPath )
     # Write the resulting files to the report
-    report.s2file1a <- newHtml( "File: <a href=", outFileNameRelPath,">",
-                                       outFileNameRelPath, "</a>",
+    report.s2file1a <- newHtml( "File (CSV): <a href=", outFileNameRelPath,">",
+                                outFileNameRelPath, "</a>",
                                 style="background-color: snow;" )
     report.s2s1 <- addTo( report.s2s1, report.s2file1a)
     
@@ -480,14 +487,21 @@ topTabLoop <- foreach (ii = 1:length(wCont)) %do% { # ii is the index of the lis
       outFileName <- paste0(outFile, "-dTable.html")
       outFileNameRelPath <- file.path( resultsRelDir, outFileName )
       filterable.dTable$save(outFileNameRelPath) 
-      # Write the resulting topTable files to the report
-      report.s2file1b <- newHtml( "File: <a href=\"", outFileNameRelPath,"\">", outFileNameRelPath, "</a>",
-                                  style="background-color: snow;" )
-      report.s2s1 <- addTo( report.s2s1, report.s2file1b)
     } # end of if create.dTable
     
+    report.dTable <- TRUE
+    if (report.dTable == TRUE) {
+      outFileName <- paste0(outFile, "-dTable.html")
+      outFileNameRelPath <- file.path( resultsRelDir, outFileName )
+      # Write the resulting topTable files to the report
+      report.s2file1b <- newHtml( "File (HTML): <a href=\"", outFileNameRelPath,"\">", outFileNameRelPath, "</a>",
+                                  style="background-color: snow;" )
+      report.s2s1 <- addTo( report.s2s1, report.s2file1b)
+    } # end of if report dTable
+    
   } # end of the jj loop
-  return( c(topTabExtended, report.s2s1) )
+  return( c(topTabExtended, report.s2s1) )  # only needed when the loop run in parallel, 
+  # to preserve some objects created within the parallel loop for later reuse
   #return( c(topTabExtended) )
 } # end of the ii loop
 
@@ -524,7 +538,7 @@ numGeneChangedFC.df <- read.table(file = file.path(resultsDir, outFileName),
 # Write the resulting files to the report
 report.s2t2 <- newTable( numGeneChangedFC.df, 
                          file=outFileNameRelPath,
-                         "Number of features changed between comparisons for given p.value cutoffs and methods (adjusted p.value or not" ); # w/ caption
+                         "Number of features changed between comparisons for given p.value cutoffs and methods (adjusted p.value or not)" ); # w/ caption
 report.s2s2 <- addTo( report.s2s2, report.s2t2)
 #report.s2file <- newParagraph( "File: <a href=\"", outFileNameRelPath,"\">",
 #                                 outFileNameRelPath, "</a>")
@@ -544,11 +558,13 @@ for (ii in 1:length(wCont)) { # ii is the index of the list with the multiple co
   for (jj in 1:length(wCont[[ii]])) { # jj is the index of the list with the single comparisons from within each group of comparisons
     # ii <- 1; jj<- 1
     my.compName <-colnames(cont.matrix)[ wCont[[ii]][jj] ]
-    # Compose the filename
-    outFileName <- paste("volcanoPlot", my.compName, ".pdf", sep="")
-    outFileNameRelPath <- file.path( resultsRelDir, outFileName )
-    # Generate the pdf
-    pdf(file=outFileName, paper="special", width=6, height=6)
+    # Compose the filenames
+    outFileName.noext <- paste("volcanoPlot", my.compName, sep="")
+    outFileNameRelPath.noext <- file.path( resultsRelDir, outFileName.noext )
+    outFileName.pdf <- paste0(outFileName.noext, ".pdf")
+    outFileName.png <- paste0(outFileName.noext, ".png")
+    outFileNameRelPath.pdf <- file.path( resultsRelDir, outFileName.pdf )
+    outFileNameRelPath.png <- file.path( resultsRelDir, outFileName.png )
     
     # Set volcanoPointNames. 
     ## Recent versions of limma seem to not write the feature name as fitmai$ID anymore, 
@@ -558,15 +574,30 @@ for (ii in 1:length(wCont)) { # ii is the index of the list with the multiple co
     } else {
       volcanoPointNames <- fit.main$ID
     }
+    # Generate the pdf
+    pdf(file=outFileName.pdf, paper="special", width=6, height=6)
     volcanoplot(fit.main, coef= wCont[[ii]][jj] , highlight=10, names=volcanoPointNames, 
                 main=paste("Differentially expressed genes", my.compName, sep="\n"))
     abline(v=c(-1,1))
     dev.off()
     #cat("\\includegraphics{", file, "}\n\n", sep="")
+    # Generate the png
+    png(file=outFileName.png)
+    volcanoplot(fit.main, coef= wCont[[ii]][jj] , highlight=10, names=volcanoPointNames, 
+                main=paste("Differentially expressed genes", my.compName, sep="\n"))
+    abline(v=c(-1,1))
+    dev.off()
     
+    # Add it to the report as screenshot
+    # figure file paths
+    report.s2f3a <- newFigure( outFileNameRelPath.png, 
+                               fileHighRes=outFileNameRelPath.pdf,
+                               "Differentially expressed genes for the comparison ", my.compName );
+    report.s2s3 <- addTo( report.s2s3, report.s2f3a)
+
     # Write the resulting files to the report
-    report.s2file <- newHtml( "File: <a href=\"", outFileNameRelPath,"\">",
-                                     outFileNameRelPath, "</a>",
+    report.s2file <- newHtml( "File (PDF): <a href=\"", outFileNameRelPath.pdf,"\">",
+                              outFileNameRelPath.pdf, "</a>",
                               style="background-color: snow;" )
     report.s2s3 <- addTo( report.s2s3, report.s2file)
   }
@@ -625,18 +656,33 @@ for (ii in 1:length(wCont)) { # ii is the index of the list with the multiple co
                               cat.cex = 0.9,
                               main = mainTitle,
                               filename = NULL)
-    # Compose the filename
-    outFileName <- paste( "vennDiagram", compGroupName[ii], 
-                          pValString[ii], pValCutOff[ii], "pdf", sep=".")
-    outFileNameRelPath <- file.path( resultsRelDir, outFileName )
+    # Compose the filenames
+    outFileName.noext <- paste( "vennDiagram", compGroupName[ii], 
+                          pValString[ii], pValCutOff[ii], sep=".")
+    outFileNameRelPath.noext <- file.path( resultsRelDir, outFileName.noext )
+    outFileName.pdf <- paste0(outFileName.noext, ".pdf")
+    outFileName.png <- paste0(outFileName.noext, ".png")
+    outFileNameRelPath.pdf <- file.path( resultsRelDir, outFileName.pdf )
+    outFileNameRelPath.png <- file.path( resultsRelDir, outFileName.png )
     # Generate the pdf
-    pdf(outFileName)
+    pdf(outFileName.pdf)
+    grid.draw(venn.plot)
+    dev.off()
+    # Generate the png
+    png(outFileName.png)
     grid.draw(venn.plot)
     dev.off()
     
+    # Add it to the report as screenshot
+    # figure file paths
+    report.s2f4a <- newFigure( outFileNameRelPath.png, 
+                               fileHighRes=outFileNameRelPath.pdf,
+                               "Venn Diagram for the comparison group ", compGroupName[ii] );
+    report.s2s4 <- addTo( report.s2s4, report.s2f4a)
+    
     # Write the resulting files to the report
-    report.s2file <- newHtml( "File: <a href=\"", outFileNameRelPath,"\">",
-                                     outFileNameRelPath, "</a>",
+    report.s2file <- newHtml( "File (PDF): <a href=\"", outFileNameRelPath.pdf,"\">",
+                              outFileNameRelPath.pdf, "</a>",
                               style="background-color: snow;" )
     report.s2s4 <- addTo( report.s2s4, report.s2file)
     
@@ -678,8 +724,8 @@ for (ii in 1:length(wCont)) { # ii is the index of the list with the multiple co
     write.csv2(mat, outFileName, row.names=FALSE)
     
     # Write the resulting files to the report
-    report.s2file <- newHtml( "File: <a href=\"", outFileNameRelPath,"\">",
-                                     outFileNameRelPath, "</a>",
+    report.s2file <- newHtml( "File (CSV): <a href=\"", outFileNameRelPath,"\">",
+                              outFileNameRelPath, "</a>",
                               style="background-color: snow;" )
     report.s2s4 <- addTo( report.s2s4, report.s2file)
     
@@ -730,6 +776,8 @@ if (exists("groupColors")) rm(groupColors); groupColors <- list()
 if (exists("my.cels.df")) rm(my.cels.df); my.cels.df <- list()
 if (exists("my.cels.idx")) rm(my.cels.idx); my.cels.idx <- list()
 if (exists("my.cels")) rm(my.cels); my.cels <- list()
+if (exists("heatmap.plotly.link")) rm(heatmap.plotly.link); heatmap.plotly.link <- list()
+
 #str(listVenn)
 
 for (ii in 1:length(wCont)) { # ii is the index of the list with the multiple comparison group names
@@ -749,35 +797,53 @@ for (ii in 1:length(wCont)) { # ii is the index of the list with the multiple co
                                                                 my.cels[[ wCont[[ii]][jj] ]]   ]
     #str(exprs2cluster[[ wCont[[ii]][jj] ]])
     
-    #     ## ----plotHeatMap1, fig=T, eval=TRUE--------------------------------------
-    #     groupColors[[ wCont[[ii]][jj] ]] <-  as.character(pData(exprs.filtered)$ColoresTipoT[ my.cels.idx[[ wCont[[ii]][jj] ]] ])
-    #     heatmap(exprs2cluster[[ wCont[[ii]][jj] ]], col=rainbow(100),
-    #             ColSideColors=groupColors[[ wCont[[ii]][jj] ]], cexCol=0.9)
-    #     
-    
-    ## ----plotHeatMap2, fig=T, eval=TRUE--------------------------------------
     groupColors[[ wCont[[ii]][jj] ]] <-  as.character(pData(exprs.filtered)$ColoresTipoT[ my.cels.idx[[ wCont[[ii]][jj] ]] ])
-    require("gplots")
     mainTitle <- paste0(my.compName) ## Titol
     # Compose the filename
-    outFileName <- paste( "heatmap", my.compName, 
-                          pValString[ii], pValCutOff[ii], "pdf", sep=".")
-    outFileNameRelPath <- file.path( resultsRelDir, outFileName )
-    # Save Heatmap to file on disk
-    pdf(outFileName)
-    heatmap.2(exprs2cluster[[ wCont[[ii]][jj] ]], 
-              col=bluered(75), scale="row",
-              ColSideColors=groupColors[[ wCont[[ii]][jj] ]], key=TRUE, symkey=FALSE, 
-              density.info="none", trace="none", cexCol=1, main = mainTitle)    
+    outFileName.noext <- paste( "heatmap", my.compName, 
+                                pValString[ii], pValCutOff[ii], sep=".")
+    outFileNameRelPath.noext <- file.path( resultsRelDir, outFileName.noext )
     
+    #     ## ----plotHeatMap1, fig=T, eval=TRUE--------------------------------------
+    # Save Heatmap to file on disk as PDF
+    pdf(paste0(outFileName.noext, ".pdf"))
+    heatmap(exprs2cluster[[ wCont[[ii]][jj] ]], col=bluered(75),
+            ColSideColors=groupColors[[ wCont[[ii]][jj] ]], cexCol=0.9,
+            main = mainTitle, xlab="Samples", ylab="Features")
+    dev.off()
+
+    #     ## ----plotHeatMap1, fig=T, eval=TRUE--------------------------------------
+    # Save Heatmap to file on disk as PNG
+    png(paste0(outFileName.noext, ".png"))
+    heatmap(exprs2cluster[[ wCont[[ii]][jj] ]], col=bluered(75),
+            ColSideColors=groupColors[[ wCont[[ii]][jj] ]], cexCol=0.9,
+            main = mainTitle, xlab="Samples", ylab="Features")
     dev.off()
     
+#     ## ----plotHeatMap2, fig=T, eval=TRUE--------------------------------------
+#     require("gplots")
+#     heatmap.2(exprs2cluster[[ wCont[[ii]][jj] ]], 
+#               col=bluered(75), scale="row",
+#               ColSideColors=groupColors[[ wCont[[ii]][jj] ]], key=TRUE, symkey=FALSE, 
+#               density.info="none", trace="none", cexCol=1, main = mainTitle)    
+#
+#    dev.off()
+    
+    # Add it to the report as screenshot
+    # figure file paths
+    figureFile1 <- paste0(outFileNameRelPath.noext, ".png");
+    figureFileHighRes1a <- paste0(outFileNameRelPath.noext, ".pdf");
+    report.s2f5a <- newFigure( figureFile1, fileHighRes=figureFileHighRes1a,
+                               "Heatmap plot for the comparison ", my.compName );
+    report.s2s5 <- addTo( report.s2s5, report.s2f5a)
+
+
     # Write the resulting files to the report
-    report.s2file <- newHtml( "File: <a href=\"", outFileNameRelPath,"\">",
-                                     outFileNameRelPath, "</a>",
+    report.s2file <- newHtml( "File (PDF): <a href=\"", outFileNameRelPath.noext,".pdf\">",
+                              outFileNameRelPath.noext, ".pdf</a>",
                               style="background-color: snow;" )
     report.s2s5 <- addTo( report.s2s5, report.s2file)
-    
+
     # When requested, create the plotly heatmap locally as png
     plotly.heatmaps.create <- FALSE # Disabled to avoid re-genearing them each time the script is rerun
     # When requested, create the dynamic plotly heatmap posted in the plot.ly server
@@ -799,9 +865,14 @@ for (ii in 1:length(wCont)) { # ii is the index of the list with the multiple co
       # Save Heatmap to file online (it can't be saved on disk, it seems, other than in temporary session)
       # Testing Plotly
       # It works in the laptop with VHIR_Externa or MainHead, but not with the desktop (using ethernet cable behind proxy)
-      py <- plot_ly(z = exprs2cluster[[ wCont[[ii]][jj] ]],
-                    x = colnames(exprs2cluster[[ wCont[[ii]][jj] ]]),
-                    y = rownames(exprs2cluster[[ wCont[[ii]][jj] ]]),
+      #Axis and legend default names seem to be the name of the variable containing them. Therefore we rename the vars here:
+      Expressions <- exprs2cluster[[ wCont[[ii]][jj] ]]
+      Samples <- colnames(exprs2cluster[[ wCont[[ii]][jj] ]])
+      Features <- rownames(exprs2cluster[[ wCont[[ii]][jj] ]])
+      py <- plot_ly(z = Expressions,
+                    x = Samples,
+                    y = Features,
+                    color=bluered(8),
                     type = "heatmap")
       # Create a new local plot.ly heatmap as png
       Png <- plotly_IMAGE(py, out_file = file.path(resultsDir, paste0(mainTitle, ".png")))
@@ -829,27 +900,23 @@ for (ii in 1:length(wCont)) { # ii is the index of the list with the multiple co
       # Success! Created a new plotly here -> https://plot.ly/~ueb/77
       # Success! Created a new plotly here -> https://plot.ly/~ueb/79
       # Success! Created a new plotly here -> https://plot.ly/~ueb/81
-      
+      heatmap.plotly.link[[ wCont[[ii]][jj] ]] <- paste0("https://plot.ly/~ueb/",
+                                                         seq(61, 81, by = 2)[ wCont[[ii]][jj] ],
+                                                         ".embed") # 
     } # end of chunk to create plotly heatmaps when requested
     
     if (plotly.heatmaps.report == TRUE) {
       # Add it to the report
-      # create a figure and make it available for exporting
       # figure file paths
       figureFile1 <- file.path(resultsRelDir, paste0(mainTitle, ".png"));
-      figureFileHighRes1a <- file.path(resultsRelDir , paste( "heatmap", my.compName, 
-                                                         pValString[ii], pValCutOff[ii], "pdf", sep="."));
-      figureFileHighRes1b <- "https://plot.ly/~ueb/61.embed";
-    
-      report.s2f5a <- newFigure( figureFile1, fileHighRes=figureFileHighRes1a, exportId="FIGURE_1a",
-                               "An example for a figure. Everything that is shown in the figure should be explained\
-                               in the caption. The figure needs to have axis labels and a legend." );
-      report.s2f5b <- newFigure( figureFile1, fileHighRes=figureFileHighRes1b, exportId="FIGURE_1b",
-                               "An example for a figure. Everything that is shown in the figure should be explained\
-                               in the caption. The figure needs to have axis labels and a legend." );
-    
-      report.s2p6 <- newParagraph( "Heatmaps produced. See ", asReference( report.s2f5a ), "for instance");
-      report.s2s5 <- addTo( report.s2s5, report.s2f5a, report.s2f5b, report.s2p6)
+      #figureFileHighRes1b <- "https://plot.ly/~ueb/61.embed";
+      figureFileHighRes1b <- heatmap.plotly.link[[ wCont[[ii]][jj] ]]
+      report.s2f5b <- newFigure( figureFile1, fileHighRes=figureFileHighRes1b, 
+                                 "Dynamic version of the Heatmap for the comparison ", my.compName, 
+                                 ". Hovering and zooming are possible." );
+      
+      #report.s2p6 <- newParagraph( "Heatmaps produced. See ", asReference( report.s2f5a ), "for instance");
+      report.s2s5 <- addTo( report.s2s5, report.s2f5b)
     } # end of plotly.heatmaps.report
     
   } # end the loop of jj
@@ -874,7 +941,7 @@ for (ii in 1:length(wCont)) { # ii is the index of the list with the multiple co
 ###################################################
 # Report with Nozzle.R1
 # Phase 2: assemble report structure bottom-up
-report.s1 <- addTo( report.s1, report.s1s1, report.s1s2, report.s1s3, report.s1s4, report.s1s5);
+report.s1 <- addTo( report.s1, report.s1s1, report.s1s2, report.s1s3, report.s1s4, report.s1s5, report.s1s6);
 report.s2 <- addTo( report.s2, report.s2s1, report.s2s2, report.s2s3, report.s2s4, report.s2s5 );
 report.r <- addTo( report.r, report.s1, report.s2 );
 
@@ -898,4 +965,3 @@ report.r <- setContactInformation( report.r, email="ueb@vhir.org", subject="Prob
 # Phase 3: render report to file
 writeReport( report.r, filename= report.filename ); # w/o extension
 #Two files called my_report.html and my_report.RData will be written to the current working directory.
-
