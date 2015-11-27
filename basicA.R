@@ -445,10 +445,10 @@ topTabLoop <- foreach (ii = 1:length(wCont)) %do% { # ii is the index of the lis
     write.csv2(topTabExtended[[ wCont[[ii]][jj] ]], 
                file=outFileNameRelPath )
     # Write the resulting files to the report
-    report.s2file1a <- newHtml( "File (CSV): <a href=", outFileNameRelPath,">",
+    report.s2file1a.csv <- newHtml( "File (CSV): <a href=", outFileNameRelPath,">",
                                 outFileNameRelPath, "</a>",
                                 style="background-color: snow;" )
-    report.s2s1 <- addTo( report.s2s1, report.s2file1a)
+
     
     outTitle <- paste("Selected.Genes.in.comparison: ", colnames(cont.matrix)[ wCont[[ii]][jj] ], sep="")
     # For some reason, the html produced doesn't contain the rownames, so we pre-pend them as the first column
@@ -493,10 +493,18 @@ topTabLoop <- foreach (ii = 1:length(wCont)) %do% { # ii is the index of the lis
     if (report.dTable == TRUE) {
       outFileName <- paste0(outFile, "-dTable.html")
       outFileNameRelPath <- file.path( resultsRelDir, outFileName )
+      
+      # Create a new subsection (hidden by default) to display the html as an iframe
+      report.s2s1s1 <- newSection( names(compNamesAll)[ii], " | ", compNamesAll[[ii]][jj] );
+      
       # Write the resulting topTable files to the report
+      report.s2s1h1 <- newHtml( "<iframe src=\"", outFileNameRelPath, "\" frameborder=1 height=400 scrolling=auto width=\"900\"></iframe>", style="background-color: snow;" )
       report.s2file1b <- newHtml( "File (HTML): <a href=\"", outFileNameRelPath,"\">", outFileNameRelPath, "</a>",
                                   style="background-color: snow;" )
-      report.s2s1 <- addTo( report.s2s1, report.s2file1b)
+      report.s2s1s1 <- addTo( report.s2s1s1, report.s2s1h1, report.s2file1a.csv, report.s2file1b)
+      report.s2s1 <- addTo( report.s2s1, report.s2s1s1)
+    } else { # if no report of dTable, add at least, the link to the csv file
+      report.s2s1 <- addTo( report.s2s1, report.s2file1a.csv)
     } # end of if report dTable
     
   } # end of the jj loop
