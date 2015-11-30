@@ -79,19 +79,48 @@ nCores <- 4 # 1 # In case of doubt, use just 1 core.
 # Name of the targets file
 targetsFileName <-"targets.BRB279.txt"
 
+datacreacioTargets <- "2015-11-02"             # format "aaa-mm-dd"
+dataInici <- "2015-11-02"
+
+estudi <- "2015-10-NuriaBarbarroja-IMIBIC-A279"            # Nom del directori del projecte (e.g. "aaaa-mm-NomCognomInvestigador-CENTRE-IdEstudi")
+eP <- "BRB279"                                               # Canviar XXXnnn per les 3 lletres de l'investigador/a + l'Id numeric de l'estudi
+
+titolEstudi <- "Differentially expressed miRNA between lung cancer and control samples"   # Titol de l'estudi (en angles)
+analistes <- "Xavier de Pedro and Alex S&aacute;nchez"                               # Nom analista/es i Alex Sanchez
+
+nomClients <- "Nuria Barbarroja Puerto"                                         # Nom investigador(a) responsable
+lab_o_depart <- "Instituto Maimónides de Inv. Biom. de Córdoba (IMIBIC)"                # Nom del lab o Institucio si es forani (e.g. "Neurovascular diseases")
+contact_email <- "nuria.barbarroja.exts@juntadeandalucia.es"                                     # e-mail de l'investigador(a)
+
+UEB <- TRUE                                                 # TRUE => capcalera d'UEB
+# FALSE => capcalera EstBioinfo
+
 # If some samples were too rare in the PCA from the ArrayQualityMetrics report (even at the raw report), consider
 # running the script again removing those from the analysis. You can define which samples to be taken out of the 
 # analysis through this parameter.
 samples2remove <- c("41.CEL","42.CEL","44.CEL")
 
 # Report with Nozzle.R1
-report.filename <- "report_results_brba279"
+report.filename <- "ResultsFiles"
 # Remove any previous leftover
 if (file.exists(paste0(report.filename, ".html"))) file.remove(paste0(report.filename, ".html"))
 if (file.exists(paste0(report.filename, ".RData"))) file.remove(paste0(report.filename, ".RData"))
 
 # Phase 1: create report elements
-report.r <- newCustomReport( "Result Files for analysis BRB A279" );
+report.r <- newCustomReport( "Result Files for Analysis BRB A279" );
+#report.r <- setReportSubTitle( report.r, "Analysis of differentially expressed miRNA between 24 lung cancer and 24 control samples from Affymetrix miRNA 4.0 plate arrays");
+
+report.s0a <- newSection( "Overview" );
+report.s0a.p1 <- newParagraph( "2015 11 02. Results Files, Version 1" );
+report.s0a.p2 <- newParagraph( "Samples contain three subtypes within the cancer samples \
+                                        (namely, Epidermoid, Adenocarcinoma, and Microcytic subgroups),\
+                                        and 2 subtypes within the control ones (samples with or without risk factor). \
+                                        Multiple comparisons will be performed." );
+ 
+report.s0b <- newSection( "Main Documents" );
+report.s0b.p1 <- newParagraph( "Study proposal" );
+report.s0b.p2 <- newParagraph( "Report with description of methodology and main results" );
+
 report.s1 <- newSection( "Base information" );
 
 #############################
@@ -99,7 +128,7 @@ report.s1 <- newSection( "Base information" );
 #############################
 ## ----loadData------------------------------------------------------------
 #load(file=file.path(resultsDir, "datos.normalizados.Rda"))
-source("Rcode/PreparaDades.A279.R")
+#source("Rcode/PreparaDades.A279.R")
 
 # The Previous file created the expression set.
 
@@ -182,13 +211,17 @@ report.s1s1 <- newSection( "Targets" );
 setwd(baseDir)
 targets <- read.table(file = file.path(dataDir, targetsFileName),
                       header = TRUE, sep = "\t")
+
+# Keep a copy of targets with all samples for the report (regardless of the fact that we may end up removing some samples from the targets file for further analysis)
+targets.all <- targets
+
 # Remove the rows containing the samples indicated in this param "samples2remove" 
 # since we do not want to consider them in the analysis
 row2remove.idx <- which(targets$SampleName %in% samples2remove)  
 targets <- targets[-row2remove.idx,]
 
 report.s1p1 <- newParagraph( "Sample names, groups and color codes used in the analysis" );
-report.s1t1 <- newTable( targets, "Targets file" ); # w/ caption
+report.s1t1 <- newTable( targets.all, "Targets file" ); # w/ caption
 report.s1s1 <- addTo( report.s1s1, report.s1p1, report.s1t1 )
 
 column2design <- 4   # Columna del ''targets'' en que es basa la matriu de disseny
@@ -258,7 +291,8 @@ write.csv2(cont.matrix, file=outFileNameRelPath )
 #print(cont.matrix) #comentar aquesta linia si no es vol visualitzar la matriu de contrasts
 report.s1s2 <- newSection( "Contrasts Matrix" );
 report.s1p2 <- newParagraph( "Contrasts matrix: which sample types (groups) are used in each comparison" );
-report.s1t2 <- newTable( colnames( cont.matrix ), 
+cont.matrix.table.title <- c(colnames( cont.matrix )[1:6], "(...)")
+report.s1t2 <- newTable( cont.matrix.table.title, 
                          file=outFileNameRelPath,
                          "Contrasts Matrix" ); # w/ caption
 report.s1s2 <- addTo( report.s1s2, report.s1p2, report.s1t2 )
@@ -471,14 +505,14 @@ topTabLoop <- foreach (ii = 1:length(wCont)) %do% { # ii is the index of the lis
     #                          page.title = outTitle )
     
     # When requested, create the dTable, filterable and sortable, etc.
-    create.dTable <- F
+    create.dTable <- T
     if (create.dTable == TRUE) {
       # Create a dTable, a filterable html table: sortable columns plus search box that filster records in real time
       # uses dTable from rCharts.
       # Only the first 7 are the needed ones for the html file generated. Example:
       # (rowname)                         ID      logFC  AveExpr         t      P.Value adj.P.Val  B
       # ENSG00000252190_st ENSG00000252190_st  0.1148340 4.995241  3.976190 0.0001824323 0.3810522  0.6738682
-      filterable.dTable=dTable(topTab.tmp[,1:7], sPaginationType = "full_numbers")
+      filterable.dTable=dTable(topTab.tmp[,1:7], sPaginationType = "full_numbers", aaSorting=list(c(4, "asc")))
       filterable.dTable$templates$script =  "http://timelyportfolio.github.io/rCharts_dataTable/chart_customsort.html" 
       for (cc in 1:7) { # XXXX Only the first 7 are the needed ones for the html file generated
         filterable.dTable$params$table$aoColumns[cc] =
@@ -544,10 +578,13 @@ outFileNameRelPath <- file.path( resultsRelDir, outFileName )
 numGeneChangedFC.df <- read.table(file = file.path(resultsDir, outFileName),
                                   header = TRUE, sep = ";")
 # Write the resulting files to the report
-report.s2t2 <- newTable( numGeneChangedFC.df, 
+report.s2t2a <- newTable( numGeneChangedFC.df[,1:6], 
                          file=outFileNameRelPath,
-                         "Number of features changed between comparisons for given p.value cutoffs and methods (adjusted p.value or not)" ); # w/ caption
-report.s2s2 <- addTo( report.s2s2, report.s2t2)
+                         "Number of features changed between comparisons for given p.value cutoffs and methods (adjusted p.value or not). First comparisons." ); # w/ caption
+report.s2t2b <- newTable( numGeneChangedFC.df[,7:ncol(numGeneChangedFC.df)], 
+                          file=outFileNameRelPath,
+                          "Number of features changed between comparisons for given p.value cutoffs and methods (adjusted p.value or not). Last comparisons." ); # w/ caption
+report.s2s2 <- addTo( report.s2s2, report.s2t2a, report.s2t2b)
 #report.s2file <- newParagraph( "File: <a href=\"", outFileNameRelPath,"\">",
 #                                 outFileNameRelPath, "</a>")
 #report.s2s2 <- addTo( report.s2s2, report.s2file)
@@ -949,9 +986,12 @@ for (ii in 1:length(wCont)) { # ii is the index of the list with the multiple co
 ###################################################
 # Report with Nozzle.R1
 # Phase 2: assemble report structure bottom-up
+report.s0a <- addTo( report.s0a, report.s0a.p1, report.s0a.p2);
+report.s0b <- addTo( report.s0b, report.s0b.p1, report.s0b.p2);
 report.s1 <- addTo( report.s1, report.s1s1, report.s1s2, report.s1s3, report.s1s4, report.s1s5, report.s1s6);
 report.s2 <- addTo( report.s2, report.s2s1, report.s2s2, report.s2s3, report.s2s4, report.s2s5 );
-report.r <- addTo( report.r, report.s1, report.s2 );
+report.r <- addTo( report.r, report.s0a, report.s0b, report.s1, report.s2 );
+#report.r <- addTo( report.r, report.s1, report.s2 );
 
 # Ensure that the report is created at the baseDir, and not at resultsDir
 setwd(baseDir)
@@ -971,5 +1011,5 @@ report.r <- setContactInformation( report.r, email="ueb@vhir.org", subject="Prob
 #report.r <- setCustomScreenCss( report.r, "paper.css" );
 
 # Phase 3: render report to file
-writeReport( report.r, filename= report.filename ); # w/o extension
+writeReport( report.r, filename=report.filename ); # w/o extension
 #Two files called my_report.html and my_report.RData will be written to the current working directory.
