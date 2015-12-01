@@ -673,7 +673,7 @@ report.s2s2 <- addTo( report.s2s2, report.s2p2)
 
 setwd(baseDir)
 # Carrega numGeneChangedFC.R
-source("numGeneChangedFC.R")
+source(file.path(baseDir,"Rcode", "numGeneChangedFC.R"))
 
 setwd(resultsDir)
 
