@@ -41,6 +41,9 @@ if(!require(plotly)) install.packages("plotly")
 #if(!require(plotly)) devtools::install_github("ropensci/plotly")
 if(!require(Nozzle.R1)) install.packages( "Nozzle.R1", type="source" );
 if(!require(VennDiagram)) install.packages("VennDiagram")
+if(!require(stringr)) install.packages("stringr")
+if(!require(xml2)) install.packages("xml2")
+
 #if(!require(venneuler)) install.packages("venneuler")
 
 #Load required libraries
@@ -50,7 +53,7 @@ library(doMC)
 require(devtools)
 library(rCharts)
 require( Nozzle.R1 )
-
+require(stringr)
 
 ###################################
 # Basic parameters for the script
@@ -107,19 +110,24 @@ if (file.exists(paste0(report.filename, ".html"))) file.remove(paste0(report.fil
 if (file.exists(paste0(report.filename, ".RData"))) file.remove(paste0(report.filename, ".RData"))
 
 # Phase 1: create report elements
-report.r <- newCustomReport( "Result Files for Analysis BRB A279" );
+report.r <- newCustomReport( "Results Files for Analysis BRB A279" );
 #report.r <- setReportSubTitle( report.r, "Analysis of differentially expressed miRNA between 24 lung cancer and 24 control samples from Affymetrix miRNA 4.0 plate arrays");
 
 report.s0a <- newSection( "Overview" );
-report.s0a.p1 <- newParagraph( "2015 11 02. Results Files, Version 1" );
-report.s0a.p2 <- newParagraph( "Samples contain three subtypes within the cancer samples \
-                                        (namely, Epidermoid, Adenocarcinoma, and Microcytic subgroups),\
-                                        and 2 subtypes within the control ones (samples with or without risk factor). \
-                                        Multiple comparisons will be performed." );
+report.s0a.p1 <- newParagraph( "Results Files, Version 1" );
+report.s0a.p2 <- newParagraph( "This html file contains a list of all files with results generated within analysis BRB279. \
+                                Samples contain three subtypes within the cancer samples \
+                                (namely, Epidermoid, Adenocarcinoma, and Microcytic subgroups),\
+                                and 2 subtypes within the control ones (samples with or without risk factor). \
+                                Multiple comparisons will be performed. \ 
+                               Most results are stored as ", asStrong(".txt"), " or ", asStrong(".csv"), ", as well as ", asStrong(".html"), " or ", asStrong(".pdf"), " files\
+                               in order to avoid dependency of any specific software different than general purpose office suits, internet browsers or pdf readers." );
  
 report.s0b <- newSection( "Main Documents" );
-report.s0b.p1 <- newParagraph( "Study proposal" );
-report.s0b.p2 <- newParagraph( "Report with description of methodology and main results" );
+study.proposalRelFileName <- file.path(resultsRelDir, "2015-09-NuriaBarbarroja-A279-StudyBudget.pdf")
+report.s0b.p1 <- newParagraph( "Study proposal: ", asLink(study.proposalRelFileName, study.proposalRelFileName ));
+study.reportRelFileName <- file.path(resultsRelDir, "2015-09-NuriaBarbarroja-A279-MainReport.pdf")
+report.s0b.p2 <- newParagraph( "Report with description of methodology and main results: ", asLink(study.reportRelFileName, study.reportRelFileName ));
 
 report.s1 <- newSection( "Base information" );
 
@@ -220,7 +228,8 @@ targets.all <- targets
 row2remove.idx <- which(targets$SampleName %in% samples2remove)  
 targets <- targets[-row2remove.idx,]
 
-report.s1p1 <- newParagraph( "Sample names, groups and color codes used in the analysis" );
+report.s1p1 <- newParagraph( "Sample names, groups and color codes used in the analysis. \
+                             This file also shows the relation between samples and covariates as indicated by the researcher");
 report.s1t1 <- newTable( targets.all, "Targets file" ); # w/ caption
 report.s1s1 <- addTo( report.s1s1, report.s1p1, report.s1t1 )
 
@@ -285,7 +294,7 @@ cont.matrix <- makeContrasts(                   ### RECORDAR QUE AIXÒ ES UN EXE
   levels = design)
 
 cont.matrix.file <- "contrasts.matrix.csv"
-outFileNameRelPath <- file.path( resultsDir, cont.matrix.file )
+outFileNameRelPath <- file.path( resultsRelDir, cont.matrix.file )
 write.csv2(cont.matrix, file=outFileNameRelPath )
 
 #print(cont.matrix) #comentar aquesta linia si no es vol visualitzar la matriu de contrasts
@@ -412,6 +421,88 @@ if(length(pValCutOff)!=length(compGroupName)) warning("L'objecte pValCutOff ha d
 if(length(adjMethod)!=length(compGroupName)) warning("L'objecte adjMethod ha de tenir el mateix nombre d'elements que compGroupName!")
 if(length(minLogFoldChange)!=length(compGroupName)) warning("L'objecte minLogFoldChange ha de tenir el mateix nombre d'elements que compGroupName!")
 
+#############################
+# Feature annotation reference
+#############################
+anotacion.hg.fileName.noext <- "featureAnotation" 
+outFile <- anotacion.hg.fileName.noext # Name set in PreparaDades.XXX.R
+outFileName <- paste0(outFile, ".csv")
+outFileNameRelPath <- file.path( resultsRelDir, outFileName )
+  
+report.s1s7 <- newSection( "Feature annotation reference" );
+report.s1p7 <- newParagraph( "List of Transcript ID for the correspoding Probeset names and database name where to look for more information.");
+# Write the resulting files to the report
+report.s1file7a.csv <- newHtml( "File (CSV): <a href=", outFileNameRelPath,">",
+                                outFileNameRelPath, "</a>",
+                                style="background-color: snow;" )
+
+# When requested, create the dTable, filterable and sortable, etc.
+create.dTable.featAnot <- F
+if (create.dTable.featAnot == TRUE) {
+  # Create a dTable, a filterable html table: sortable columns plus search box that filster records in real time
+  # uses dTable from rCharts.
+  # Only the first 6 are the needed ones for the html file generated. Example:
+  #  Probe_Set_ID Species_Scientific_Name Sequence.Type Sequence.Source   Transcript_ID  Probe.Set.Name
+  #  20500112            Homo sapiens         miRNA         miRBase   hsa-let-7a-5p MIMAT0000062_st
+  featAnot.dTable=dTable(anotacion.hg[,1:ncol(anotacion.hg)], sPaginationType = "full_numbers", 
+                         bScrollInfinite = T,
+                         bScrollCollapse = T,
+                         sScrollY = "300px",
+                         aaSorting=list() ) # This list() should indicate to avoid any attempt of sorting client side at display time 
+                         # aaSorting=list(c(4, "asc")) ) # This c(4, "asc") sorts ascending on the 5th column. 
+  #str(featAnot.dTable)
+  # featAnot.dTable$LIB$url
+  # featAnot.dTable$html_assets # ...$js & ...$css
+  # Disabled tweaking these params here since they change the url for some of the paths, not all (js and css from datatables, for instance, are not converted into relative paths)
+  #featAnot.dTable$html_assets$js  <- "foobarjs"
+  #featAnot.dTable$html_assets$css <- "foobarcss"
+    #     <!doctype HTML>
+    #       <meta charset = 'utf-8'>
+    #       <html>
+    #       <head>
+    #       <link rel='stylesheet' href='/home/xavi/R/x86_64-pc-linux-gnu-library/3.2/rCharts/libraries/datatables/css/jquery.dataTables.css'>
+    #       <link rel='stylesheet' href='/home/xavi/R/x86_64-pc-linux-gnu-library/3.2/rCharts/libraries/datatables/css/jquery.dataTables_themeroller.css'>
+    #       <link rel='stylesheet' href='/home/xavi/R/x86_64-pc-linux-gnu-library/3.2/rCharts/libraries/datatables/css/demo_table.css'>
+    #       <link rel='stylesheet' href='foobarjs'>
+    #       
+    #       <script src='/home/xavi/R/x86_64-pc-linux-gnu-library/3.2/rCharts/libraries/datatables/js/jquery.js' type='text/javascript'></script>
+    #       <script src='/home/xavi/R/x86_64-pc-linux-gnu-library/3.2/rCharts/libraries/datatables/js/jquery.dataTables.js' type='text/javascript'></script>
+    #       <script src='foobarcss' type='text/javascript'></script>
+    #       (...)
+    #     
+  
+  
+  # If you want no initial sorting client side because it's been sorted server side already, 
+  # you can disable this client initialization with
+  # /* Disable initial sort */ From http://stackoverflow.com/a/4964423
+  #      "aaSorting": [], which in R code might imply writing:
+  #      "aaSorting": list(), which in R code might imply writing:
+  #featAnot.dTable$templates$script =  "http://timelyportfolio.github.io/rCharts_dataTable/chart_customsort.html" 
+  for (cc in 1:ncol(anotacion.hg)) { # XXXX Only the first 7 are the needed ones for the html file generated
+    featAnot.dTable$params$table$aoColumns[cc] =
+      list( list(sType = "string_ignore_null", sTitle = colnames(anotacion.hg[cc])) )
+  }
+  outFileName <- paste0(outFile, "-dTable.html")
+  outFileNameRelPath <- file.path( resultsRelDir, outFileName )
+  featAnot.dTable$save(outFileNameRelPath) 
+} # end of if create.dTable
+
+report.dTable.featAnot <- TRUE
+if (report.dTable.featAnot == TRUE) {
+  # Assign file names again just in case create.dTable.featAnot was FALSE but report.dTable.featAnot is TRUE
+  outFileName <- paste0(outFile, "-dTable.html")
+  outFileNameRelPath <- file.path( resultsRelDir, outFileName )
+  
+  # Write the resulting files to the report
+  report.s1s7h1 <- newHtml( "<iframe src=\"", outFileNameRelPath, "\" frameborder=1 height=400 scrolling=auto width=\"1000\"></iframe>", style="background-color: snow;" )
+  report.s1file7b <- newHtml( "File (HTML): <a href=\"", outFileNameRelPath,"\">", outFileNameRelPath, "</a>",
+                              style="background-color: snow;" )
+  report.s1s7 <- addTo( report.s1s7, report.s1p7, report.s1s7h1, report.s1file7a.csv, report.s1file7b)
+} else { # if no report of dTable, add at least, the link to the csv file
+  report.s1s7 <- addTo( report.s1s7, report.s1p7, report.s1file7a.csv)
+} # end of if report dTable
+
+
 # Set the number of cores to use
 registerDoMC(nCores)
 
@@ -449,7 +540,7 @@ for (ii in 1:length(wCont)) { # ii is the index of the list with the multiple co
 }
 
 topTabLoop <- foreach (ii = 1:length(wCont)) %do% { # ii is the index of the list with the multiple comparison group names
-  #wCont[ii]
+  #wCont[ii] ; ii <- 1; jj <- 1;
   foreach (jj = 1:length(wCont[[ii]])) %do% { # jj is the index of the list with the single comparisons from within each group of comparisons
     
     my.compName <- colnames(cont.matrix)[ wCont[[ii]][jj] ]
@@ -489,9 +580,18 @@ topTabLoop <- foreach (ii = 1:length(wCont)) %do% { # ii is the index of the lis
     if (exists("topTab.tmp")) rm(topTab.tmp)
     topTab.tmp <- cbind(rownames(topTab[[ wCont[[ii]][jj] ]]), 
                         topTab[[ wCont[[ii]][jj] ]] )
-    colnames(topTab.tmp)[1] <- "ID"
-    #head(topTab2)
-    
+    colnames(topTab.tmp)[1] <- "Probe.Set.Name"
+    #head(topTab.tmp)
+    # Add column TranscriptID at this point, merging through the common column Probe.Set.Name
+    #head(anotacion.hg)
+    tid <- data.frame(anotacion.hg$Transcript_ID,anotacion.hg$Probe.Set.Name)
+    colnames(tid) <- str_replace(colnames(tid), "anotacion.hg.", "")
+    #head(tid)
+    topTab.tmp <- merge(topTab.tmp, tid, by = "Probe.Set.Name")
+    # head(topTab.tmp.tid)
+    # dim(topTab.tmp)
+    # dim(topTab.tmp.tid)
+
     # Disabled in favor of the dTable created below
     #     write.htmltable(x = topTab2, 
     #                     file=file.path( resultsDir, outFile ),
@@ -505,16 +605,27 @@ topTabLoop <- foreach (ii = 1:length(wCont)) %do% { # ii is the index of the lis
     #                          page.title = outTitle )
     
     # When requested, create the dTable, filterable and sortable, etc.
-    create.dTable <- T
-    if (create.dTable == TRUE) {
+    create.dTable.topTab <- F
+    if (create.dTable.topTab == TRUE) {
+      ## Sort topTab.tmp before creating the dTable
+      # No need to re-sort since it's already sorted by p-value
+      #head(topTab.tmp[,1:ncol(topTab.tmp)])
+      
       # Create a dTable, a filterable html table: sortable columns plus search box that filster records in real time
       # uses dTable from rCharts.
-      # Only the first 7 are the needed ones for the html file generated. Example:
-      # (rowname)                         ID      logFC  AveExpr         t      P.Value adj.P.Val  B
-      # ENSG00000252190_st ENSG00000252190_st  0.1148340 4.995241  3.976190 0.0001824323 0.3810522  0.6738682
-      filterable.dTable=dTable(topTab.tmp[,1:7], sPaginationType = "full_numbers", aaSorting=list(c(4, "asc")))
+      # Only the first 8 are the needed ones for the html file generated. Example:
+      # (rowname)                         Probe.Set.Name      logFC  AveExpr         t      P.Value adj.P.Val  B Transcript_ID
+      # ENSG00000252190_st ENSG00000252190_st  0.1148340 4.995241  3.976190 0.0001824323 0.3810522  0.6738682   foobar
+      filterable.dTable=dTable(topTab.tmp[,1:ncol(topTab.tmp)], sPaginationType = "full_numbers", 
+                              # aaSorting=list() ) # This list() should indicate to avoid any attempt of sorting client side at display time 
+                               aaSorting=list(c(4, "asc")) ) # This c(4, "asc") sorts ascending on the 5th column. 
+                              # If you want no initial sorting client side because it's been sorted server side already, 
+                              # you can disable this client initialization with
+                              # /* Disable initial sort */ From http://stackoverflow.com/a/4964423
+                              #      "aaSorting": [], which in R code might imply writing:
+                              #      "aaSorting": list(), which in R code might imply writing:
       filterable.dTable$templates$script =  "http://timelyportfolio.github.io/rCharts_dataTable/chart_customsort.html" 
-      for (cc in 1:7) { # XXXX Only the first 7 are the needed ones for the html file generated
+      for (cc in 1:ncol(topTab.tmp)) { # XXXX Only the first 8 are the needed ones for the html file generated
         filterable.dTable$params$table$aoColumns[cc] =
           list( list(sType = "string_ignore_null", sTitle = colnames(topTab.tmp[cc])) )
       }
@@ -523,8 +634,8 @@ topTabLoop <- foreach (ii = 1:length(wCont)) %do% { # ii is the index of the lis
       filterable.dTable$save(outFileNameRelPath) 
     } # end of if create.dTable
     
-    report.dTable <- TRUE
-    if (report.dTable == TRUE) {
+    report.dTable.topTab <- TRUE
+    if (report.dTable.topTab == TRUE) {
       outFileName <- paste0(outFile, "-dTable.html")
       outFileNameRelPath <- file.path( resultsRelDir, outFileName )
       
@@ -532,7 +643,7 @@ topTabLoop <- foreach (ii = 1:length(wCont)) %do% { # ii is the index of the lis
       report.s2s1s1 <- newSection( names(compNamesAll)[ii], " | ", compNamesAll[[ii]][jj] );
       
       # Write the resulting topTable files to the report
-      report.s2s1h1 <- newHtml( "<iframe src=\"", outFileNameRelPath, "\" frameborder=1 height=400 scrolling=auto width=\"900\"></iframe>", style="background-color: snow;" )
+      report.s2s1h1 <- newHtml( "<iframe src=\"", outFileNameRelPath, "\" frameborder=1 height=400 scrolling=auto width=\"1000\"></iframe>", style="background-color: snow;" )
       report.s2file1b <- newHtml( "File (HTML): <a href=\"", outFileNameRelPath,"\">", outFileNameRelPath, "</a>",
                                   style="background-color: snow;" )
       report.s2s1s1 <- addTo( report.s2s1s1, report.s2s1h1, report.s2file1a.csv, report.s2file1b)
@@ -542,7 +653,7 @@ topTabLoop <- foreach (ii = 1:length(wCont)) %do% { # ii is the index of the lis
     } # end of if report dTable
     
   } # end of the jj loop
-  return( c(topTabExtended, report.s2s1) )  # only needed when the loop run in parallel, 
+  return( c(report.s2s1) )  # only needed when the loop run in parallel, 
   # to preserve some objects created within the parallel loop for later reuse
   #return( c(topTabExtended) )
 } # end of the ii loop
@@ -581,7 +692,7 @@ numGeneChangedFC.df <- read.table(file = file.path(resultsDir, outFileName),
 report.s2t2a <- newTable( numGeneChangedFC.df[,1:6], 
                          file=outFileNameRelPath,
                          "Number of features changed between comparisons for given p.value cutoffs and methods (adjusted p.value or not). First comparisons." ); # w/ caption
-report.s2t2b <- newTable( numGeneChangedFC.df[,7:ncol(numGeneChangedFC.df)], 
+report.s2t2b <- newTable( numGeneChangedFC.df[,c(1,7:ncol(numGeneChangedFC.df))], 
                           file=outFileNameRelPath,
                           "Number of features changed between comparisons for given p.value cutoffs and methods (adjusted p.value or not). Last comparisons." ); # w/ caption
 report.s2s2 <- addTo( report.s2s2, report.s2t2a, report.s2t2b)
@@ -612,12 +723,12 @@ for (ii in 1:length(wCont)) { # ii is the index of the list with the multiple co
     outFileNameRelPath.png <- file.path( resultsRelDir, outFileName.png )
     
     # Set volcanoPointNames. 
-    ## Recent versions of limma seem to not write the feature name as fitmai$ID anymore, 
+    ## Recent versions of limma seem to not write the feature name as fitmai$ID (Probe.Set.Name in this case) anymore, 
     ## but just provide the feature name as the row.name  
-    if (is.null(fit.main$ID)) {
+    if (is.null(fit.main$Probe.Set.Name)) {
       volcanoPointNames <- rownames(fit.main)
     } else {
-      volcanoPointNames <- fit.main$ID
+      volcanoPointNames <- fit.main$Probe.Set.Name
     }
     # Generate the pdf
     pdf(file=outFileName.pdf, paper="special", width=6, height=6)
@@ -988,7 +1099,8 @@ for (ii in 1:length(wCont)) { # ii is the index of the list with the multiple co
 # Phase 2: assemble report structure bottom-up
 report.s0a <- addTo( report.s0a, report.s0a.p1, report.s0a.p2);
 report.s0b <- addTo( report.s0b, report.s0b.p1, report.s0b.p2);
-report.s1 <- addTo( report.s1, report.s1s1, report.s1s2, report.s1s3, report.s1s4, report.s1s5, report.s1s6);
+report.s1 <- addTo( report.s1, report.s1s1, report.s1s2, report.s1s3, report.s1s4, report.s1s5,
+                    report.s1s6, report.s1s7);
 report.s2 <- addTo( report.s2, report.s2s1, report.s2s2, report.s2s3, report.s2s4, report.s2s5 );
 report.r <- addTo( report.r, report.s0a, report.s0b, report.s1, report.s2 );
 #report.r <- addTo( report.r, report.s1, report.s2 );
@@ -1013,3 +1125,26 @@ report.r <- setContactInformation( report.r, email="ueb@vhir.org", subject="Prob
 # Phase 3: render report to file
 writeReport( report.r, filename=report.filename ); # w/o extension
 #Two files called my_report.html and my_report.RData will be written to the current working directory.
+
+# Phase 4: edit the report and other html files produced so that css and js libraries use relative paths and not absolute, so that they work when moved to another computer
+# ToDo (as of December 1, 2015). Pending to finish properly this Phase 4.
+
+# For html edition as simple text from R, we can use the readr package
+#require(readr)
+# install.packages("compare")
+#require(compare)
+# base_url <- "/home/xavi/R/x86_64-pc-linux-gnu-library/3.2/rCharts/libraries/datatables/"
+# #file2edit <- file.path(resultsRelDir, paste0(report.filename, ".html"))
+# file2edit <- paste0(report.filename, ".html")
+# f2e.abs <- read_file(file2edit)
+# f2eg.rel <- gsub(base_url, "./", f2e.abs)
+
+#   # For html edition from R, See: http://blog.rstudio.org/2015/04/21/xml2/
+#   require(xml2)
+#   base_url <- "/home/xavi/R/x86_64-pc-linux-gnu-library/3.2/rCharts/libraries/datatables/"
+#   #file2edit <- file.path(resultsRelDir, paste0(report.filename, ".html"))
+#   file2edit <- paste0(report.filename, ".html")
+#   #f2e <- read_html(file2edit)
+#   # xml_url(f2e)
+#   # xml_contents(f2e)
+#   # url_relative(f2r, basde_url)
