@@ -680,7 +680,10 @@ setwd(resultsDir)
 if(!require(readr)) install.packages("readr")
 require(readr)
 
-numGeneChangedFC(filenames=grep("Selected.Genes.in.comparison.*.csv",dir(),value=TRUE),
+numGeneChangedFilenames <- paste0("Selected.Genes.in.comparison.", 
+                                  colnames(cont.matrix), 
+                                  ".csv")
+numGeneChangedFC(filenames=numGeneChangedFilenames,
                  comparisons= colnames(cont.matrix),
                  FC=0) # FC needs to be hardcoded to Zero at this step
 
