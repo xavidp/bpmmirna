@@ -136,7 +136,7 @@ report.s1 <- newSection( "Base information" );
 #############################
 ## ----loadData------------------------------------------------------------
 #load(file=file.path(resultsDir, "datos.normalizados.Rda"))
-#source("Rcode/PreparaDades.A279.R")
+source("Rcode/PreparaDades.A279.R")
 
 # The Previous file created the expression set.
 
@@ -437,7 +437,7 @@ report.s1file7a.csv <- newHtml( "File (CSV): <a href=", outFileNameRelPath,">",
                                 style="background-color: snow;" )
 
 # When requested, create the dTable, filterable and sortable, etc.
-create.dTable.featAnot <- F
+create.dTable.featAnot <- T
 if (create.dTable.featAnot == TRUE) {
   # Create a dTable, a filterable html table: sortable columns plus search box that filster records in real time
   # uses dTable from rCharts.
@@ -605,7 +605,7 @@ topTabLoop <- foreach (ii = 1:length(wCont)) %do% { # ii is the index of the lis
     #                          page.title = outTitle )
     
     # When requested, create the dTable, filterable and sortable, etc.
-    create.dTable.topTab <- F
+    create.dTable.topTab <- T
     if (create.dTable.topTab == TRUE) {
       ## Sort topTab.tmp before creating the dTable
       # No need to re-sort since it's already sorted by p-value
