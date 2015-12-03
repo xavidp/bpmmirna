@@ -1,7 +1,7 @@
 
 ################################################################################
 ####################
-##### geneSelectable
+##### featureSelectable
 ####################
 ##### topTab: Toptable en format '.csv'
 ##### adj0: p.valor adjustat pel qual filtrar (de normal, 0.01)
@@ -12,7 +12,7 @@
 ################################################################################
 
 
-genesSelectable <- function (topTab, adj0, adj1, adj2, P1, P2,FC=1)
+featuresSelectable <- function (topTab, adj0, adj1, adj2, P1, P2,FC=1)
 {
   upBelowB <- sum(topTab$B > 0  & topTab$t > 0 & abs(topTab$logFC) > FC)
   downBelowB <- sum(topTab$B > 0  & topTab$t < 0 & abs(topTab$logFC) > FC)
@@ -53,7 +53,7 @@ genesSelectable <- function (topTab, adj0, adj1, adj2, P1, P2,FC=1)
 
 ################################################################################
 ######################
-##### numGeneChangedFC
+##### numFeatureChangedFC
 ######################
 ##### filenames: vector amb el noms dels fitxers topTable 
 #####            (si estem dins de results, ex: filenames<-grep("Express",dir(),value=TRUE))
@@ -65,10 +65,10 @@ genesSelectable <- function (topTab, adj0, adj1, adj2, P1, P2,FC=1)
 ##### P1: p.valor pel qual filtrar (si no es posa res, 0.01)
 ##### P1: segon p.valor pel qual filtrar (si no es posa res, 0.05)
 ################################################################################
-numGeneChangedFC<- function (filenames,comparisons, FC=0, adj0=0.01, adj1=0.05, adj2=0.25, P1=0.01, P2=0.05)
+numFeatureChangedFC<- function (filenames,comparisons, FC=0, adj0=0.01, adj1=0.05, adj2=0.25, P1=0.01, P2=0.05)
 {
   dat<-lapply(filenames, read.csv2,header=T)
-  res<-data.frame(lapply(dat, genesSelectable,adj0=adj0, adj1=adj1, adj2=adj2, P1=P1, P2=P2,FC=FC))
+  res<-data.frame(lapply(dat, featuresSelectable,adj0=adj0, adj1=adj1, adj2=adj2, P1=P1, P2=P2,FC=FC))
   colnames(res) <- comparisons
   row.names(res) <- c("upReg-B>0", "downReg-B>0",
                       paste("upReg-Adjusted-p-val", adj0, sep = " < "), 
@@ -81,13 +81,13 @@ numGeneChangedFC<- function (filenames,comparisons, FC=0, adj0=0.01, adj1=0.05, 
                       paste("downReg-P value", P1, sep = " < "),
                       paste("upReg-P value", P2, sep = " < "),
                       paste("downReg-P value", P2, sep = " < "))
-  write.csv2( res, file=paste("numGenesChangedFC",FC,".csv",sep="") )
+  write.csv2( res, file=paste("numFeaturesChangedFC",FC,".csv",sep="") )
 }
 
 ### EXEMPLES
-#numGeneChangedFC(filenames=grep("Express",dir(),value=TRUE),comparisons= c("d6vsd12","NSCvsAstr","NSCvsd6","NSCvsNeur"),FC=0)
-#numGeneChangedFC(filenames=grep("Express",dir(),value=TRUE),comparisons= c("d6vsd12","NSCvsAstr","NSCvsd6","NSCvsNeur"),FC=1)
-#numGeneChangedFC(filenames=grep("Express",dir(),value=TRUE),comparisons= c("d6vsd12","NSCvsAstr","NSCvsd6","NSCvsNeur"),FC=2)
+#numFeatureChangedFC(filenames=grep("Express",dir(),value=TRUE),comparisons= c("d6vsd12","NSCvsAstr","NSCvsd6","NSCvsNeur"),FC=0)
+#numFeatureChangedFC(filenames=grep("Express",dir(),value=TRUE),comparisons= c("d6vsd12","NSCvsAstr","NSCvsd6","NSCvsNeur"),FC=1)
+#numFeatureChangedFC(filenames=grep("Express",dir(),value=TRUE),comparisons= c("d6vsd12","NSCvsAstr","NSCvsd6","NSCvsNeur"),FC=2)
 
 
 

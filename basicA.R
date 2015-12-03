@@ -115,19 +115,25 @@ report.r <- newCustomReport( "Results Files for Analysis BRB A279" );
 
 report.s0a <- newSection( "Overview" );
 report.s0a.p1 <- newParagraph( "Results Files, Version 1" );
-report.s0a.p2 <- newParagraph( "This html file contains a list of all files with results generated within analysis BRB279. \
-                                Samples contain three subtypes within the cancer samples \
-                                (namely, Epidermoid, Adenocarcinoma, and Microcytic subgroups),\
-                                and 2 subtypes within the control ones (samples with or without risk factor). \
-                                Multiple comparisons will be performed. \ 
-                               Most results are stored as ", asStrong(".txt"), " or ", asStrong(".csv"), ", as well as ", asStrong(".html"), " or ", asStrong(".pdf"), " files\
-                               in order to avoid dependency of any specific software different than general purpose office suits, internet browsers or pdf readers." );
+report.s0a.p2 <- newParagraph( "This html file contains links to a series of files with results generated \
+                    in the analyses performed in the Statistics and Bioinformatics Unit.");
+report.s0a.p3 <- newParagraph( "Briefly stated the main goal of the study (indeed the first part of the study) \
+                    is to select differentially expressed microRNAs associated with different subtypes of lung cancer. \
+                    The samples are divided in two main groups: 'Control' with two subgroups \
+                    ('With Risk Factor' and 'Without Risk Factor') \
+                    and 'Cancer' with three subtypes ('Epidermoid', 'Adenocarcinoma', and 'Microcytic').");
+report.s0a.p4 <- newParagraph( "The comparisons performed have been indicated by the researchers.");
+report.s0a.p5 <- newParagraph( "Most results are stored as ", asStrong(".txt"), " or ", asStrong(".csv"),
+                    ", as well as ", asStrong(".html"), " or ", asStrong(".pdf"), " files\
+                    in order to avoid dependency of any specific software different than \
+                    general purpose office suits, internet browsers or pdf readers." );
  
 report.s0b <- newSection( "Main Documents" );
 study.proposalRelFileName <- file.path(resultsRelDir, "2015-09-NuriaBarbarroja-A279-StudyBudget.pdf")
 report.s0b.p1 <- newParagraph( "Study proposal: ", asLink(study.proposalRelFileName, study.proposalRelFileName ));
 study.reportRelFileName <- file.path(resultsRelDir, "2015-09-NuriaBarbarroja-A279-MainReport.pdf")
-report.s0b.p2 <- newParagraph( "Report with description of methodology and main results: ", asLink(study.reportRelFileName, study.reportRelFileName ));
+report.s0b.p2 <- newParagraph( "Report with description of methodology and main results: ", asEmph("Not available yet")) ;
+                               #, asLink(study.reportRelFileName, study.reportRelFileName ));
 
 report.s1 <- newSection( "Base information" );
 
@@ -141,7 +147,7 @@ source("Rcode/PreparaDades.A279.R")
 # The Previous file created the expression set.
 
 #############################
-# GENE SELECTION
+# FEATURE (GENE, miRNA, ...)  SELECTION
 #############################
 eset_norm <- d_vsn2 # d_vsn2 ja té les columnes i files (covariables) coincidint amb la info del targets
 dim(exprs(eset_norm))
@@ -205,7 +211,7 @@ eset_norm.hg.nc <- eset_norm.hg[-control.idx,] # .nc stands for "No Controls"
 exprs.filtered <- eset_norm.hg.nc
 
 # Report
-report.s1s1 <- newSection( "Targets" );
+report.s1s1 <- newSection( "Samples and Groups" );
 
 ## ----matDesign, eval=TRUE------------------------------------------------
 #design<-matrix(
@@ -228,8 +234,11 @@ targets.all <- targets
 row2remove.idx <- which(targets$SampleName %in% samples2remove)  
 targets <- targets[-row2remove.idx,]
 
-report.s1p1 <- newParagraph( "Sample names, groups and color codes used in the analysis. \
-                             This file also shows the relation between samples and covariates as indicated by the researcher");
+report.s1p1 <- newParagraph( "The table below -usually known as the 'Targets' table- shows the classification \
+                    of each sample, that is if the sample corresponds to an affected ('Cancer') or \
+                    unaffected ('CTL') patient and to which subtype it has been assigned. \
+                    The table also contains information about how the sample is labelled (to be shown in plots) \
+                    or which colors are used in plots for each Group-Subgroup combination.");
 report.s1t1 <- newTable( targets.all, "Targets file" ); # w/ caption
 report.s1s1 <- addTo( report.s1s1, report.s1p1, report.s1t1 )
 
@@ -298,13 +307,53 @@ outFileNameRelPath <- file.path( resultsRelDir, cont.matrix.file )
 write.csv2(cont.matrix, file=outFileNameRelPath )
 
 #print(cont.matrix) #comentar aquesta linia si no es vol visualitzar la matriu de contrasts
-report.s1s2 <- newSection( "Contrasts Matrix" );
-report.s1p2 <- newParagraph( "Contrasts matrix: which sample types (groups) are used in each comparison" );
-cont.matrix.table.title <- c(colnames( cont.matrix )[1:6], "(...)")
-report.s1t2 <- newTable( cont.matrix.table.title, 
-                         file=outFileNameRelPath,
-                         "Contrasts Matrix" ); # w/ caption
-report.s1s2 <- addTo( report.s1s2, report.s1p2, report.s1t2 )
+report.s1s2 <- newSection( "Comparisons performed" );
+report.s1p2a <- newParagraph( "The researchers have indicated which comparisons they were interested in. \
+                            Some comparisons can be naturally grouped, for example because \
+                            they are comparing all different cancer subtypes to a given control type, \
+                            or because they are doing all possible comparisons between cancer subtypes. \
+                            These cases are described as 'Groups of Comparisons'. \
+                            This is not only an aestehical distinction because while a series of informations \
+                            are provided for each individual comparison, some addititional results \
+                            are provided for each group of comparisons (essentially for each group \
+                            having more than one comparison)." );
+
+report.s1p2b <- newParagraph( "For each individual comparison the following information is provided:");
+report.s1l1 <- newList( isNumbered=FALSE,
+                newParagraph( "A 'Top Table' containing the list of all features analyzed, sorted from smallest to greatest P-value." ),
+                newParagraph( "A 'Volcano plot' showing how big -or how small- is the biological or the statistical effect." ),
+                ); # end of list
+
+#   list <- newList( isNumbered=FALSE,
+#                 newParagraph( "Nozzle also provides lists." ),
+#                 newParagraph( "They can even be nested." ),
+#                 newList( isNumbered=TRUE, 
+#                          newParagraph( "They may contain other lists." ),
+#                          newParagraph( "Or selected other elements." ),
+#                          newParagraph( "Numbered." )  
+#                          ),
+#                 newParagraph( "Or unnumbered." )  
+#                 ); # end of list		
+
+report.s1p2c <- newParagraph( "See the text in sections 'Top Table' and 'Volcano Plot' \
+                              for a more detailed description of their content and meaning. \
+                              Besides the previous tables and plots, for each group of comparisons \
+                              it is provided:");
+report.s1l2 <- newList( isNumbered=FALSE,
+                        newParagraph( "A 'Venn Diagram' showing the number of features that have been selected \
+                                      in each comparison (according to a standard cutoff) and \
+                                      allowing to determine how many of these features are in common \
+                                      between the different comparisons in the same group. \
+                                      Obviously these Venn Diagrams are only depicted \
+                                      if there is more than one comparison in the group." ),
+                        newParagraph( "A 'Heat Map' showing -according to a color code- \
+                                      if each feature selected in this group of comparisons \
+                                      is up or down regulated in each sample that has been included \
+                                      in the comparison." ),
+                      ); # end of list	
+
+report.s1s2 <- addTo( report.s1s2, report.s1p2a, report.s1p2b, report.s1l1, 
+                      report.s1p2c, report.s1l2 )
 
 condSplitter <- "vs" # Condition splitter in the Comparison String. This param is used later on to obtain the condition names of the comparison
 
@@ -334,12 +383,11 @@ for (ii in 1:length(wCont)) {
   compNamesAll[[ii]] <- colnames(cont.matrix)[ wCont[[ii]] ]
   names(compNamesAll)[ii] <- compGroupName[[ii]]  
 }
-report.s1s3 <- newSection( "Comparisons performed" );
-report.s1p3 <- newParagraph( "Multiple Comparison groups, with the comparisons they contain each" );
+
 # convert the list of All comparison names into a data frame so that it can be printed easily in the html report with Nozzle
 df.compNamesAll <- data.frame(t(sapply(compNamesAll,c)))
-report.s1t3 <- newTable( df.compNamesAll, "Multiple comparison groups" ); # w/ caption
-report.s1s3 <- addTo( report.s1s3, report.s1p3, report.s1t3 )
+report.s1t2 <- newTable( df.compNamesAll, "Groups of comparisons" ); # w/ caption
+report.s1s2 <- addTo( report.s1s2, report.s1t2 )
 
 pValCutOff <- rep(0.01, 5) # c(0.01, 0.01, 0.01, 0.01, 0.01) # si N>1, indicar el cut-off per cada conjunt de comparacions
 
@@ -358,6 +406,8 @@ key.params <- rbind(pValCutOff, adjMethod, minLogFoldChange)
 key.params <- cbind(rownames(key.params), key.params)
 colnames(key.params) <- c("Parameter", colnames(df.compNamesAll))
 
+#report.s1s3 <- newSection( "Section removed/refactored (it doesn't exist anymore)" );
+
 #############################
 # Quality Control (raw)
 #############################
@@ -374,13 +424,27 @@ phenoData(rawData)$Colores<-targets$Colores
 #                     intgroup = "Grupo",
 #                     do.logtransform = FALSE)
 
+
 # Add the section to the report 
 report.s1s4 <- newSection( "Quality control (raw data)" );
-report.s1p4a <- newParagraph( "Quality control results based on the ArrayQualityMetrics Bioconductor Package. See it at results/QCDir.raw/index.html");
+report.s1p4a1 <- newParagraph( "Different types of quality checks have been performed on the raw data \
+                            before deciding that they were valid for the analysis. \
+                            Indeed they have been repeated twice: once with raw data and \
+                            another with normalized data (next section). A comprehensive report \
+                            is provided for the raw data (QCDir.raw/index.html) \
+                            and for the normalized data (QCDir.norm/index.html) to help the user to understand \
+                            whether a particular array can be considered as an outlier.");
+report.s1p4a2 <- newParagraph( "The check consists of a relatively high number of summaries and plots \
+                               that can be seen below. Each plot is acompanied by a brief description \
+                               of what this means and how it may be interpreted. The quality report \
+                               also contains a summary table providing advice on which samples \
+                               might be candidates for being considered as outliers and should perhaps \
+                               be removed.");
 samples2remove.collapsed <- paste(samples2remove, collapse=", ") 
-report.s1p4b <- newParagraph( "Samples removed (if any) from further analysis after QC: ", asStrong( samples2remove.collapsed ));
+report.s1p4a3 <- newParagraph( "After reviewing the quality checks on raw data it has been decided to remove three samples: ",
+                               asStrong( samples2remove.collapsed ));
 report.s1h4 <- newHtml( "<iframe src=\"", resultsRelDir, "/QCDir.raw/index.html\" frameborder=1 height=600 scrolling=auto width=\"900\"></iframe>", style="background-color: snow;" )
-report.s1s4 <- addTo( report.s1s4, report.s1p4a, report.s1p4b, report.s1h4 ) 
+report.s1s4 <- addTo( report.s1s4, report.s1p4a1, report.s1p4a2, report.s1p4a3, report.s1h4 ) 
 
 
 #############################
@@ -400,19 +464,19 @@ phenoData(exprs.filtered)$Colores<-targets$Colores
 
 # Add the section to the report 
 report.s1s5 <- newSection( "Quality control (normalized data)" );
-report.s1p5a <- newParagraph( "Quality control results based on the ArrayQualityMetrics Bioconductor Package. See it at results/QCDir.norm/index.html");
-samples2remove.collapsed <- paste(samples2remove, collapse=", ") 
-report.s1p5b <- newParagraph( "Samples removed (if any) from further analysis after QC: ", asStrong( samples2remove.collapsed ));
+report.s1p5 <- newParagraph( "A similar quality check has been performed on the samples after they have been normalized. \
+                              The results are consistent with those obtained with raw data confirming the decision \
+                              to remove samples: ", asStrong( samples2remove.collapsed ));
 report.s1h5 <- newHtml( "<iframe src=\"", resultsRelDir, "/QCDir.norm/index.html\" frameborder=1 height=600 scrolling=auto width=\"900\"></iframe>", style="background-color: snow;" )
-report.s1s5 <- addTo( report.s1s5, report.s1p5a, report.s1p5b, report.s1h5 ) 
+report.s1s5 <- addTo( report.s1s5, report.s1p5, report.s1h5 ) 
 
 #############################
-# Display Gene selection Parameters
+# Display Feature selection Parameters
 #############################
-report.s1s6 <- newSection( "Gene selection" );
-report.s1p6 <- newParagraph( "Gene selection was performed with the following parameters");
-report.s1t6 <- newTable( key.params, "Key parameters used");
-report.s1s6 <- addTo( report.s1s6, report.s1p6, report.s1t6 ) # parent, child_1, ..., child_n 
+#report.s1s6 <- newSection( "Feature selection" );
+#report.s1p6 <- newParagraph( "Feature selection was performed with the following parameters");
+#report.s1t6 <- newTable( key.params, "Key parameters used");
+#report.s1s6 <- addTo( report.s1s6, report.s1p6, report.s1t6 ) # parent, child_1, ..., child_n 
 
 ## Controlem que el nombre d'elements dels parametres anteriors sigui igual
 if(class(wCont)!="list") warning("L'objecte wCont no és una llista! Això pot provocar errors en els passos següents.")
@@ -512,8 +576,44 @@ registerDoMC(nCores)
 # Add it to the report
 report.s2 <- newSection( "Results (Files)" );
 report.s2s1 <- newSection( "Top Tables" );
-report.s2p1 <- newParagraph( "Tables with the top features for each comparison ");
-report.s2s1 <- addTo( report.s2s1, report.s2p1)
+report.s2p1 <- newParagraph( "The analysis to select differentially expressed features (here a \"feature\" is a microRNA) \
+                             has been based on adjusting a linear model with empirical bayes moderation \
+                             of the variance. This is a technique similar to ANOVA which was specifically \
+                             developed for microarray data analysis.");
+report.s2p2 <- newParagraph( "Each comparison yields a list of features sorted from lowest to highest p-value \
+                             which is equivalent to saying from most to least differentially expressed. \
+                             This is called generically a '", asEmph("Top Table"), "' and the meaning \
+                             of the columns it contains is the following:");
+report.s2l1 <- newList( isNumbered=FALSE, 
+                        newParagraph( asStrong("Probe.Set.Name"), " is the identifier of each feature in the array."),
+                        newParagraph( asStrong("Transcript_ID"), " is the identifier of each feature in the reference database."),
+                        newParagraph( asStrong("logFC"), " is the estimated fold change between conditions, which corresponds to the mean difference in log-scale."),
+                        newParagraph( asStrong("t"), " is a 'moderated-t' similar to the usual student's t statistic."),
+                        newParagraph( asStrong("P.Value"), " is the p-value corresponding to t."),
+                        newParagraph( asStrong("adj.P.Val"), " is the adjusted p-value corresponding to t (see below)."),
+                        newParagraph( asStrong("B"), " is the B-statistic. It roughly indicates the logarithm of the odds that a feature\
+                                      is differentially expressed vs that it is not.\ 
+                                      It may be interpreted as follows: When it is greater than 0 it is more likely that the feature \
+                                      is differentially expressed than that it is not differentially expressed.")
+                        );
+report.s2p3 <- newParagraph( "If one wishes to have a statistically grounded criteria, the selection of \
+                             the differentially expressed features should be based on adjusted p-values \
+                             (less than 0.01) or B statistic (greater than 0).");
+report.s2p4 <- newParagraph( "If these criteria yield too few features, table 5 indicate how many features \
+                             would be selected by applying a less restrictive criteria such as calling \
+                             differentially expressed features with, for instance, adjusted p-values less \
+                             than 0.25 or unadjusted p-values smaller than 0.05.");
+report.s2p5 <- newParagraph( "In this study the selection of differentially expressed features \
+                             has been based on ", asStrong("unadjusted p-values under 0.01"));
+report.s2p6 <- newParagraph( "In the sections below the top tables and volcano plots for each comparison and \
+                             group of comparisons are depicted." );
+report.s2p7 <- newParagraph( "Each section is labelled with two names: the name of the group of comparisons, \
+                             and the name of the specific comparison." );
+report.s2p8 <- newParagraph( "The tables and plots can be explored interactively on the window or \
+                             can be downloaded in different formats for further exploration." );
+
+report.s2s1 <- addTo( report.s2s1, report.s2p1, report.s2p2, report.s2l1, report.s2p3, 
+                      report.s2p4, report.s2p5, report.s2p6, report.s2p7, report.s2p8)
 
 if (exists("topTab")) rm(topTab);topTab <- list()
 if (exists("topTabExtended")) rm(topTabExtended);topTabExtended <- list()
@@ -561,7 +661,7 @@ topTabLoop <- foreach (ii = 1:length(wCont)) %do% { # ii is the index of the lis
                                                     ])
     
     # Write the resulting topTable to disk
-    outFile <- paste("Selected.Genes.in.comparison.",
+    outFile <- paste("Selected.Features.in.comparison.",
                      colnames(cont.matrix)[ wCont[[ii]][jj] ], sep="")
     outFileName <- paste0(outFile, ".csv")
     outFileNameRelPath <- file.path( resultsRelDir, outFileName )
@@ -575,7 +675,7 @@ topTabLoop <- foreach (ii = 1:length(wCont)) %do% { # ii is the index of the lis
                                 style="background-color: snow;" )
 
     
-    outTitle <- paste("Selected.Genes.in.comparison: ", colnames(cont.matrix)[ wCont[[ii]][jj] ], sep="")
+    outTitle <- paste("Selected.Features.in.comparison: ", colnames(cont.matrix)[ wCont[[ii]][jj] ], sep="")
     # For some reason, the html produced doesn't contain the rownames, so we pre-pend them as the first column
     if (exists("topTab.tmp")) rm(topTab.tmp)
     topTab.tmp <- cbind(rownames(topTab[[ wCont[[ii]][jj] ]]), 
@@ -664,7 +764,7 @@ topTabLoop <- foreach (ii = 1:length(wCont)) %do% { # ii is the index of the lis
 #report.s2s1
 
 ###################################################
-## NumGeneChanged
+## NumFeatureChanged (formarly named NumGeneChanged )
 ###################################################
 # Add it to the report
 report.s2s2 <- newSection( "Number of features changed in each case" );
@@ -673,29 +773,29 @@ report.s2s2 <- addTo( report.s2s2, report.s2p2)
 
 setwd(baseDir)
 # Carrega numGeneChangedFC.R
-source(file.path(baseDir,"Rcode", "numGeneChangedFC.R"))
+source(file.path(baseDir,"Rcode", "numFeatureChangedFC.R"))
 
 setwd(resultsDir)
 
 if(!require(readr)) install.packages("readr")
 require(readr)
 
-numGeneChangedFilenames <- paste0("Selected.Genes.in.comparison.", 
+numFeatureChangedFilenames <- paste0("Selected.Features.in.comparison.", 
                                   colnames(cont.matrix), 
                                   ".csv")
-numGeneChangedFC(filenames=numGeneChangedFilenames,
+numFeatureChangedFC(filenames=numFeatureChangedFilenames,
                  comparisons= colnames(cont.matrix),
                  FC=0) # FC needs to be hardcoded to Zero at this step
 
-outFileName <- paste("numGenesChangedFC0.csv",sep="")
+outFileName <- paste("numFeaturesChangedFC0.csv",sep="")
 outFileNameRelPath <- file.path( resultsRelDir, outFileName )
-numGeneChangedFC.df <- read.table(file = file.path(resultsDir, outFileName),
+numFeatureChangedFC.df <- read.table(file = file.path(resultsDir, outFileName),
                                   header = TRUE, sep = ";")
 # Write the resulting files to the report
-report.s2t2a <- newTable( numGeneChangedFC.df[,1:6], 
+report.s2t2a <- newTable( numFeatureChangedFC.df[,1:6], 
                          file=outFileNameRelPath,
                          "Number of features changed between comparisons for given p.value cutoffs and methods (adjusted p.value or not). First comparisons." ); # w/ caption
-report.s2t2b <- newTable( numGeneChangedFC.df[,c(1,7:ncol(numGeneChangedFC.df))], 
+report.s2t2b <- newTable( numFeatureChangedFC.df[,c(1,7:ncol(numFeatureChangedFC.df))], 
                           file=outFileNameRelPath,
                           "Number of features changed between comparisons for given p.value cutoffs and methods (adjusted p.value or not). Last comparisons." ); # w/ caption
 report.s2s2 <- addTo( report.s2s2, report.s2t2a, report.s2t2b)
@@ -736,14 +836,14 @@ for (ii in 1:length(wCont)) { # ii is the index of the list with the multiple co
     # Generate the pdf
     pdf(file=outFileName.pdf, paper="special", width=6, height=6)
     volcanoplot(fit.main, coef= wCont[[ii]][jj] , highlight=10, names=volcanoPointNames, 
-                main=paste("Differentially expressed genes", my.compName, sep="\n"))
+                main=paste("Differentially expressed features in ", my.compName, sep="\n"))
     abline(v=c(-1,1))
     dev.off()
     #cat("\\includegraphics{", file, "}\n\n", sep="")
     # Generate the png
     png(file=outFileName.png)
     volcanoplot(fit.main, coef= wCont[[ii]][jj] , highlight=10, names=volcanoPointNames, 
-                main=paste("Differentially expressed genes", my.compName, sep="\n"))
+                main=paste("Differentially expressed features in ", my.compName, sep="\n"))
     abline(v=c(-1,1))
     dev.off()
     
@@ -751,7 +851,7 @@ for (ii in 1:length(wCont)) { # ii is the index of the list with the multiple co
     # figure file paths
     report.s2f3a <- newFigure( outFileNameRelPath.png, 
                                fileHighRes=outFileNameRelPath.pdf,
-                               "Differentially expressed genes for the comparison ", my.compName );
+                               "Differentially expressed features for the comparison ", my.compName );
     report.s2s3 <- addTo( report.s2s3, report.s2f3a)
 
     # Write the resulting files to the report
@@ -767,7 +867,7 @@ for (ii in 1:length(wCont)) { # ii is the index of the list with the multiple co
 ###################################################
 # Add it to the report
 report.s2s4 <- newSection( "Venn Diagrams" );
-report.s2p4 <- newParagraph( "Files with the Venn Diagrams for the groups of multiple comparisons (cases of more than one comparison in each group)");
+report.s2p4 <- newParagraph( "Files with the Venn Diagrams for the groups of comparisons (cases of more than one comparison in each group)");
 report.s2s4 <- addTo( report.s2s4, report.s2p4)
 
 if(!require(VennDiagram)) install.packages("VennDiagram")
@@ -784,7 +884,7 @@ for (ii in 1:length(wCont)) { # ii is the index of the list with the multiple co
   for (jj in 1:length(wCont[[ii]])) { # jj is the index of the list with the single comparisons from within each group of comparisons
     # ii <- 1; jj<- 1
     ## ------------------------------------------------
-    ## Seleccio toptables i llistat de genes
+    ## Seleccio toptables i llistat de Features
     tmpVenn <- topTab[[ wCont[[ii]][jj] ]] 
     fileVenn[[ wCont[[ii]][jj] ]] <- tmpVenn
     #head(tmpVenn)
@@ -846,7 +946,7 @@ for (ii in 1:length(wCont)) { # ii is the index of the list with the multiple co
     report.s2s4 <- addTo( report.s2s4, report.s2file)
     
     ############################
-    ## Save on disk the list of genes for each group of multiple comparisons
+    ## Save on disk the list of Features for each group of multiple comparisons
     ## Derived from 
     ## https://github.com/miriamMota/scripts/blob/master/Bioinf/VennDiagram.R
     ############################
@@ -1100,10 +1200,12 @@ for (ii in 1:length(wCont)) { # ii is the index of the list with the multiple co
 ###################################################
 # Report with Nozzle.R1
 # Phase 2: assemble report structure bottom-up
-report.s0a <- addTo( report.s0a, report.s0a.p1, report.s0a.p2);
+report.s0a <- addTo( report.s0a, report.s0a.p1, report.s0a.p2, report.s0a.p3, report.s0a.p4, report.s0a.p5);
 report.s0b <- addTo( report.s0b, report.s0b.p1, report.s0b.p2);
-report.s1 <- addTo( report.s1, report.s1s1, report.s1s2, report.s1s3, report.s1s4, report.s1s5,
-                    report.s1s6, report.s1s7);
+#report.s1 <- addTo( report.s1, report.s1s1, report.s1s2, report.s1s3, report.s1s4, report.s1s5,
+#                    report.s1s6, report.s1s7);
+report.s1 <- addTo( report.s1, report.s1s1, report.s1s2, report.s1s4, report.s1s5,
+                    report.s1s7); # sections s1s3 and s1s6 have been removed from the report by Alex.
 report.s2 <- addTo( report.s2, report.s2s1, report.s2s2, report.s2s3, report.s2s4, report.s2s5 );
 report.r <- addTo( report.r, report.s0a, report.s0b, report.s1, report.s2 );
 #report.r <- addTo( report.r, report.s1, report.s2 );
