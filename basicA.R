@@ -321,7 +321,7 @@ report.s1p2a <- newParagraph( "The researchers have indicated which comparisons 
 report.s1p2b <- newParagraph( "For each individual comparison the following information is provided:");
 report.s1l1 <- newList( isNumbered=FALSE,
                 newParagraph( "A 'Top Table' containing the list of all features analyzed, sorted from smallest to greatest P-value." ),
-                newParagraph( "A 'Volcano plot' showing how big -or how small- is the biological or the statistical effect." ),
+                newParagraph( "A 'Volcano plot' showing how big -or how small- is the biological or the statistical effect." )
                 ); # end of list
 
 #   list <- newList( isNumbered=FALSE,
@@ -349,7 +349,7 @@ report.s1l2 <- newList( isNumbered=FALSE,
                         newParagraph( "A 'Heat Map' showing -according to a color code- \
                                       if each feature selected in this group of comparisons \
                                       is up or down regulated in each sample that has been included \
-                                      in the comparison." ),
+                                      in the comparison." )
                       ); # end of list	
 
 report.s1s2 <- addTo( report.s1s2, report.s1p2a, report.s1p2b, report.s1l1, 
