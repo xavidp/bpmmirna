@@ -28,7 +28,7 @@ head(miRNA)
 
 #archivo de EC con anotaciones (rma+anotaciones)
 setwd(file.path(basepath, "dades"))
-anotacion<-read.csv("rma with anotations.csv",sep="\t",header=TRUE)
+anotacion<-read.csv("rma_affy_annotated_ref.txt",sep="\t",header=TRUE)
 dim(anotacion)#36137 6
 head(anotacion)
 
