@@ -59,8 +59,8 @@ require(stringr)
 # Basic parameters for the script
 ###################################
 ## ----preparaDirectorios, eval=TRUE---------------------------------------
-baseDir <- "/home/xavi/Estudis/2015-10-NuriaBarbarroja-IMIBIC-A279" # Pentinella
-#baseDir <- "/mnt/magatzem02/tmp/2015-10-NuriaBarbarroja-IMIBIC-A279" # MainHead
+baseDir <- "/home/xavi/Estudis/YYYY-MM-XXX-YYY-ANNN" # Pentinella
+#baseDir <- "/mnt/magatzem02/tmp/YYYY-MM-XXX-YYY-ANNN" # MainHead
 #baseDir <- "."
 workingDir <- baseDir
 setwd(workingDir)
@@ -80,20 +80,20 @@ source(file.path(baseDir,"Rcode", "AnalysisFunctions2Pack.R"))
 nCores <- 4 # 1 # In case of doubt, use just 1 core.
 
 # Name of the targets file
-targetsFileName <-"targets.BRB279.txt"
+targetsFileName <-"targets.XXXNNN.txt"
 
-datacreacioTargets <- "2015-11-02"             # format "aaa-mm-dd"
-dataInici <- "2015-11-02"
+datacreacioTargets <- "YYYY-MM-DD1"             # format "aaa-mm-dd"
+dataInici <- "YYYY-MM-DD2"
 
-estudi <- "2015-10-NuriaBarbarroja-IMIBIC-A279"            # Nom del directori del projecte (e.g. "aaaa-mm-NomCognomInvestigador-CENTRE-IdEstudi")
-eP <- "BRB279"                                               # Canviar XXXnnn per les 3 lletres de l'investigador/a + l'Id numeric de l'estudi
+estudi <- "YYYY-MM-XXX-YYY-ANNN"            # Nom del directori del projecte (e.g. "aaaa-mm-NomCognomInvestigador-CENTRE-IdEstudi")
+eP <- "XXXNNN"                                               # Canviar XXXnnn per les 3 lletres de l'investigador/a + l'Id numeric de l'estudi
 
-titolEstudi <- "Differentially expressed miRNA between lung cancer and control samples"   # Titol de l'estudi (en angles)
-analistes <- "Xavier de Pedro and Alex S&aacute;nchez"                               # Nom analista/es i Alex Sanchez
+titolEstudi <- "Differentially expressed miRNA between ... and ..."   # Titol de l'estudi (en angles)
+analistes <- "... and Alex S&aacute;nchez"                               # Nom analista/es i Alex Sanchez
 
-nomClients <- "Nuria Barbarroja Puerto"                                         # Nom investigador(a) responsable
-lab_o_depart <- "Instituto Maimónides de Inv. Biom. de Córdoba (IMIBIC)"                # Nom del lab o Institucio si es forani (e.g. "Neurovascular diseases")
-contact_email <- "nuria.barbarroja.exts@juntadeandalucia.es"                                     # e-mail de l'investigador(a)
+nomClients <- "Foo Bar"                                         # Nom investigador(a) responsable
+lab_o_depart <- "Instituto Foo de Bar (FooBar)"                # Nom del lab o Institucio si es forani (e.g. "Neurovascular diseases")
+contact_email <- "foobar@example.com"                                     # e-mail de l'investigador(a)
 
 UEB <- TRUE                                                 # TRUE => capcalera d'UEB
 # FALSE => capcalera EstBioinfo
@@ -110,8 +110,8 @@ if (file.exists(paste0(report.filename, ".html"))) file.remove(paste0(report.fil
 if (file.exists(paste0(report.filename, ".RData"))) file.remove(paste0(report.filename, ".RData"))
 
 # Phase 1: create report elements
-report.r <- newCustomReport( "Results Files for Analysis BRB A279" );
-#report.r <- setReportSubTitle( report.r, "Analysis of differentially expressed miRNA between 24 lung cancer and 24 control samples from Affymetrix miRNA 4.0 plate arrays");
+report.r <- newCustomReport( "Results Files for Analysis XXXNNN" );
+#report.r <- setReportSubTitle( report.r, "Analysis of differentially expressed miRNA between ... cancer and ... control samples from Affymetrix miRNA 4.0 plate arrays");
 
 report.s0a <- newSection( "Overview" );
 report.s0a.p1 <- newParagraph( "Results Files, Version 1" );
@@ -129,9 +129,9 @@ report.s0a.p5 <- newParagraph( "Most results are stored as ", asStrong(".txt"), 
                     general purpose office suits, internet browsers or pdf readers." );
  
 report.s0b <- newSection( "Main Documents" );
-study.proposalRelFileName <- file.path(resultsRelDir, "2015-09-NuriaBarbarroja-A279-StudyBudget.pdf")
+study.proposalRelFileName <- file.path(resultsRelDir, "YYYY-MM-XXX-YYY-ANNN-StudyBudget.pdf")
 report.s0b.p1 <- newParagraph( "Study proposal: ", asLink(study.proposalRelFileName, study.proposalRelFileName ));
-study.reportRelFileName <- file.path(resultsRelDir, "2015-09-NuriaBarbarroja-A279-MainReport.pdf")
+study.reportRelFileName <- file.path(resultsRelDir, "YYYY-MM-XXX-YYY-ANNN-MainReport.pdf")
 report.s0b.p2 <- newParagraph( "Report with description of methodology and main results: ", asEmph("Not available yet")) ;
                                #, asLink(study.reportRelFileName, study.reportRelFileName ));
 
