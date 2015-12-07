@@ -5,8 +5,8 @@
 #library(checkpoint)
 #checkpoint("2015-11-02")
 
-#basepath <- "/home/xavi/Estudis/2015-10-NuriaBarbarroja-IMIBIC-A279" # Pentinella
-#basepath <- "/mnt/magatzem02/tmp/2015-10-NuriaBarbarroja-IMIBIC-A279" # MainHead
+#basepath <- "/home/xavi/Estudis/YYYY-MM-XXX-YYY-ANNN" # Pentinella
+#basepath <- "/mnt/magatzem02/tmp/YYYY-MM-XXX-YYY-ANNN" # MainHead
 basepath <- baseDir
 
 #se prueba de utilizar biomart para conseguir anotaciones aunque creo que luego no se utilizará.
@@ -56,7 +56,7 @@ head(anota)
 
 #preparación archivo Rda
 setwd(file.path(basepath, "dades"))
-xx <-read.csv2("rma.A279.summary.csv", header = TRUE, row.names=1, sep=";", dec=",")
+xx <-read.csv2("rma.XXXNNN.summary.csv", header = TRUE, row.names=1, sep=";", dec=",")
 head(xx)
 dim(xx)#36249 48
 targets <- read.csv2 (targetsFileName, sep="\t")
@@ -74,7 +74,7 @@ samplesX2remove <- paste0("X", samples2remove)
 col2remove.idx <- which(colnames(xx) %in% samplesX2remove)  
 xx <- xx[-col2remove.idx]
 dim(xx) #36249    45
-save(xx, targets, anota, file=file.path(basepath, "dades","dades.BRB.A279.Rda"))
+save(xx, targets, anota, file=file.path(basepath, "dades","dades.XXXNNN.Rda"))
 
 
 #merge xx con anota#########################
@@ -91,7 +91,7 @@ dim(expresEG)#6050 45
 head(expresEG)
 
 
-save(expresEG, targets,anota, sample.names,  file=file.path(basepath, "dades","MicrosBRB_expressEG.Rda"))
+save(expresEG, targets,anota, sample.names,  file=file.path(basepath, "dades","MicrosXXX_expressEG.Rda"))
 
 ##############################################
 ### VSN

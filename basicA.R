@@ -142,7 +142,7 @@ report.s1 <- newSection( "Base information" );
 #############################
 ## ----loadData------------------------------------------------------------
 #load(file=file.path(resultsDir, "datos.normalizados.Rda"))
-source("Rcode/PreparaDades.A279.R")
+source("Rcode/DataPreprocessing.R")
 
 # The Previous file created the expression set.
 
@@ -171,7 +171,7 @@ exprs(eset_norm) <- exprs(eset_norm)[!repes,]
 # head(exprs(eset_norm))
 # dim(exprs(eset_norm))
 # #?subset
-# ## Which miRNA affy probeset names are present in the df of miRNA for Humans created in the PreparaDades.A279.R file? (anotacion.hg)
+# ## Which miRNA affy probeset names are present in the df of miRNA for Humans created in the DataPreprocessing.R file? (anotacion.hg)
 # ## Summary of how many match the condition
 # table(rownames(exprs(eset_norm)) %in% as.character(anotacion.hg$Probe.Set.Name)) 
 # #
@@ -489,7 +489,7 @@ if(length(minLogFoldChange)!=length(compGroupName)) warning("L'objecte minLogFol
 # Feature annotation reference
 #############################
 anotacion.hg.fileName.noext <- "featureAnotation" 
-outFile <- anotacion.hg.fileName.noext # Name set in PreparaDades.XXX.R
+outFile <- anotacion.hg.fileName.noext # Name set in DataPreprocessing.R
 outFileName <- paste0(outFile, ".csv")
 outFileNameRelPath <- file.path( resultsRelDir, outFileName )
   
