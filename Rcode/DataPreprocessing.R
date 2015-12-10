@@ -27,7 +27,7 @@ dim(miRNA)#1952 4
 head(miRNA)
 
 #archivo de EC con anotaciones (rma+anotaciones)
-setwd(file.path(basepath, "dades"))
+setwd(file.path(basepath, dataRelDir))
 anotacion<-read.csv("rma_affy_annotated_ref.txt",sep="\t",header=TRUE)
 dim(anotacion)#36137 6
 head(anotacion)
@@ -55,26 +55,34 @@ colnames(anota)<-c("Transcript_ID","Probe_Set_ID")
 head(anota)
 
 #preparación archivo Rda
-setwd(file.path(basepath, "dades"))
-xx <-read.csv2("rma.XXXNNN.summary.csv", header = TRUE, row.names=1, sep=";", dec=",")
+setwd(file.path(basepath, dataRelDir))
+xx <-read.csv2(paste0("rma.", aID, ".summary.txt"), header = TRUE, row.names=1,
+               sep="\t", dec=",", comment.char = "#")
 head(xx)
 dim(xx)#36249 48
 targets <- read.csv2 (targetsFileName, sep="\t")
 # Remove the rows containing the samples indicated in this param "samples2remove" 
 # since we do not want to consider them in the analysis
 row2remove.idx <- which(targets$SampleName %in% samples2remove)  
-targets <- targets[-row2remove.idx,]
+# Remove rows only if there is some sample to be removed
+if (length(row2remove.idx) > 0) {
+  targets <- targets[-row2remove.idx,]
+}
 sample.names <- as.character(targets$ShortName)
 # Get rid of samples that are eliminated from the targets
 # In this run, 41.CEL, 42.CEL, 44.CEL files are eliminated
 # samples2remove is defined in the basicA.R file, with some content like:
 # samples2remove <- c("41.CEL","42.CEL","44.CEL")
 # samplesX2remove <- c("X41.CEL","X42.CEL","X44.CEL")
-samplesX2remove <- paste0("X", samples2remove)
-col2remove.idx <- which(colnames(xx) %in% samplesX2remove)  
-xx <- xx[-col2remove.idx]
+# Remove rows only if there is some sample to be removed
+if (length(samples2remove) > 1) {
+  samplesX2remove <- paste0("X", samples2remove)
+  col2remove.idx <- which(colnames(xx) %in% samplesX2remove)  
+  xx <- xx[-col2remove.idx]
+}
 dim(xx) #36249    45
-save(xx, targets, anota, file=file.path(basepath, "dades","dades.XXXNNN.Rda"))
+save(xx, targets, anota, file=file.path(basepath, dataRelDir,
+                                        paste0("data.", aID,".Rda")))
 
 
 #merge xx con anota#########################
@@ -91,12 +99,14 @@ dim(expresEG)#6050 45
 head(expresEG)
 
 
-save(expresEG, targets,anota, sample.names,  file=file.path(basepath, "dades","MicrosXXX_expressEG.Rda"))
+save(expresEG, targets,anota, sample.names,  
+     file=file.path(basepath, dataRelDir,
+                    paste0("Micros_", aID,"_expressEG.Rda")))
 
 ##############################################
 ### VSN
 ##############################################
-setwd(file.path(basepath, "celfiles"))
+setwd(file.path(basepath, celfilesRelDir))
 if (!require("makecdfenv")) {
   biocLite("makecdfenv")
 }
@@ -105,21 +115,24 @@ if (!require("affxparser")) {
 }
 library(makecdfenv)    
 library(affxparser)
-if (!require("mirna40cdf")) {
-  convertCdf("miRNA-4_0-st-v1.cdf", "mirna40cdf", version=4, verbose=TRUE) 
-  pkgpath <- file.path(basepath, "dades")
-  make.cdf.package("mirna40cdf", version = packageDescription("makecdfenv", field = "Version"), species="", unlink=TRUE, compress=FALSE, package.path = pkgpath)
+if (!require("mirna41cdf")) {
+  convertCdf("miRNA-4_0-st-v1.cdf", "mirna41cdf", version=4, verbose=TRUE) 
+  pkgpath <- file.path(basepath, dataRelDir)
+  make.cdf.package("mirna41cdf", version = packageDescription("makecdfenv", field = "Version"), species="", unlink=TRUE, compress=FALSE, package.path = pkgpath)
   
-  system(paste0("R CMD INSTALL \"", pkgpath, "/mirna40cdf", "\""))
+  system(paste0("R CMD INSTALL \"", pkgpath, "/mirna41cdf", "\""))
 }
 
 library(affy)
 require(affy)
 # Before reading the celfiles through ReadAffy, limit the filenames to get rid of the ones in samples2remove
-fns <- list.celfiles(path=file.path(basepath, "celfiles"),full.names=TRUE)
-cel2remove.idx <- match(unique(grep(paste(samples2remove,collapse="|"),
-                                    fns, value=TRUE)), fns)
-fns <- fns[-cel2remove.idx]
+fns <- list.celfiles(path=file.path(basepath, celfilesRelDir),full.names=TRUE)
+# Remove rows only if there is some sample to be removed
+if (length(samples2remove) > 1) {
+  cel2remove.idx <- match(unique(grep(paste(samples2remove,collapse="|"),
+                                      fns, value=TRUE)), fns)
+  fns <- fns[-cel2remove.idx]
+}
 cat("Reading files:\n",paste(fns,collapse="\n"),"\n")
 cat("Removed from the analysis:\n",paste(samples2remove,collapse="\n"),"\n")
 ##read a binary celfile

@@ -58,8 +58,10 @@ require(stringr)
 ###################################
 # Basic parameters for the script
 ###################################
+analysisName <- "YYYY-MM-XXX-YYY-ANNN"            # Nom del directori del projecte (e.g. "aaaa-mm-NomCognomInvestigador-CENTRE-IdEstudi")
+aID <- "LUQ320"                                               # Canviar XXXnnn per les 3 lletres de l'investigador/a + l'Id numeric de l'estudi
 ## ----preparaDirectorios, eval=TRUE---------------------------------------
-baseDir <- "/home/xavi/Estudis/YYYY-MM-XXX-YYY-ANNN" # Pentinella
+baseDir <- paste0("/home/xavi/Estudis/", analysisName) # Pentinella
 #baseDir <- "/mnt/magatzem02/tmp/YYYY-MM-XXX-YYY-ANNN" # MainHead
 #baseDir <- "."
 workingDir <- baseDir
@@ -80,19 +82,19 @@ source(file.path(baseDir,"Rcode", "AnalysisFunctions2Pack.R"))
 nCores <- 4 # 1 # In case of doubt, use just 1 core.
 
 # Name of the targets file
-targetsFileName <-"targets.XXXNNN.txt"
+targetsFileName <- paste0("targets.", aID, ".txt")
+column2design <- 6   # Columna del ''targets'' en que es basa la matriu de disseny
+# En dissenys d'un factor el nombre de grups = nombre de nivells
+# En dissenys de més d'un factor nombre de grups = nivells(1)*nivells(2)*...
 
 datacreacioTargets <- "YYYY-MM-DD1"             # format "aaa-mm-dd"
 dataInici <- "YYYY-MM-DD2"
 
-estudi <- "YYYY-MM-XXX-YYY-ANNN"            # Nom del directori del projecte (e.g. "aaaa-mm-NomCognomInvestigador-CENTRE-IdEstudi")
-eP <- "XXXNNN"                                               # Canviar XXXnnn per les 3 lletres de l'investigador/a + l'Id numeric de l'estudi
+analysisTitle <- "Differentially expressed miRNA between ... and ..."   # Titol de l'estudi (en angles)
+analysts <- "Xavier de Pedro, Ferran Brians&oacute; and Alex S&aacute;nchez"                               # Nom analista/es i Alex Sanchez
 
-titolEstudi <- "Differentially expressed miRNA between ... and ..."   # Titol de l'estudi (en angles)
-analistes <- "... and Alex S&aacute;nchez"                               # Nom analista/es i Alex Sanchez
-
-nomClients <- "Foo Bar"                                         # Nom investigador(a) responsable
-lab_o_depart <- "Instituto Foo de Bar (FooBar)"                # Nom del lab o Institucio si es forani (e.g. "Neurovascular diseases")
+clientNames <- "Foo Bar"                                         # Nom investigador(a) responsable
+lab_or_depart <- "Instituto Foo de Bar (FooBar)"                # Nom del lab o Institucio si es forani (e.g. "Neurovascular diseases")
 contact_email <- "foobar@example.com"                                     # e-mail de l'investigador(a)
 
 UEB <- TRUE                                                 # TRUE => capcalera d'UEB
@@ -101,7 +103,7 @@ UEB <- TRUE                                                 # TRUE => capcalera 
 # If some samples were too rare in the PCA from the ArrayQualityMetrics report (even at the raw report), consider
 # running the script again removing those from the analysis. You can define which samples to be taken out of the 
 # analysis through this parameter.
-samples2remove <- c("41.CEL","42.CEL","44.CEL")
+samples2remove <- "" # c("41.CEL","42.CEL","44.CEL")
 
 # Report with Nozzle.R1
 report.filename <- "ResultsFiles"
@@ -110,7 +112,7 @@ if (file.exists(paste0(report.filename, ".html"))) file.remove(paste0(report.fil
 if (file.exists(paste0(report.filename, ".RData"))) file.remove(paste0(report.filename, ".RData"))
 
 # Phase 1: create report elements
-report.r <- newCustomReport( "Results Files for Analysis XXXNNN" );
+report.r <- newCustomReport( "Results Files for Analysis ", aID );
 #report.r <- setReportSubTitle( report.r, "Analysis of differentially expressed miRNA between ... cancer and ... control samples from Affymetrix miRNA 4.0 plate arrays");
 
 report.s0a <- newSection( "Overview" );
@@ -232,7 +234,10 @@ targets.all <- targets
 # Remove the rows containing the samples indicated in this param "samples2remove" 
 # since we do not want to consider them in the analysis
 row2remove.idx <- which(targets$SampleName %in% samples2remove)  
-targets <- targets[-row2remove.idx,]
+# Remove rows only if there is some sample to be removed
+if (length(row2remove.idx) > 0) {
+  targets <- targets[-row2remove.idx,]
+}
 
 report.s1p1 <- newParagraph( "The table below -usually known as the 'Targets' table- shows the classification \
                     of each sample, that is if the sample corresponds to an affected ('Cancer') or \
@@ -242,9 +247,6 @@ report.s1p1 <- newParagraph( "The table below -usually known as the 'Targets' ta
 report.s1t1 <- newTable( targets.all, "Targets file" ); # w/ caption
 report.s1s1 <- addTo( report.s1s1, report.s1p1, report.s1t1 )
 
-column2design <- 4   # Columna del ''targets'' en que es basa la matriu de disseny
-# En dissenys d'un factor el nombre de grups = nombre de nivells
-# En dissenys de més d'un factor nombre de grups = nivells(1)*nivells(2)*...
 
 # XXX Si haguessin efectes batch, o altres efectes a tenir en compte com a factors, caldria afegir noves línies aquí.
 lev <- targets[,column2design]  # nom de la columna del targets.txt que conte
@@ -266,8 +268,10 @@ design <- model.matrix( ~ 0 + lev)
 ### la definicio de colnames(design) pot ser molt mes complexa si hi ha efectes batch al design, com aquest exemple:
 #   colnames(design)<- c(levels(lev),"batch12","batch13","batch14","batch15","batch16","batch17","batch22","batch23")
 
-
-colnames(design) <- levels(lev)
+# Assign the first column names of the object "design" with the right names as indicated as levels of lev.
+# If there is batch effect, there will be extra columns in object "design", that do not neet to be touched probably
+# unless there are 2 or more columns with batch effect information
+colnames(design)[1:length(levels(lev))] <- levels(lev)
 # rownames(design) <- rownames(targets)
 rownames(design) <- targets$ShortName  # Serveix per poder associar les files del targets i les de la matriu de disseny
 # Si el targets no te rownames no podrem
@@ -285,26 +289,44 @@ require(limma)
 #      levels=design)
 #print(cont.matrix)
 cont.matrix <- makeContrasts(                   ### RECORDAR QUE AIXÒ ES UN EXEMPLE!!!
-  ## EstudiA279b:
-  #  CANvsCTL           = CAN - CTL, # Aquesta es fara mes endavant (columna diferent del targets, etc)
-  CANvsCTL           = ( (CAN.Epid*9/24) + (CAN.Ade*12/24) + (CAN.Mic*3/24) ) 
-  - ( (CTL.noR*16/24) + (CTL.Rsk*8/24) ), # Aquesta es fara mes endavant (columna diferent del targets, etc)
-  ## EstudiA279a:
-  CTL.RskvsCAN.Epid  = CTL.Rsk  - CAN.Epid,
-  CTL.RskvsCAN.Ade   = CTL.Rsk  - CAN.Ade,
-  CTL.RskvsCAN.Mic   = CTL.Rsk  - CAN.Mic,
-  CTL.noRvsCAN.Epid  = CTL.noR  - CAN.Epid,
-  CTL.noRvsCAN.Ade   = CTL.noR  - CAN.Ade,
-  CTL.noRvsCAN.Mic   = CTL.noR  - CAN.Mic,
-  CAN.EpidvsCAN.Ade  = CAN.Epid - CAN.Ade,
-  CAN.EpidvsCAN.Mic  = CAN.Epid - CAN.Mic,
-  CAN.AdevsCAN.Mic   = CAN.Ade  - CAN.Mic,
-  CTL.RskvsCTL.noR   = CTL.Rsk  - CTL.noR,
+  CANvsCTL           =  ( (CAN.ht25.NoM*5/10) + (CAN.ht25.Met*5/10) + (CAN.lt25.NoM*5/10) + (CAN.lt25.Met*5/10) ) -
+                        ( (CTL.ht25.NoM*5/10) + (CTL.ht25.Met*5/10) + (CTL.lt25.NoM*4/10) + (CTL.lt25.Met*6/10) ), 
+  CAN.ht25vsCAN.lt25  = ( (CAN.ht25.NoM*5/10) + (CAN.ht25.Met*5/10) ) - ( (CAN.lt25.NoM*5/10) + (CAN.lt25.Met*5/10) ),
+  CAN.MetvsCAN.NoM    = ( (CAN.ht25.Met*5/10) + (CAN.lt25.Met*5/10) ) - ( (CAN.ht25.NoM*5/10) + (CAN.lt25.NoM*5/10) ),
+  CTL.ht25vsCTL.lt25  = ( (CTL.ht25.NoM*5/10) + (CTL.ht25.Met*5/10) ) - ( (CTL.lt25.NoM*4/10) + (CTL.lt25.Met*6/10) ),
+  CTL.MetvsCTL.NoM    = ( (CTL.ht25.Met*5/10) + (CTL.lt25.Met*6/10) ) - ( (CTL.ht25.NoM*5/10) + (CTL.lt25.NoM*4/10) ),
   levels = design)
 
 cont.matrix.file <- "contrasts.matrix.csv"
 outFileNameRelPath <- file.path( resultsRelDir, cont.matrix.file )
 write.csv2(cont.matrix, file=outFileNameRelPath )
+
+splitterCond        <- "vs" # Condition splitter in the Comparison String
+                            # (in CAN.V1.C1vsCTL.V2.C2 it would be "vs" to split the conditions into CAN.V1.C1 and CTL.V2.C2) 
+                            # This param is used later on to obtain the condition names of the comparison
+splitterIntracond   <- "."  # Intracondition splitter in the Comparison String
+                            # (in CAN.V1.C1vsCTL.V2.C2 it would be "." to split the condition CAN.V1.C1 into the vars CAN V1 and C1 
+                            #  and CTL.V2.C2 into the vars CTL V2 and C2) 
+                            # This param is used later on to obtain the condition names of the comparison
+
+compGroupName <- c("G1.CAN.vs.CTL", "G2.CAN.OBEvsCAN.nOB", "G3.CAN.Met.vs.CAN.NoM", 
+                   "G4.CTL.OBEvsCTL.nOB", "G5.CTL.Met.vs.CTL.NoM") # si son comparacions multiples, fer tant noms com grups de comparacions (N) hi hagi
+
+
+wCont <- list(1:1, 2:2, 3:3, 4:4, 5:5) # Relacionat amb la contrastsMatrix. 
+# Llista amb N vectors, que defineixen els N conjunts (grups) de contrastos (comparacions)
+# si N>1, cal indicar els rangs per separat
+# e.g. list(1:8, 9:13, 14:17)
+# Si hi ha només un grup de comparacions (p.e. Estres Termic), i amb dos nivells (estrés versus no estres), aquí es posaria com a:
+# list(1:1)
+
+# make a simple list with multiple comparison names and the single comparisons that they contain
+if (exists("compNamesAll")) rm(compNamesAll)
+compNamesAll <- list()
+for (ii in 1:length(wCont)) {
+  compNamesAll[[ii]] <- colnames(cont.matrix)[ wCont[[ii]] ]
+  names(compNamesAll)[ii] <- compGroupName[[ii]]  
+}
 
 #print(cont.matrix) #comentar aquesta linia si no es vol visualitzar la matriu de contrasts
 report.s1s2 <- newSection( "Comparisons performed" );
@@ -355,49 +377,26 @@ report.s1l2 <- newList( isNumbered=FALSE,
 report.s1s2 <- addTo( report.s1s2, report.s1p2a, report.s1p2b, report.s1l1, 
                       report.s1p2c, report.s1l2 )
 
-condSplitter <- "vs" # Condition splitter in the Comparison String. This param is used later on to obtain the condition names of the comparison
-
 ## ----linearmodelfit,echo=F, eval=TRUE------------------------------------
 require(limma)
 fit<-lmFit(exprs.filtered, design)
 fit.main<-contrasts.fit(fit, cont.matrix)
 fit.main<-eBayes(fit.main)
 
-compGroupName <- c("G1.CAN.vs.CTL", "G2.CTLRisk.vs.CANtype", "G3.CTLnoR.vs.CANtype", 
-                   "G4.CANTypes", "G5.CTLRisk.vs.CTLnoR") # si son comparacions multiples, fer tant noms com grups de comparacions (N) hi hagi
-### 2a part de grups comparacions
-### Correspon a "EstudiA279b"
-#compGroupName <- c("G5.CAN.vs.CTL")
-
-wCont <- list(1:1, 2:4, 5:7, 8:10, 11) # Relacionat amb la contrastsMatrix. 
-# Llista amb N vectors, que defineixen els N conjunts (grups) de contrastos (comparacions)
-# si N>1, cal indicar els rangs per separat
-# e.g. list(1:8, 9:13, 14:17)
-# Si hi ha només un grup de comparacions (p.e. Estres Termic), i amb dos nivells (estrés versus no estres), aquí es posaria com a:
-# list(1:1)
-
-# make a simple list with multiple comparison names and the single comparisons that they contain
-if (exists("compNamesAll")) rm(compNamesAll)
-compNamesAll <- list()
-for (ii in 1:length(wCont)) {
-  compNamesAll[[ii]] <- colnames(cont.matrix)[ wCont[[ii]] ]
-  names(compNamesAll)[ii] <- compGroupName[[ii]]  
-}
-
 # convert the list of All comparison names into a data frame so that it can be printed easily in the html report with Nozzle
 df.compNamesAll <- data.frame(t(sapply(compNamesAll,c)))
 report.s1t2 <- newTable( df.compNamesAll, "Groups of comparisons" ); # w/ caption
 report.s1s2 <- addTo( report.s1s2, report.s1t2 )
 
-pValCutOff <- rep(0.01, 5) # c(0.01, 0.01, 0.01, 0.01, 0.01) # si N>1, indicar el cut-off per cada conjunt de comparacions
+pValCutOff <- rep(0.01, length(compNamesAll) ) # c(0.01, 0.01, 0.01, 0.01, 0.01) # si N>1, indicar el cut-off per cada conjunt de comparacions
 
 # e.g. c(0.01, 0.05, 0.01) o bé c(rep(0.01,3))
 # Com a màxim a la UEB es posa 0.25 i a adjMethod posar no ajustat ("none"). 
-adjMethod <- rep("none",5)  # si N>1, indicar mètode per cada conjunt de comparacions
+adjMethod <- rep("none", length(compNamesAll) )  # si N>1, indicar mètode per cada conjunt de comparacions
 # e.g. c("none", "BH", "none") o bé c(rep("BH",3))
 
 ## Posar aqui els valors de minLogFC de cadascuna de les comparacions a fer
-minLogFoldChange <- rep(0, 5) #c(0, 0, 0, 0, 0) # canviar aixo si s'ha decidit considerar sols els casos amb |logFC| >= que un valor. Si no, només s'empra per als HeatMaps minim
+minLogFoldChange <- rep(0, length(compNamesAll) ) #c(0, 0, 0, 0, 0) # canviar aixo si s'ha decidit considerar sols els casos amb |logFC| >= que un valor. Si no, només s'empra per als HeatMaps minim
 # e.g. c(1, 2, 1) o be c(rep(0, 3)) indicar minLogFC per cada grup de comparacions
 
 # Place the previous key parameters together in a single df so that they can be easily printed lataer on in the report with Nozzle
@@ -414,10 +413,10 @@ colnames(key.params) <- c("Parameter", colnames(df.compNamesAll))
 # Section borrowed from the the standard Basic Pipe code.
 rawData <- xx
 
-phenoData(rawData)$Grupo<-targets$Grupo
-phenoData(rawData)$ShortName<-targets$ShortName
-phenoData(rawData)$Colores<-targets$Colores
-
+# phenoData(rawData)$Grupo<-targets$Grupo
+# phenoData(rawData)$ShortName<-targets$ShortName
+# phenoData(rawData)$Colores<-targets$Colores
+# 
 # arrayQualityMetrics(expressionset =rawData,
 #                     outdir = file.path(resultsDir, "QCDir.raw"),
 #                     force = TRUE,
@@ -456,11 +455,11 @@ phenoData(exprs.filtered)$Grupo<-targets$Grupo
 phenoData(exprs.filtered)$ShortName<-targets$ShortName
 phenoData(exprs.filtered)$Colores<-targets$Colores
 
-# arrayQualityMetrics(expressionset =exprs.filtered,
-#                     outdir = file.path(resultsDir, "QCDir.norm"),
-#                     force = TRUE,
-#                     intgroup = "Grupo",
-#                     do.logtransform = FALSE)
+arrayQualityMetrics(expressionset =exprs.filtered,
+                    outdir = file.path(resultsDir, "QCDir.norm"),
+                    force = TRUE,
+                    intgroup = "Grupo",
+                    do.logtransform = FALSE)
 
 # Add the section to the report 
 report.s1s5 <- newSection( "Quality control (normalized data)" );
@@ -644,11 +643,14 @@ topTabLoop <- foreach (ii = 1:length(wCont)) %do% { # ii is the index of the lis
   foreach (jj = 1:length(wCont[[ii]])) %do% { # jj is the index of the list with the single comparisons from within each group of comparisons
     
     my.compName <- colnames(cont.matrix)[ wCont[[ii]][jj] ]
-    my.conds <- unlist(strsplit(my.compName, condSplitter)) 
+    my.conds <- unlist(strsplit(my.compName, splitterCond, fixed = TRUE)) 
+    my.conds.units <- unlist(strsplit(my.conds, splitterIntracond, fixed = TRUE)) 
+    
     # my.cels.idx and my.cels below are the list of cel files to be appended to the TopTable object
     # before the csv generation, but avoided when printing the html version
     # We keep the values in a list since we will use this info later when creating heatmaps
-    my.cels.idx[[ wCont[[ii]][jj] ]] <- grep( paste0(my.conds[1],"|",my.conds[2]), targets$Grupo)
+#    my.cels.idx[[ wCont[[ii]][jj] ]] <- grep( paste0(my.conds, collapse="|"), targets$Grupo)
+    my.cels.idx[[ wCont[[ii]][jj] ]] <- grep( paste0(my.conds.units, collapse="|"), targets$Grupo)
     my.cels[[ wCont[[ii]][jj] ]] <- as.character(targets$SampleName[ my.cels.idx[[ wCont[[ii]][jj] ]] ] ) 
     write.csv2(cbind(my.cels.idx[[ wCont[[ii]][jj] ]], my.cels[[ wCont[[ii]][jj] ]]), 
                file=file.path( resultsDir, paste("celfiles.in.comparison.",
@@ -743,7 +745,7 @@ topTabLoop <- foreach (ii = 1:length(wCont)) %do% { # ii is the index of the lis
       report.s2s1s1 <- newSection( names(compNamesAll)[ii], " | ", compNamesAll[[ii]][jj] );
       
       # Write the resulting topTable files to the report
-      report.s2s1h1 <- newHtml( "<iframe src=\"", outFileNameRelPath, "\" frameborder=1 height=400 scrolling=auto width=\"1000\"></iframe>", style="background-color: snow;" )
+      report.s2s1h1 <- newHtml( "<iframe src=\"", outFileNameRelPath, "\" frameborder=1 height=450 scrolling=auto width=\"1000\"></iframe>", style="background-color: snow;" )
       report.s2file1b <- newHtml( "File (HTML): <a href=\"", outFileNameRelPath,"\">", outFileNameRelPath, "</a>",
                                   style="background-color: snow;" )
       report.s2s1s1 <- addTo( report.s2s1s1, report.s2s1h1, report.s2file1a.csv, report.s2file1b)
@@ -795,10 +797,11 @@ numFeatureChangedFC.df <- read.table(file = file.path(resultsDir, outFileName),
 report.s2t2a <- newTable( numFeatureChangedFC.df[,1:6], 
                          file=outFileNameRelPath,
                          "Number of features changed between comparisons for given p.value cutoffs and methods (adjusted p.value or not). First comparisons." ); # w/ caption
-report.s2t2b <- newTable( numFeatureChangedFC.df[,c(1,7:ncol(numFeatureChangedFC.df))], 
-                          file=outFileNameRelPath,
-                          "Number of features changed between comparisons for given p.value cutoffs and methods (adjusted p.value or not). Last comparisons." ); # w/ caption
-report.s2s2 <- addTo( report.s2s2, report.s2t2a, report.s2t2b)
+# report.s2t2b <- newTable( numFeatureChangedFC.df[,c(1,7:ncol(numFeatureChangedFC.df))], 
+#                           file=outFileNameRelPath,
+#                           "Number of features changed between comparisons for given p.value cutoffs and methods (adjusted p.value or not). Last comparisons." ); # w/ caption
+# report.s2s2 <- addTo( report.s2s2, report.s2t2a, report.s2t2b)
+report.s2s2 <- addTo( report.s2s2, report.s2t2a)
 #report.s2file <- newParagraph( "File: <a href=\"", outFileNameRelPath,"\">",
 #                                 outFileNameRelPath, "</a>")
 #report.s2s2 <- addTo( report.s2s2, report.s2file)
@@ -1056,7 +1059,7 @@ for (ii in 1:length(wCont)) { # ii is the index of the list with the multiple co
                                                                 my.cels[[ wCont[[ii]][jj] ]]   ]
     #str(exprs2cluster[[ wCont[[ii]][jj] ]])
     
-    groupColors[[ wCont[[ii]][jj] ]] <-  as.character(pData(exprs.filtered)$ColoresTipoT[ my.cels.idx[[ wCont[[ii]][jj] ]] ])
+    groupColors[[ wCont[[ii]][jj] ]] <-  as.character(pData(exprs.filtered)$Colores[ my.cels.idx[[ wCont[[ii]][jj] ]] ])
     mainTitle <- paste0(my.compName) ## Titol
     # Compose the filename
     outFileName.noext <- paste( "heatmap", my.compName, 
@@ -1196,6 +1199,21 @@ for (ii in 1:length(wCont)) { # ii is the index of the list with the multiple co
 # hwrite(listaArchivos,file.path(resultsDir, "listaArchivos.html"))
 
 ###################################################
+## Acknowledgement
+###################################################
+# Add the common request to cite our service in their papers at the Acknowledgements section
+report.s10 <- newSection( "Other considerations" );
+
+report.s10.p1 <- newParagraph( "To evaluate the usefulness of our work we will be pleased if you inform us about the scientific products as proceedings, papers, thesis, etc) derived from this work. \
+We will be very glad if you include in the Acknowledgements section of the paper the following sentence:" );
+
+report.s10.p2 <- newParagraph( asCode( "\"Statistical analysis ( Bioinformatics ) has been carried out\
+                                       in the Statistics and Bioinformatics Unit (UEB) at \
+                                       Vall d'Hebron Research Institute (VHIR) - http://ueb.vhir.org \"") );
+
+report.s10 <- addTo( report.s10, report.s10.p1, report.s10.p2);
+
+###################################################
 ## Make the report
 ###################################################
 # Report with Nozzle.R1
@@ -1208,7 +1226,7 @@ report.s1 <- addTo( report.s1, report.s1s1, report.s1s2, report.s1s4, report.s1s
                     report.s1s7); # sections s1s3 and s1s6 have been removed from the report by Alex.
 report.s2 <- addTo( report.s2, report.s2s1, report.s2s2, report.s2s3, report.s2s4, report.s2s5 );
 report.r <- addTo( report.r, report.s0a, report.s0b, report.s1, report.s2 );
-#report.r <- addTo( report.r, report.s1, report.s2 );
+report.r <- addTo( report.r, report.s10 ); # "Other considerations" section, at the end.
 
 # Ensure that the report is created at the baseDir, and not at resultsDir
 setwd(baseDir)
