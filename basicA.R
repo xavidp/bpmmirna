@@ -148,7 +148,7 @@ report.s1 <- newSection( "Base information" );
 # DATA LOADING
 #############################
 ## ----loadData------------------------------------------------------------
-#load(file=file.path(resultsDir, "datos.normalizados.Rda"))
+#load(file=file.path(dataRelDir, paste0("data.normalized.", aID,".Rda")))
 source("Rcode/DataPreprocessing.R")
 
 # The Previous file created the expression set.

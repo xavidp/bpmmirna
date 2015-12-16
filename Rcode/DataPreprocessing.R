@@ -82,7 +82,7 @@ if (length(samples2remove) > 1) {
 }
 dim(xx) #36249    45
 save(xx, targets, anota, file=file.path(basepath, dataRelDir,
-                                        paste0("data.", aID,".Rda")))
+                                        paste0("data.raw.", aID,".Rda")))
 
 
 #merge xx con anota#########################
@@ -101,7 +101,7 @@ head(expresEG)
 
 save(expresEG, targets,anota, sample.names,  
      file=file.path(basepath, dataRelDir,
-                    paste0("Micros_", aID,"_expressEG.Rda")))
+                    paste0("Micros.", aID,".expressEG.Rda")))
 
 ##############################################
 ### VSN
@@ -148,7 +148,7 @@ class(d_vsn)
 meanSdPlot(d_vsn)
 dim(exprs(d_vsn))
 head(exprs(d_vsn))
-save(d_vsn, file = "expres.filtered.Rda")
+save(d_vsn, file = file.path(basepath, dataRelDir, paste0("expres.filtered.", aID,".Rda")))
 
 if (!require("naturalsort")) {
   install.packages("naturalsort")
@@ -173,6 +173,9 @@ colnames(exprs(d_vsn2)) == rownames(targets2)
 
 pData(d_vsn2) <- targets2
 
+# Save Rda with normalized data
+save(d_vsn2, file=file.path(basepath, dataRelDir,
+                                        paste0("data.normalized.", aID,".Rda")))
 # > order(pData(d_vsn))
 # > pData(d_vsn) <- targets[order(pData(d_vsn)[,1])]
 # Error in `[.data.frame`(targets, order(pData(d_vsn)[, 1])) : 
