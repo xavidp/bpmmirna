@@ -43,6 +43,9 @@ if(!require(Nozzle.R1)) install.packages( "Nozzle.R1", type="source" );
 if(!require(VennDiagram)) install.packages("VennDiagram")
 if(!require(stringr)) install.packages("stringr")
 if(!require(xml2)) install.packages("xml2")
+if(!require(data.table)) install.packages("data.table") 
+#For help type ?data.table or https://github.com/Rdatatable/data.table/wiki
+#The fastest way to learn (by data.table authors): https://www.datacamp.com/courses/data-analysis-the-data-table-way
 
 #if(!require(venneuler)) install.packages("venneuler")
 
@@ -70,10 +73,12 @@ setwd(workingDir)
 dataRelDir <- "dades"
 resultsRelDir <- "results"
 celfilesRelDir <- "celfiles"
+reportsRelDir <- "reports"
 # Absolute Paths to subdirs
 dataDir <-file.path(workingDir, dataRelDir)
 resultsDir <- file.path(workingDir, resultsRelDir)
 celfilesDir <- file.path(workingDir, celfilesRelDir)
+reportsDir <- file.path(workingDir, reportsRelDir)
 
 # Sourcing the whole set of functions from the standard Basic Pipe: AnalysisFunctions2Pack.R 
 source(file.path(baseDir,"Rcode", "AnalysisFunctions2Pack.R"))
@@ -288,7 +293,14 @@ require(limma)
 #      BvsL = L-B,
 #      levels=design)
 #print(cont.matrix)
-cont.matrix <- makeContrasts(                   ### RECORDAR QUE AIXÒ ES UN EXEMPLE!!!
+cont.matrix <- makeContrasts(                   
+  ### ---------------------------------------------------------------------------
+  ### REMEMBER THAT THIS IS JUST AN EXAMPLE!!!
+  ### AND THAT IF YOU REMOVE SAMPLES FOR PROCESSING AFTER QUALITY CONTROL
+  ### YOU NEED TO RE-ADAPT THE RELATIVE WEIGHT OF EACH CASE IN THE CONTRASTS MATRIX
+  ### (I.E. YOU NEED TO TWEAK THE NUMBERS CORRESPONDING TO THE NEW NUMBER OF CEL FILES
+  ### FOR EACH CASE IN WHICH YOU REMOVED SAMPLES)
+  ### ---------------------------------------------------------------------------
   CANvsCTL           =  ( (CAN.ht25.NoM*5/10) + (CAN.ht25.Met*5/10) + (CAN.lt25.NoM*5/10) + (CAN.lt25.Met*5/10) ) -
                         ( (CTL.ht25.NoM*5/10) + (CTL.ht25.Met*5/10) + (CTL.lt25.NoM*4/10) + (CTL.lt25.Met*6/10) ), 
   CAN.ht25vsCAN.lt25  = ( (CAN.ht25.NoM*5/10) + (CAN.ht25.Met*5/10) ) - ( (CAN.lt25.NoM*5/10) + (CAN.lt25.Met*5/10) ),
@@ -502,7 +514,7 @@ report.s1file7a.csv <- newHtml( "File (CSV): <a href=", outFileNameRelPath,">",
 # When requested, create the dTable, filterable and sortable, etc.
 create.dTable.featAnot <- T
 if (create.dTable.featAnot == TRUE) {
-  # Create a dTable, a filterable html table: sortable columns plus search box that filster records in real time
+  # Create a dTable, a filterable html table: sortable columns plus search box that filters records in real time
   # uses dTable from rCharts.
   # Only the first 6 are the needed ones for the html file generated. Example:
   #  Probe_Set_ID Species_Scientific_Name Sequence.Type Sequence.Source   Transcript_ID  Probe.Set.Name
@@ -836,16 +848,66 @@ for (ii in 1:length(wCont)) { # ii is the index of the list with the multiple co
     } else {
       volcanoPointNames <- fit.main$Probe.Set.Name
     }
+
+    # Rename volcanoPointNames to use TranscriptID instead of Probe.Set.Name. 
+    # E.g.: "14q0" instead of "14q0_st". Or "hsa-let-7a-5p" instead of "MIMAT0000062_st"  
+    #head(volcanoPointNames)
+    #head(anotacion.hg)
+    df1 <- data.frame(volcanoPointNames)
+    colnames(df1) <-"Probe.Set.Name"
+    df2 <- anotacion.hg
+    volcanoPointNames_df <- merge(df1,df2, all.x=TRUE)
+    volcanoPointNames_df <- volcanoPointNames_df$Transcript_ID
+    #length(volcanoPointNames_df)
+    
+#     # ---------------------------------
+#     # Attempt to reproduce the same behavior with package data.tables instead, which is k own to be more efficient
+#     # However, I end up commenting out this chunk of code since ther results where not identical in some cases, 
+#       due to the sorting performed internally in the data.table way, which seems to be needed for it's improvement in performance
+#       and I don't know yet how to force to keep the same order in the first results, so I end up using the first methods which keeps 
+#       the original order we need.
+#     # ---------------------------------
+#     require(data.table)
+#     dt1 <- data.table(volcanoPointNames)
+#     colnames(dt1) <-"Probe.Set.Name"
+#     dt2 <- data.table(anotacion.hg)
+#     #?merge.data.table
+#     setkey(dt1,"Probe.Set.Name")
+#     setkey(dt2,"Probe.Set.Name")
+#     volcanoPointNames_dt <- dt2[dt1]
+#     dim(volcanoPointNames_dt)
+#     volcanoPointNames_dtid <- volcanoPointNames_dt$Transcript_ID
+#     volcanoPointNames_dtidpn <- data.table(volcanoPointNames_dt$Probe.Set.Name, volcanoPointNames_dt$Transcript_ID)
+#     colnames(volcanoPointNames_dtidpn) <- c("Probe.Set.Name", "Transcript_ID")
+#     
+#     table(volcanoPointNames_df == volcanoPointNames_dtid)
+#     diff.idx <- which(volcanoPointNames_df != volcanoPointNames_dtid)
+#     volcanoPointNames_df[diff.idx[1]-1]
+#     volcanoPointNames_df[diff.idx[1:2]]
+#     volcanoPointNames_df[c(diff.idx[1]-1, diff.idx[1:2])];
+# 
+#     volcanoPointNames_dtid[diff.idx[1]-1];
+#     volcanoPointNames_dtid[diff.idx[1:2]];
+#     volcanoPointNames_dtidpn[c(diff.idx[1]-1, diff.idx[1:2])];
+#     
+#     anotacion.hg[anotacion.hg$Transcript_ID=="ACA59",]
+#     volcanoPointNames[grep("ACA59",volcanoPointNames)]
+#     str(volcanoPointNames_df);str(volcanoPointNames_dtid);
+#     head(volcanoPointNames_df);head(volcanoPointNames_dtid);
+#     tail(volcanoPointNames_df);tail(volcanoPointNames_dtid);
+#     table(sort(volcanoPointNames_df) == sort(volcanoPointNames_dtid))
+
+                                
     # Generate the pdf
     pdf(file=outFileName.pdf, paper="special", width=6, height=6)
-    volcanoplot(fit.main, coef= wCont[[ii]][jj] , highlight=10, names=volcanoPointNames, 
+    volcanoplot(fit.main, coef= wCont[[ii]][jj] , highlight=10, names=volcanoPointNames_df, 
                 main=paste("Differentially expressed features in ", my.compName, sep="\n"))
     abline(v=c(-1,1))
     dev.off()
     #cat("\\includegraphics{", file, "}\n\n", sep="")
     # Generate the png
     png(file=outFileName.png)
-    volcanoplot(fit.main, coef= wCont[[ii]][jj] , highlight=10, names=volcanoPointNames, 
+    volcanoplot(fit.main, coef= wCont[[ii]][jj] , highlight=10, names=volcanoPointNames_df, 
                 main=paste("Differentially expressed features in ", my.compName, sep="\n"))
     abline(v=c(-1,1))
     dev.off()
@@ -877,8 +939,8 @@ if(!require(VennDiagram)) install.packages("VennDiagram")
 require(VennDiagram)
 
 # Re-set the needed lists to zero just in case
-if (exists("fileVenn")) rm(fileVenn); fileVenn    <- list()
-if (exists("listVenn")) rm(listVenn); listVenn    <- list()
+if (exists("listVenn.tid")) rm(listVenn.tid); listVenn.tid    <- list() # tid = Transcript_ID
+if (exists("listVenn.psn")) rm(listVenn.psn); listVenn.psn    <- list() # psn = Probe.Set.Name
 if (exists("pValString")) rm(pValString); pValString  <- list()
 if (exists("tmpVenn")) rm(tmpVenn)
 
@@ -889,19 +951,28 @@ for (ii in 1:length(wCont)) { # ii is the index of the list with the multiple co
     ## ------------------------------------------------
     ## Seleccio toptables i llistat de Features
     tmpVenn <- topTab[[ wCont[[ii]][jj] ]] 
-    fileVenn[[ wCont[[ii]][jj] ]] <- tmpVenn
-    #head(tmpVenn)
-    #head(exprs(exprs.filtered))
-    #targets
+    tmpVenn <- cbind(rownames(tmpVenn), tmpVenn); colnames(tmpVenn)[1] <- "Probe.Set.Name"
+    tmpVenn.tid <- merge(tmpVenn, tid, by = "Probe.Set.Name")
+    # Reorder results by p.value again
+    tmpVenn.tid <-  tmpVenn.tid[order(tmpVenn.tid$P.Value),]
+    # Re-set rownames to Transcript_ID this time
+    rownames(tmpVenn.tid) <- tmpVenn.tid$Transcript_ID
+    
+  
+    # ListVenn objects:
+    #listVenn.tid stands for Transcript_ID in the list for the VennDiagrams
+    #listVenn.psn stands for Probe.Set.Name in the list for the VennDiagrams
     if ( adjMethod[ii] == "none" ) {
-      listVenn[[ wCont[[ii]][jj] ]] <- as.character(rownames(tmpVenn[tmpVenn$P.Value < pValCutOff[ii],]))
+      listVenn.tid[[ wCont[[ii]][jj] ]] <- as.character(rownames(tmpVenn.tid[tmpVenn.tid$P.Value < pValCutOff[ii],]))
+      listVenn.psn[[ wCont[[ii]][jj] ]] <- as.character(tmpVenn.tid[tmpVenn.tid$P.Value < pValCutOff[ii], "Probe.Set.Name"])
       pValString[ii]  <- "P.Value"
     } else {
-      listVenn[[ wCont[[ii]][jj] ]] <- as.character(rownames(tmpVenn[tmpVenn$adj.P.Val < pValCutOff[ii],]))
+      listVenn.tid[[ wCont[[ii]][jj] ]] <- as.character(rownames(tmpVenn.tid[tmpVenn.tid$adj.P.Val < pValCutOff[ii],]))
+      listVenn.psn[[ wCont[[ii]][jj] ]] <- as.character(tmpVenn.tid[tmpVenn.tid$adj.P.Val < pValCutOff[ii], "Probe.Set.Name"])
       pValString[ii]  <- "Adj.P.Value"
     }
     
-  } # end the loop of jj, to have all fileVenn and listVenn created for a multiple comparison
+  } # end the loop of jj, to have all listVenn.tid created for a multiple comparison
   
   # In case there are 2 or more comparisons, create a vennDiagram for them.
   if (length(wCont[[ii]]) > 1) {
@@ -909,7 +980,7 @@ for (ii in 1:length(wCont)) { # ii is the index of the list with the multiple co
     mainTitle <- paste0("Venn diagram for ", compGroupName[ii]," (", pValString[ii]," < ", pValCutOff[ii], ")") ## Titol
     
     ## Creació Venn Diagram
-    venn.plot <- venn.diagram(listVenn[ wCont[[ii]] ], # The list of DE features in each comparison of each multiple comparison group
+    venn.plot <- venn.diagram(listVenn.tid[ wCont[[ii]] ], # The list of DE features in each comparison of each multiple comparison group
                               category.names = colnames(cont.matrix)[ wCont[[ii]]  ], ## Comparacions
                               fill = rainbow( length(wCont[[ii]]) ),
                               #fill = c("tomato", "orchid4", "turquoise3"),
@@ -953,7 +1024,7 @@ for (ii in 1:length(wCont)) { # ii is the index of the list with the multiple co
     ## Derived from 
     ## https://github.com/miriamMota/scripts/blob/master/Bioinf/VennDiagram.R
     ############################
-    xx.1 <- listVenn[ wCont[[ii]] ]
+    xx.1 <- listVenn.tid[ wCont[[ii]] ]
     names(xx.1) <- compNamesAll[[ii]]
     combs <-  unlist(lapply(1:length(xx.1), 
                             function(j) combn(names(xx.1), j, simplify = FALSE)),
@@ -1040,7 +1111,7 @@ if (exists("my.cels.idx")) rm(my.cels.idx); my.cels.idx <- list()
 if (exists("my.cels")) rm(my.cels); my.cels <- list()
 if (exists("heatmap.plotly.link")) rm(heatmap.plotly.link); heatmap.plotly.link <- list()
 
-#str(listVenn)
+#str(listVenn.tid)
 
 for (ii in 1:length(wCont)) { # ii is the index of the list with the multiple comparison group names
   #wCont[ii]
@@ -1055,9 +1126,28 @@ for (ii in 1:length(wCont)) { # ii is the index of the list with the multiple co
     my.cels.idx[[ wCont[[ii]][jj] ]] <- as.numeric(as.character(my.cels.df[[ wCont[[ii]][jj] ]] [,2]))
     my.cels[[ wCont[[ii]][jj] ]] <- as.character(my.cels.df[[ wCont[[ii]][jj] ]] [,3])
     
-    exprs2cluster[[ wCont[[ii]][jj] ]] <- exprs(exprs.filtered)[listVenn[[ wCont[[ii]][jj] ]] ,
+    # head(exprs(exprs.filtered))
+    exprs2cluster[[ wCont[[ii]][jj] ]] <- exprs(exprs.filtered)[listVenn.psn[[ wCont[[ii]][jj] ]] ,
                                                                 my.cels[[ wCont[[ii]][jj] ]]   ]
     #str(exprs2cluster[[ wCont[[ii]][jj] ]])
+    #class(exprs2cluster[[ wCont[[ii]][jj] ]])
+    #head(exprs2cluster[[ wCont[[ii]][jj] ]])
+    exprs2cluster.tid <- data.frame(exprs2cluster[[ wCont[[ii]][jj] ]], rownames(exprs2cluster[[ wCont[[ii]][jj] ]]) )
+    colnames(exprs2cluster.tid) <- c(colnames(exprs2cluster[[ wCont[[ii]][jj] ]]), "Probe.Set.Name") 
+    #head(exprs2cluster.tid)
+    #head(tid)
+    rownames(tid) <- tid$Probe.Set.Name
+    #mx <- exprs2cluster[[ wCont[[ii]][jj] ]]
+    mx <- exprs2cluster.tid
+    my <- tid
+    # Merge both objects
+    mxy <- merge(mx, my, by = intersect(names(mx), names(my)))
+    head(mxy)
+    # reassign rownames, but this time use Transcript_ID
+    rownames(mxy) <- mxy$Transcript_ID
+    # Remove columns of Transcript_ID and Probe.Set.Name after we confirmed by hand that the merge process did as expected 
+    mxy.tid <- mxy[!names(mxy) %in% c("Probe.Set.Name", "Transcript_ID")]
+    #head(mxy.tid)
     
     groupColors[[ wCont[[ii]][jj] ]] <-  as.character(pData(exprs.filtered)$Colores[ my.cels.idx[[ wCont[[ii]][jj] ]] ])
     mainTitle <- paste0(my.compName) ## Titol
@@ -1069,27 +1159,29 @@ for (ii in 1:length(wCont)) { # ii is the index of the list with the multiple co
     #     ## ----plotHeatMap1, fig=T, eval=TRUE--------------------------------------
     # Save Heatmap to file on disk as PDF
     pdf(paste0(outFileName.noext, ".pdf"))
-    heatmap(exprs2cluster[[ wCont[[ii]][jj] ]], col=bluered(75),
+    heatmap(as.matrix(mxy.tid), col=bluered(75),
             ColSideColors=groupColors[[ wCont[[ii]][jj] ]], cexCol=0.9,
-            main = mainTitle, xlab="Samples", ylab="Features")
+            main = mainTitle, xlab="Samples", ylab="")
+            # main = mainTitle, xlab="Samples", ylab="Features")
     dev.off()
 
     #     ## ----plotHeatMap1, fig=T, eval=TRUE--------------------------------------
     # Save Heatmap to file on disk as PNG
     png(paste0(outFileName.noext, ".png"))
-    heatmap(exprs2cluster[[ wCont[[ii]][jj] ]], col=bluered(75),
+    heatmap(as.matrix(mxy.tid), col=bluered(75),
             ColSideColors=groupColors[[ wCont[[ii]][jj] ]], cexCol=0.9,
-            main = mainTitle, xlab="Samples", ylab="Features")
+            main = mainTitle, xlab="Samples", ylab="")
+            #main = mainTitle, xlab="Samples", ylab="Features")
     dev.off()
     
 #     ## ----plotHeatMap2, fig=T, eval=TRUE--------------------------------------
-#     require("gplots")
-#     heatmap.2(exprs2cluster[[ wCont[[ii]][jj] ]], 
-#               col=bluered(75), scale="row",
-#               ColSideColors=groupColors[[ wCont[[ii]][jj] ]], key=TRUE, symkey=FALSE, 
-#               density.info="none", trace="none", cexCol=1, main = mainTitle)    
-#
-#    dev.off()
+#      require("gplots")
+#      heatmap.2(as.matrix(mxy.tid), 
+#                col=bluered(75), scale="row",
+#                ColSideColors=groupColors[[ wCont[[ii]][jj] ]], key=TRUE, symkey=FALSE, 
+#                density.info="none", trace="none", cexCol=1, main = mainTitle)    
+# 
+#     dev.off()
     
     # Add it to the report as screenshot
     # figure file paths
@@ -1128,9 +1220,9 @@ for (ii in 1:length(wCont)) { # ii is the index of the list with the multiple co
       # Testing Plotly
       # It works in the laptop with VHIR_Externa or MainHead, but not with the desktop (using ethernet cable behind proxy)
       #Axis and legend default names seem to be the name of the variable containing them. Therefore we rename the vars here:
-      Expressions <- exprs2cluster[[ wCont[[ii]][jj] ]]
-      Samples <- colnames(exprs2cluster[[ wCont[[ii]][jj] ]])
-      Features <- rownames(exprs2cluster[[ wCont[[ii]][jj] ]])
+      Expressions <- mxy.tid
+      Samples <- colnames(mxy.tid)
+      Features <- rownames(mxy.tid)
       py <- plot_ly(z = Expressions,
                     x = Samples,
                     y = Features,
@@ -1250,17 +1342,44 @@ writeReport( report.r, filename=report.filename ); # w/o extension
 #Two files called my_report.html and my_report.RData will be written to the current working directory.
 
 # Phase 4: edit the report and other html files produced so that css and js libraries use relative paths and not absolute, so that they work when moved to another computer
-# ToDo (as of December 1, 2015). Pending to finish properly this Phase 4.
 
-# For html edition as simple text from R, we can use the readr package
-#require(readr)
-# install.packages("compare")
-#require(compare)
-# base_url <- "/home/xavi/R/x86_64-pc-linux-gnu-library/3.2/rCharts/libraries/datatables/"
-# #file2edit <- file.path(resultsRelDir, paste0(report.filename, ".html"))
-# file2edit <- paste0(report.filename, ".html")
-# f2e.abs <- read_file(file2edit)
-# f2eg.rel <- gsub(base_url, "./", f2e.abs)
+# For html edition as simple text from R, we can use the base functions "readLines" and "cat" (to file)
+base_url <- "/home/xavi/R/x86_64-pc-linux-gnu-library/3.2/rCharts/libraries/datatables/"
+# Copy the css and js files from the reports folder to the results folder for later reuse within the ResultsFiles.html generated 
+#file.link(from, to)
+# Create folders for js and css in results Dir if they don't exist yet
+folders2create <- c("js", "css")
+files2create <- list(c("jquery.js", "jquery.dataTables.js"),
+                     c("demo_table.css", "jquery.dataTables_themeroller.css", "jquery.dataTables.css"))
+names(files2create) <- folders2create
+# Start loop over folders
+for (folder in folders2create) {
+  # Check if folder exists. If not, create it.
+  if (!dir.exists(file.path(resultsDir, folder))) dir.create(file.path(resultsDir, folder))
+  
+  # Start loop over files within each folder
+  for (f2c in files2create[[folder]]) { # f2c = file to create
+    # prepare to copy files if they do not exist yet in destination
+    to    <- file.path(resultsDir, folder, f2c)
+    if (!file.exists(to)) {
+      from  <- file.path(reportsDir, folder, f2c)
+      resultsFileLink <- file.link(from, to)
+    } # end if clause for file copy 
+  } # loop over files
+} # loop over folders
+
+# to be compressed and send elsewhere for the researcher with all the required css and js files in it. Copyright licenses should be respected (citation, etc).
+filenames <- list.files(path = resultsDir, pattern = "html")
+setwd(resultsDir)
+## Replace base_url with nothing since these js and css folders have been copied to the resultsDir folder.
+#foreach( ff in filenames ){
+replaceResult <- foreach (ff = 1:length(filenames)) %dopar% {
+  #ff <- 1
+  xx <- readLines(filenames[ff])
+  yy <- gsub( base_url, "", xx )
+  cat(yy, file=filenames[ff], sep="\n")
+  
+}
 
 #   # For html edition from R, See: http://blog.rstudio.org/2015/04/21/xml2/
 #   require(xml2)
