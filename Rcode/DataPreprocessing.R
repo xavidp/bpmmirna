@@ -9,6 +9,10 @@
 #basepath <- "/mnt/magatzem02/tmp/YYYY-MM-XXX-YYY-ANNN" # MainHead
 basepath <- baseDir
 
+#################################################
+# 0. Creacio de diccionari d'anotacions
+################################################
+
 #se prueba de utilizar biomart para conseguir anotaciones aunque creo que luego no se utilizará.
 source("http://bioconductor.org/biocLite.R")
 if (!require("biomaRt")) {
@@ -28,7 +32,7 @@ head(miRNA)
 
 #archivo de EC con anotaciones (rma+anotaciones)
 setwd(file.path(basepath, dataRelDir))
-anotacion<-read.csv("rma_affy_annotated_ref.txt",sep="\t",header=TRUE)
+anotacion<-read.csv("rma.affy.annotated.ref.txt",sep="\t",header=TRUE)
 dim(anotacion)#36137 6
 head(anotacion)
 
@@ -54,12 +58,17 @@ rownames(anota)<-anota$anotacion.hg.Probe_Set_ID
 colnames(anota)<-c("Transcript_ID","Probe_Set_ID")
 head(anota)
 
-#preparación archivo Rda
+#################################################
+# 1. Lectura i anotacio  de dades normalitzades amb Expression Console
+#################################################
+
+# 1.1 Lectura 
+# -------------------------
 setwd(file.path(basepath, dataRelDir))
-xx <-read.csv2(paste0("rma.", aID, ".summary.txt"), header = TRUE, row.names=1,
+data.rma <-read.csv2(paste0("rma.", aID, ".summary.txt"), header = TRUE, row.names=1,
                sep="\t", dec=",", comment.char = "#")
-head(xx)
-dim(xx)#36249 48
+head(data.rma)
+dim(data.rma)#36249 48
 targets <- read.csv2 (targetsFileName, sep="\t")
 # Remove the rows containing the samples indicated in this param "samples2remove" 
 # since we do not want to consider them in the analysis
@@ -77,35 +86,39 @@ sample.names <- as.character(targets$ShortName)
 # Remove rows only if there is some sample to be removed
 if (length(samples2remove) > 1) {
   samplesX2remove <- paste0("X", samples2remove)
-  col2remove.idx <- which(colnames(xx) %in% samplesX2remove)  
-  xx <- xx[-col2remove.idx]
+  col2remove.idx <- which(colnames(data.rma) %in% samplesX2remove)  
+  data.rma <- data.rma[-col2remove.idx]
 }
-dim(xx) #36249    45
-save(xx, targets, anota, file=file.path(basepath, dataRelDir,
-                                        paste0("data.raw.", aID,".Rda")))
+dim(data.rma) #36249    45
+save(data.rma, targets, anota, file=file.path(basepath, dataRelDir,
+                                        paste0("data.rma.", aID,".Rda")))
 
 
-#merge xx con anota#########################
-expresEG <- merge(xx,anota,by="row.names")
-dim(expresEG)#6050 48
-head(expresEG)
-#rownames(expresEG)<-expresEG$Row.names
-rownames(expresEG)<-expresEG$Transcript_ID
-#expresEG<-expresEG[,-c(1,57,58)]
-ncol(expresEG) # 48
+# 1.2 Anotacio amb  "anota" 
+# -------------------------
+data.rma.anotated <- merge(data.rma,anota,by="row.names")
+dim(data.rma.anotated) #6050 48
+head(data.rma.anotated)
+#rownames(data.rma.anotated)<-data.rma.anotated$Row.names
+rownames(data.rma.anotated)<-data.rma.anotated$Transcript_ID
+#data.rma.anotated<-data.rma.anotated[,-c(1,57,58)]
+ncol(data.rma.anotated) # 48
 # Remove the first column and the last 2
-expresEG<-expresEG[,-c(1,ncol(expresEG)-1,ncol(expresEG))]
-dim(expresEG)#6050 45
-head(expresEG)
+data.rma.anotated<-data.rma.anotated[,-c(1,ncol(data.rma.anotated)-1,ncol(data.rma.anotated))]
+dim(data.rma.anotated)#6050 45
+head(data.rma.anotated)
 
 
-save(expresEG, targets,anota, sample.names,  
+save(data.rma.anotated, targets,anota, sample.names,  
      file=file.path(basepath, dataRelDir,
-                    paste0("Micros.", aID,".expressEG.Rda")))
+                    paste0("data.rma.annotated.", aID,".Rda")))
 
 ##############################################
 ### VSN
 ##############################################
+
+# 1. Crear arxiu d'identificacio sondes-posicio al xip "cel definition" file cdf
+# -------------------------
 setwd(file.path(basepath, celfilesRelDir))
 if (!require("makecdfenv")) {
   biocLite("makecdfenv")
@@ -115,15 +128,16 @@ if (!require("affxparser")) {
 }
 library(makecdfenv)    
 library(affxparser)
-if (!require("mirna41cdf")) {
-  convertCdf("miRNA-4_0-st-v1.cdf", "mirna41cdf", version=4, verbose=TRUE) 
+if (!require("mirna40cdf")) {
+  convertCdf("miRNA-4_0-st-v1.cdf", "mirna40cdf", version=4, verbose=TRUE) 
   pkgpath <- file.path(basepath, dataRelDir)
-  make.cdf.package("mirna41cdf", version = packageDescription("makecdfenv", field = "Version"), species="", unlink=TRUE, compress=FALSE, package.path = pkgpath)
+  make.cdf.package("mirna40cdf", version = packageDescription("makecdfenv", field = "Version"), species="", unlink=TRUE, compress=FALSE, package.path = pkgpath)
   
-  system(paste0("R CMD INSTALL \"", pkgpath, "/mirna41cdf", "\""))
+  system(paste0("R CMD INSTALL \"", pkgpath, "/mirna40cdf", "\""))
 }
 
-library(affy)
+# 2. Lectura dels celfiles (que requereix el .cdf)
+# -------------------------
 require(affy)
 # Before reading the celfiles through ReadAffy, limit the filenames to get rid of the ones in samples2remove
 fns <- list.celfiles(path=file.path(basepath, celfilesRelDir),full.names=TRUE)
@@ -136,51 +150,106 @@ if (length(samples2remove) > 1) {
 cat("Reading files:\n",paste(fns,collapse="\n"),"\n")
 cat("Removed from the analysis:\n",paste(samples2remove,collapse="\n"),"\n")
 ##read a binary celfile
-xx <- ReadAffy(filenames=fns)
-#class(xx)
-#str(xx)
-# exprs(xx)
+
+rawData2 <- ReadAffy(filenames=fns)
+#class(rawData2)
+#str(rawData2)
+# exprs(rawData2)
+
+# 3. Normalitzacio amb VSN
+# -------------------------
 if (!require("vsn")) {
   biocLite("vsn")
 }
-d_vsn = vsnrma(xx) # d_vsn is the expression set
-class(d_vsn)
-meanSdPlot(d_vsn)
-dim(exprs(d_vsn))
-head(exprs(d_vsn))
-save(d_vsn, file = file.path(basepath, dataRelDir, paste0("expres.filtered.", aID,".Rda")))
+data.vsn.rma = vsnrma(rawData2) # data.vsn.rma is the expression set
+class(data.vsn.rma)
+meanSdPlot(data.vsn.rma)
+dim(exprs(data.vsn.rma))
+head(exprs(data.vsn.rma))
+save(data.vsn.rma, file = file.path(basepath, dataRelDir, paste0("data.vsn.rma.", aID,".Rda")))
 
 if (!require("naturalsort")) {
   install.packages("naturalsort")
 }
 require(naturalsort)
-# order(row.names(pData(d_vsn))) # Wrong sorting with "order"
-row.names(pData(d_vsn))
-colnames(exprs(d_vsn))
-table(row.names(pData(d_vsn)) == colnames(exprs(d_vsn)))
-row.names(pData(d_vsn)) == colnames(exprs(d_vsn))
+# order(row.names(pData(data.vsn.rma))) # Wrong sorting with "order"
+row.names(pData(data.vsn.rma))
+colnames(exprs(data.vsn.rma))
+table(row.names(pData(data.vsn.rma)) == colnames(exprs(data.vsn.rma)))
+row.names(pData(data.vsn.rma)) == colnames(exprs(data.vsn.rma))
 
-ns.d_vsn <-naturalsort(row.names(pData(d_vsn))) # ns -> natural sort
-idx.d_vsn <- pData(d_vsn)[ns.d_vsn,] # Indexes from d_vsn sorted with natural sort
-d_vsn2 <- d_vsn[,idx.d_vsn]
+ns.data.vsn.rma <-naturalsort(row.names(pData(data.vsn.rma))) # ns -> natural sort
+idx.data.vsn.rma <- pData(data.vsn.rma)[ns.data.vsn.rma,] # Indexes from data.vsn.rma sorted with natural sort
+data.vsn.rma2 <- data.vsn.rma[,idx.data.vsn.rma]
 rownames(targets) <- as.character(targets$SampleName)
 targets2 <- targets[naturalsort(as.character(targets$SampleName)),]
 #class(targets$SampleName)
 
-table(colnames(exprs(d_vsn2)) == rownames(targets2))
-table(colnames(exprs(d_vsn2)) == rownames(targets))
-colnames(exprs(d_vsn2)) == rownames(targets2)
+table(colnames(exprs(data.vsn.rma2)) == rownames(targets2))
+table(colnames(exprs(data.vsn.rma2)) == rownames(targets))
+colnames(exprs(data.vsn.rma2)) == rownames(targets2)
 
-pData(d_vsn2) <- targets2
+pData(data.vsn.rma2) <- targets2
+
+#--------------------------------
+#############################
+# FEATURE (GENE, miRNA, ...)  SELECTION
+#############################
+eset_norm <- data.vsn.rma2 # data.vsn.rma2 ja té les columnes i files (covariables) coincidint amb la info del targets
+dim(exprs(eset_norm))
+#[1] 36249    48
+head(exprs(eset_norm))
+
+## PART QUE ELIMINA LES FILES AMB IDENTICS VALORS D'EXPRESSIO (FERRAN, JUNY 2012)
+## guardem com a valides les files de exprs(eset_norm) que NO estiguin duplicades
+## (en cas de duplicats, es guarda la primera instancia de cada una com a bona)
+repes <- duplicated(exprs(eset_norm), MARGIN=1)
+#table(repes)
+# repes
+# FALSE  TRUE 
+# 25111 11138
+exprs(eset_norm) <- exprs(eset_norm)[!repes,]
+#dim(eset_norm)
+# Features  Samples 
+# 25111       48
+
+
+# XXX. BRB279. Repeteixo el process de filtrar d'abans, que sé que es quedan només amb els microRNA d'humans de l'expression set
+# i ho torno a assignar al mateix objecte eset_norm, per a continuar amb el Basic Pipe estandard
+eset_norm.hg <- eset_norm[rownames(exprs(eset_norm)) %in% as.character(anotacion.hg$Probe.Set.Name),]
+#class(eset_norm.hg)
+#dim(exprs(eset_norm.hg))
+##[1] 5596   48
+#[1] 5607   48
+#head(exprs(eset_norm.hg))
+
+# Eliminem els features que contenen la paraula "control", per que semblen ser controls d'Affymetrix o de l'experiment concret, i a més, un d'ells dona NA a totes les mostres
+control.idx <- grep("control", rownames(exprs(eset_norm.hg)))
+eset_norm.hg.nc <- eset_norm.hg[-control.idx,] # .nc stands for "No Controls"
+#dim(exprs(eset_norm.hg.nc))
+# 5595   48
+
+# I per tant, creo a ma l'objecte eset.vsn.rma2.filtered, a partir dels valors d'expressió dels microRNA d'humans obtinguts en el pas anterior
+data.eset.vsn.rma2.filtered <- eset_norm.hg.nc
+# --------------------------------------
+
+
 
 # Save Rda with normalized data
-save(d_vsn2, file=file.path(basepath, dataRelDir,
-                                        paste0("data.normalized.", aID,".Rda")))
-# > order(pData(d_vsn))
-# > pData(d_vsn) <- targets[order(pData(d_vsn)[,1])]
-# Error in `[.data.frame`(targets, order(pData(d_vsn)[, 1])) : 
+save(data.vsn.rma2, data.eset.vsn.rma2.filtered, file=file.path(basepath, dataRelDir,
+                                        paste0("data.vsn.rma2.", aID,".Rda")))
+save(anotacion.hg, anota, file=file.path(basepath, dataRelDir,
+                                  paste0("data.anotacions.hg.Rda")))
+save(data.rma, data.rma.anotated, file=file.path(basepath, dataRelDir,
+                              paste0("data.rma.", aID,".Rda")))
+save(rawData2, file=file.path(basepath, dataRelDir,
+                              paste0("data.raw2.", aID,".Rda")))
+
+# > order(pData(data.vsn.rma))
+# > pData(data.vsn.rma) <- targets[order(pData(data.vsn.rma)[,1])]
+# Error in `[.data.frame`(targets, order(pData(data.vsn.rma)[, 1])) : 
 #   undefined columns selected
-# > order(pData(d_vsn)[,1])
-# > pData(d_vsn)[,1]
+# > order(pData(data.vsn.rma)[,1])
+# > pData(data.vsn.rma)[,1]
 
 setwd(basepath)

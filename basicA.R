@@ -21,18 +21,13 @@ installifnot <- function (pckgName){
   }
 }
 installifnot("Biobase")
-installifnot("hgu133a.db")
 installifnot("affy")
-installifnot("affyPLM")
 installifnot("arrayQualityMetrics")
 installifnot("genefilter")
 installifnot("limma")
-installifnot("hgu133a.db")
 installifnot("annotate")
-installifnot("annaffy")
-installifnot("hwriter")
 installifnot("gplots")
-installifnot("GOstats")
+
 if(!require(SortableHTMLTables)) install.packages("SortableHTMLTables")
 if(!require(doMC)) install.packages("doMC")
 if(!require(devtools)) install.packages("devtools")
@@ -71,11 +66,13 @@ workingDir <- baseDir
 setwd(workingDir)
 # Relative Paths to subdirs
 dataRelDir <- "dades"
+docsRelDir <- "docs"
 resultsRelDir <- "results"
 celfilesRelDir <- "celfiles"
 reportsRelDir <- "reports"
 # Absolute Paths to subdirs
 dataDir <-file.path(workingDir, dataRelDir)
+docsDir <-file.path(workingDir, docsRelDir)
 resultsDir <- file.path(workingDir, resultsRelDir)
 celfilesDir <- file.path(workingDir, celfilesRelDir)
 reportsDir <- file.path(workingDir, reportsRelDir)
@@ -136,9 +133,11 @@ report.s0a.p5 <- newParagraph( "Most results are stored as ", asStrong(".txt"), 
                     general purpose office suits, internet browsers or pdf readers." );
  
 report.s0b <- newSection( "Main Documents" );
-study.proposalRelFileName <- file.path(resultsRelDir, "YYYY-MM-XXX-YYY-ANNN-StudyBudget.pdf")
+study.proposalFileName <- file.path(resultsRelDir, "YYYY-MM-XXX-YYY-ANNN-StudyBudget.pdf")
+study.proposalRelFileName <- file.path(resultsRelDir, study.proposalFileName)
 report.s0b.p1 <- newParagraph( "Study proposal: ", asLink(study.proposalRelFileName, study.proposalRelFileName ));
-study.reportRelFileName <- file.path(resultsRelDir, "YYYY-MM-XXX-YYY-ANNN-MainReport.pdf")
+study.reportFileName <- file.path(resultsRelDir, "YYYY-MM-XXX-YYY-ANNN-MainReport.pdf")
+study.reportRelFileName <- file.path(resultsRelDir, study.reportFileName)
 report.s0b.p2 <- newParagraph( "Report with description of methodology and main results: ", asEmph("Not available yet")) ;
                                #, asLink(study.reportRelFileName, study.reportRelFileName ));
 
@@ -147,75 +146,23 @@ report.s1 <- newSection( "Base information" );
 #############################
 # DATA LOADING
 #############################
-## ----loadData------------------------------------------------------------
-#load(file=file.path(dataRelDir, paste0("data.normalized.", aID,".Rda")))
-source("Rcode/DataPreprocessing.R")
+# If the object with normalized data exists, load it. Otherwise, generate it again
+if (!exists("data.eset.vsn.rma2.filtered")){
+  # Object data.eset.vsn.rma2.filtered doesn't exist in memory
+  # load it from disk (if present on disk)
+  if (file.exists(file.path(dataRelDir,
+                          paste0("data.vsn.rma2.", aID,".Rda")))) {
+  ## ----loadData------------------------------------------------------------
+  load(file=file.path(dataRelDir, paste0("data.vsn.rma2.", aID,".Rda")))
+  } else {
+  ## ----generateData------------------------------------------------------------
+  source("Rcode/DataPreprocessing.R")
+  }
+}
+#exprs.filtered <- exprs(data.eset.vsn.rma2.filtered)
+eset.vsn.rma2.filtered <- data.eset.vsn.rma2.filtered
+class(eset.vsn.rma2.filtered)
 
-# The Previous file created the expression set.
-
-#############################
-# FEATURE (GENE, miRNA, ...)  SELECTION
-#############################
-eset_norm <- d_vsn2 # d_vsn2 ja té les columnes i files (covariables) coincidint amb la info del targets
-dim(exprs(eset_norm))
-#[1] 36249    48
-head(exprs(eset_norm))
-
-## PART QUE ELIMINA LES FILES AMB IDENTICS VALORS D'EXPRESSIO (FERRAN, JUNY 2012)
-## guardem com a valides les files de exprs(eset_norm) que NO estiguin duplicades
-## (en cas de duplicats, es guarda la primera instancia de cada una com a bona)
-repes <- duplicated(exprs(eset_norm), MARGIN=1)
-#table(repes)
-# repes
-# FALSE  TRUE 
-# 25111 11138
-exprs(eset_norm) <- exprs(eset_norm)[!repes,]
-#dim(eset_norm)
-# Features  Samples 
-# 25111       48
-
-# # XXX BRB279: Aquí hauré de fer a ma probablement el filtrat dels microRNA que són controls d'Affymetrix per treure'ls.
-# head(exprs(eset_norm))
-# dim(exprs(eset_norm))
-# #?subset
-# ## Which miRNA affy probeset names are present in the df of miRNA for Humans created in the DataPreprocessing.R file? (anotacion.hg)
-# ## Summary of how many match the condition
-# table(rownames(exprs(eset_norm)) %in% as.character(anotacion.hg$Probe.Set.Name)) 
-# #
-# #FALSE  TRUE 
-# #19506  5596
-# FALSE  TRUE 
-# 19504  5607 
-# ## Which ones match the condition? 
-# # Get their indexes
-# # set_norm.hg.idx <- which(rownames(exprs(eset_norm)) %in% as.character(anotacion.hg$Probe.Set.Name))
-# # check that their are the same amount as in the table above
-# length(set_norm.hg.idx)
-# #[1] 5596
-# dim(exprs(eset_norm))
-# eset_norm.hg <- exprs(eset_norm)[set_norm.hg.idx,]
-# dim(eset_norm.hg)
-# class(eset_norm.hg)
-# class(eset_norm)
-# XXX. BRB279: Això ha funcionat per filtrar per humà però els filtrat el tinc com a matrix, i no com a expression set.
-
-# XXX. BRB279. Repeteixo el process de filtrar d'abans, que sé que es quedan només amb els microRNA d'humans de l'expression set
-# i ho torno a assignar al mateix objecte eset_norm, per a continuar amb el Basic Pipe estandard
-eset_norm.hg <- eset_norm[rownames(exprs(eset_norm)) %in% as.character(anotacion.hg$Probe.Set.Name),]
-#class(eset_norm.hg)
-#dim(exprs(eset_norm.hg))
-##[1] 5596   48
-#[1] 5607   48
-#head(exprs(eset_norm.hg))
-
-# Eliminem els features que contenen la paraula "control", per que semblen ser controls d'Affymetrix o de l'experiment concret, i a més, un d'ells dona NA a totes les mostres
-control.idx <- grep("control", rownames(exprs(eset_norm.hg)))
-eset_norm.hg.nc <- eset_norm.hg[-control.idx,] # .nc stands for "No Controls"
-#dim(exprs(eset_norm.hg.nc))
-# 5595   48
-
-# I per tant, creo a ma l'objecte exprs.filtered, a partir dels valors d'expressió dels microRNA d'humans obtinguts en el pas anterior
-exprs.filtered <- eset_norm.hg.nc
 
 # Report
 report.s1s1 <- newSection( "Samples and Groups" );
@@ -293,7 +240,7 @@ require(limma)
 #      BvsL = L-B,
 #      levels=design)
 #print(cont.matrix)
-cont.matrix <- makeContrasts(                   
+cont.matrix <- makeContrasts(
   ### ---------------------------------------------------------------------------
   ### REMEMBER THAT THIS IS JUST AN EXAMPLE!!!
   ### AND THAT IF YOU REMOVE SAMPLES FOR PROCESSING AFTER QUALITY CONTROL
@@ -391,7 +338,7 @@ report.s1s2 <- addTo( report.s1s2, report.s1p2a, report.s1p2b, report.s1l1,
 
 ## ----linearmodelfit,echo=F, eval=TRUE------------------------------------
 require(limma)
-fit<-lmFit(exprs.filtered, design)
+fit<-lmFit(eset.vsn.rma2.filtered, design)
 fit.main<-contrasts.fit(fit, cont.matrix)
 fit.main<-eBayes(fit.main)
 
@@ -423,7 +370,9 @@ colnames(key.params) <- c("Parameter", colnames(df.compNamesAll))
 # Quality Control (raw)
 #############################
 # Section borrowed from the the standard Basic Pipe code.
-rawData <- xx
+#rawData <- xx
+# or ????
+rawData <- rawData2
 
 # phenoData(rawData)$Grupo<-targets$Grupo
 # phenoData(rawData)$ShortName<-targets$ShortName
@@ -463,15 +412,15 @@ report.s1s4 <- addTo( report.s1s4, report.s1p4a1, report.s1p4a2, report.s1p4a3, 
 #############################
 # Section borrowed from the the standard Basic Pipe code.
 
-phenoData(exprs.filtered)$Grupo<-targets$Grupo
-phenoData(exprs.filtered)$ShortName<-targets$ShortName
-phenoData(exprs.filtered)$Colores<-targets$Colores
+phenoData(eset.vsn.rma2.filtered)$Grupo<-targets$Grupo
+phenoData(eset.vsn.rma2.filtered)$ShortName<-targets$ShortName
+phenoData(eset.vsn.rma2.filtered)$Colores<-targets$Colores
 
-arrayQualityMetrics(expressionset =exprs.filtered,
-                    outdir = file.path(resultsDir, "QCDir.norm"),
-                    force = TRUE,
-                    intgroup = "Grupo",
-                    do.logtransform = FALSE)
+# arrayQualityMetrics(expressionset =eset.vsn.rma2.filtered,
+#                     outdir = file.path(resultsDir, "QCDir.norm"),
+#                     force = TRUE,
+#                     intgroup = "Grupo",
+#                     do.logtransform = FALSE)
 
 # Add the section to the report 
 report.s1s5 <- newSection( "Quality control (normalized data)" );
@@ -632,7 +581,7 @@ if (exists("topTabExtended")) rm(topTabExtended);topTabExtended <- list()
 #str(topTab)
 
 # Temporary BD containing the expression values for the selected features
-BD <- exprs(exprs.filtered)
+BD <- exprs(eset.vsn.rma2.filtered)
 if (exists("my.cels.idx")) rm(my.cels.idx); my.cels.idx <- list()
 if (exists("my.cels")) rm(my.cels); my.cels <- list()
 
@@ -797,10 +746,35 @@ require(readr)
 numFeatureChangedFilenames <- paste0("Selected.Features.in.comparison.", 
                                   colnames(cont.matrix), 
                                   ".csv")
+# Code derived from Miriam's code
 numFeatureChangedFC(filenames=numFeatureChangedFilenames,
                  comparisons= colnames(cont.matrix),
                  FC=0) # FC needs to be hardcoded to Zero at this step
 
+# ---
+# Forma alternativa d'obtenir l'objecte numGenesChanged, a partir dels objectes de topTable en memoria,
+# per comprovar que coincideix amb la formad e la Miriam de lapply a partir d'arxius en disk de genes de cada comparacio
+# Conclusió: un cop arreglat el DataPreprocessing.R, i siguen coherents en la forma de procedir, 
+# coincideixen els dos mètodes. Xavier. 18 Des'15.
+# Codi de l'Alex per fer numGenesChanged - Pendent de concloure si cal canviar-ho o no
+# https://github.com/alexsanchezpla/scripts/blob/master/numGenesChanged.R
+#source("https://raw.githubusercontent.com/alexsanchezpla/scripts/master/numGenesChanged.R")
+# # Code derived from Alex's code
+# # It can be aggregated with a loop over all comparisons in colnames(cont.matrix)
+# numFeatureChanged.df <- data.frame(matrix(nrow = 12))[,-1]
+# for (ii in 1:ncol(cont.matrix)) {
+#   colnames(cont.matrix)[ii]
+#   numFeatureChanged.tmp <- numGenesChanged(topTab[[ii]],
+#                                                  colnames(cont.matrix)[ii] )
+#   numFeatureChanged.df <- cbind(numFeatureChanged.df, numFeatureChanged.tmp)
+# }
+# # Write it to disk
+# write.csv2( numFeatureChanged.df, file=paste0("numFeaturesChangedAlex.", aID, ".csv") )
+# ---
+
+
+#class(numFeatureChanged.df); class(numFeatureChanged.tmp)
+# head(numFeatureChanged.df)
 outFileName <- paste("numFeaturesChangedFC0.csv",sep="")
 outFileNameRelPath <- file.path( resultsRelDir, outFileName )
 numFeatureChangedFC.df <- read.table(file = file.path(resultsDir, outFileName),
@@ -1126,8 +1100,8 @@ for (ii in 1:length(wCont)) { # ii is the index of the list with the multiple co
     my.cels.idx[[ wCont[[ii]][jj] ]] <- as.numeric(as.character(my.cels.df[[ wCont[[ii]][jj] ]] [,2]))
     my.cels[[ wCont[[ii]][jj] ]] <- as.character(my.cels.df[[ wCont[[ii]][jj] ]] [,3])
     
-    # head(exprs(exprs.filtered))
-    exprs2cluster[[ wCont[[ii]][jj] ]] <- exprs(exprs.filtered)[listVenn.psn[[ wCont[[ii]][jj] ]] ,
+    # head(exprs(eset.vsn.rma2.filtered))
+    exprs2cluster[[ wCont[[ii]][jj] ]] <- exprs(eset.vsn.rma2.filtered)[listVenn.psn[[ wCont[[ii]][jj] ]] ,
                                                                 my.cels[[ wCont[[ii]][jj] ]]   ]
     #str(exprs2cluster[[ wCont[[ii]][jj] ]])
     #class(exprs2cluster[[ wCont[[ii]][jj] ]])
@@ -1149,7 +1123,7 @@ for (ii in 1:length(wCont)) { # ii is the index of the list with the multiple co
     mxy.tid <- mxy[!names(mxy) %in% c("Probe.Set.Name", "Transcript_ID")]
     #head(mxy.tid)
     
-    groupColors[[ wCont[[ii]][jj] ]] <-  as.character(pData(exprs.filtered)$Colores[ my.cels.idx[[ wCont[[ii]][jj] ]] ])
+    groupColors[[ wCont[[ii]][jj] ]] <-  as.character(pData(eset.vsn.rma2.filtered)$Colores[ my.cels.idx[[ wCont[[ii]][jj] ]] ])
     mainTitle <- paste0(my.compName) ## Titol
     # Compose the filename
     outFileName.noext <- paste( "heatmap", my.compName, 
@@ -1380,6 +1354,18 @@ replaceResult <- foreach (ff = 1:length(filenames)) %dopar% {
   cat(yy, file=filenames[ff], sep="\n")
   
 }
+
+
+# copy over the results folder the other main documents produced elsewhere
+files2create <- c(study.proposalFileName, study.reportFileName)
+for (f2c in files2create) { # f2c = file to create
+  # prepare to copy files if they do not exist yet in destination
+  to    <- file.path(resultsDir, f2c)
+  if (!file.exists(to) && file.exists(from)) {
+    from  <- file.path(docsDir, f2c)
+    resultsFileLink <- file.link(from, to)
+  } # end if clause for file copy 
+} # loop over files
 
 #   # For html edition from R, See: http://blog.rstudio.org/2015/04/21/xml2/
 #   require(xml2)
