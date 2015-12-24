@@ -13,53 +13,53 @@ basepath <- baseDir
 # 0. Creacio de diccionari d'anotacions
 ################################################
 
-#se prueba de utilizar biomart para conseguir anotaciones aunque creo que luego no se utilizará.
-source("http://bioconductor.org/biocLite.R")
-if (!require("biomaRt")) {
-  biocLite("biomaRt")
-}
-library(biomaRt) 
-#mart <- useDataset("hsapiens_gene_ensembl", useMart("ensembl"))
-ensembl=useMart("ENSEMBL_MART_ENSEMBL", host="www.ensembl.org")
-dataset="hsapiens_gene_ensembl"
-mart=useDataset(dataset, mart=ensembl)
-listAttributes(mart)[1:100,]
-
-miRNA <- getBM(c("mirbase_id", "ensembl_gene_id", "start_position", "chromosome_name"),
-               filters = c("with_mirbase"), values = list(TRUE), mart = mart)
-dim(miRNA)#1952 4
-head(miRNA)
+# #se prueba de utilizar biomart para conseguir anotaciones aunque creo que luego no se utilizará.
+# source("http://bioconductor.org/biocLite.R")
+# if (!require("biomaRt")) {
+#   biocLite("biomaRt")
+# }
+# library(biomaRt) 
+# #mart <- useDataset("hsapiens_gene_ensembl", useMart("ensembl"))
+# ensembl=useMart("ENSEMBL_MART_ENSEMBL", host="www.ensembl.org")
+# dataset="hsapiens_gene_ensembl"
+# mart=useDataset(dataset, mart=ensembl)
+# listAttributes(mart)[1:100,]
+# 
+# miRNA <- getBM(c("mirbase_id", "ensembl_gene_id", "start_position", "chromosome_name"),
+#                filters = c("with_mirbase"), values = list(TRUE), mart = mart)
+# dim(miRNA)#1952 4
+# head(miRNA)
 
 #archivo de EC con anotaciones (rma+anotaciones)
 setwd(file.path(basepath, dataRelDir))
-anotacion<-read.csv("rma.affy.annotated.ref.txt",sep="\t",header=TRUE)
-dim(anotacion)#36137 6
-head(anotacion)
+annotation.affy<-read.csv("rma.affy.annotated.ref.txt",sep="\t",header=TRUE)
+dim(annotation.affy)#36137 6
+head(annotation.affy)
 
 #nos quedamos solo con los humanos
-anotacion.hg<-anotacion[anotacion$Species_Scientific_Name == "Homo sapiens",]
-dim(anotacion.hg)#6631 6
-rownames(anotacion.hg)<-anotacion.hg$Probe_Set_ID
-head(anotacion.hg)
+annotation.affy.hg<-annotation.affy[annotation.affy$Species_Scientific_Name == "Homo sapiens",]
+dim(annotation.affy.hg)#6631 6
+rownames(annotation.affy.hg)<-annotation.affy.hg$Probe_Set_ID
+head(annotation.affy.hg)
 
 #se comprueban los uniques de Transcript_ID y se eliminan
-#rownames(anotacion.hg)<-anotacion.hg$Transcript_ID
-a<-as.vector(anotacion.hg$Transcript_ID)
+#rownames(annotation.affy.hg)<-annotation.affy.hg$Transcript_ID
+a<-as.vector(annotation.affy.hg$Transcript_ID)
 length(a)#6631
 length(unique(a)) #6050
-anotacion.hg<-anotacion.hg[!duplicated(anotacion.hg[,5]),]
-head(anotacion.hg)
+annotation.affy.hg<-annotation.affy.hg[!duplicated(annotation.affy.hg[,5]),]
+head(annotation.affy.hg)
 
 #nuevo data set de anotaciones: Probe.Set.ID + Transcript.ID.Array.Design.
-anota<-data.frame(anotacion.hg$Transcript_ID,anotacion.hg$Probe_Set_ID)
+anota<-data.frame(annotation.affy.hg$Transcript_ID,annotation.affy.hg$Probe_Set_ID)
 dim(anota)#6050 2
 head(anota)
-rownames(anota)<-anota$anotacion.hg.Probe_Set_ID
+rownames(anota)<-anota$annotation.affy.hg.Probe_Set_ID
 colnames(anota)<-c("Transcript_ID","Probe_Set_ID")
 head(anota)
 
 #################################################
-# 1. Lectura i anotacio  de dades normalitzades amb Expression Console
+# 1. Lectura de dades normalitzades amb Expression Console i anotació via affymetrix reference
 #################################################
 
 # 1.1 Lectura 
@@ -109,7 +109,7 @@ dim(data.rma.anotated)#6050 45
 head(data.rma.anotated)
 
 
-save(data.rma.anotated, targets,anota, sample.names,  
+save(data.rma.anotated, targets, anota, sample.names,  
      file=file.path(basepath, dataRelDir,
                     paste0("data.rma.annotated.", aID,".Rda")))
 
@@ -216,7 +216,7 @@ exprs(eset_norm) <- exprs(eset_norm)[!repes,]
 
 # XXX. BRB279. Repeteixo el process de filtrar d'abans, que sé que es quedan només amb els microRNA d'humans de l'expression set
 # i ho torno a assignar al mateix objecte eset_norm, per a continuar amb el Basic Pipe estandard
-eset_norm.hg <- eset_norm[rownames(exprs(eset_norm)) %in% as.character(anotacion.hg$Probe.Set.Name),]
+eset_norm.hg <- eset_norm[rownames(exprs(eset_norm)) %in% as.character(annotation.affy.hg$Probe.Set.Name),]
 #class(eset_norm.hg)
 #dim(exprs(eset_norm.hg))
 ##[1] 5596   48
@@ -229,7 +229,7 @@ eset_norm.hg.nc <- eset_norm.hg[-control.idx,] # .nc stands for "No Controls"
 #dim(exprs(eset_norm.hg.nc))
 # 5595   48
 
-# I per tant, creo a ma l'objecte eset.vsn.rma2.filtered, a partir dels valors d'expressió dels microRNA d'humans obtinguts en el pas anterior
+# I per tant, creo a ma l'objecte data.eset.vsn.rma2.filtered, a partir dels valors d'expressió dels microRNA d'humans obtinguts en el pas anterior
 data.eset.vsn.rma2.filtered <- eset_norm.hg.nc
 # --------------------------------------
 
@@ -238,8 +238,8 @@ data.eset.vsn.rma2.filtered <- eset_norm.hg.nc
 # Save Rda with normalized data
 save(data.vsn.rma2, data.eset.vsn.rma2.filtered, file=file.path(basepath, dataRelDir,
                                         paste0("data.vsn.rma2.", aID,".Rda")))
-save(anotacion.hg, anota, file=file.path(basepath, dataRelDir,
-                                  paste0("data.anotacions.hg.Rda")))
+save(annotation.affy.hg, anota, file=file.path(basepath, dataRelDir,
+                                  paste0("data.annotation.affy.hg.Rda")))
 save(data.rma, data.rma.anotated, file=file.path(basepath, dataRelDir,
                               paste0("data.rma.", aID,".Rda")))
 save(rawData2, file=file.path(basepath, dataRelDir,

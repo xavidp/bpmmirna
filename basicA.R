@@ -10,55 +10,18 @@
 ##
 ###################################################
 
-#############################
-# Package dependencies
-#############################
-## ----librerias, eval=TRUE------------------------------------------------
-installifnot <- function (pckgName){
-  if(!(require(pckgName, character.only=TRUE))){
-    source("http://Bioconductor.org/biocLite.R")
-    biocLite(pckgName)
-  }
-}
-installifnot("Biobase")
-installifnot("affy")
-installifnot("arrayQualityMetrics")
-installifnot("genefilter")
-installifnot("limma")
-installifnot("annotate")
-installifnot("gplots")
-
-if(!require(SortableHTMLTables)) install.packages("SortableHTMLTables")
-if(!require(doMC)) install.packages("doMC")
-if(!require(devtools)) install.packages("devtools")
-if(!require(rCharts)) install_github('rCharts', 'ramnathv')
-if(!require(plotly)) install.packages("plotly")
-#if(!require(plotly)) devtools::install_github("ropensci/plotly")
-if(!require(Nozzle.R1)) install.packages( "Nozzle.R1", type="source" );
-if(!require(VennDiagram)) install.packages("VennDiagram")
-if(!require(stringr)) install.packages("stringr")
-if(!require(xml2)) install.packages("xml2")
-if(!require(data.table)) install.packages("data.table") 
-#For help type ?data.table or https://github.com/Rdatatable/data.table/wiki
-#The fastest way to learn (by data.table authors): https://www.datacamp.com/courses/data-analysis-the-data-table-way
-
-#if(!require(venneuler)) install.packages("venneuler")
-
-#Load required libraries
-# "Nozzle: a report generation toolkit for data analysis pipelines"
-# http://bioinformatics.oxfordjournals.org/content/early/2013/02/17/bioinformatics.btt085
-library(doMC)
-require(devtools)
-library(rCharts)
-require( Nozzle.R1 )
-require(stringr)
 
 ###################################
-# Basic parameters for the script
+# Basic hardcoded parameters for the pipeline
 ###################################
 analysisName <- "YYYY-MM-XXX-YYY-ANNN"            # Nom del directori del projecte (e.g. "aaaa-mm-NomCognomInvestigador-CENTRE-IdEstudi")
 aID <- "LUQ320"                                               # Canviar XXXnnn per les 3 lletres de l'investigador/a + l'Id numeric de l'estudi
 ## ----preparaDirectorios, eval=TRUE---------------------------------------
+# Some parameters for the reports in html produced by data.tables, Nozzle, etc.
+# base_url will be replaced by nothing at the end of the pipeline from absolute url's in html files produced
+# so that absolute url's links are converted into relative url's, and therefore, they do work in other computers. 
+base_path_in_local_urls <- "/home/xavi/R/x86_64-pc-linux-gnu-library/3.2/rCharts/libraries/datatables/"
+# Base Working directory and subdirectories
 baseDir <- paste0("/home/xavi/Estudis/", analysisName) # Pentinella
 #baseDir <- "/mnt/magatzem02/tmp/YYYY-MM-XXX-YYY-ANNN" # MainHead
 #baseDir <- "."
@@ -79,9 +42,6 @@ reportsDir <- file.path(workingDir, reportsRelDir)
 
 # Sourcing the whole set of functions from the standard Basic Pipe: AnalysisFunctions2Pack.R 
 source(file.path(baseDir,"Rcode", "AnalysisFunctions2Pack.R"))
-
-## number of cores to use from your computer (with doMC package)
-nCores <- 4 # 1 # In case of doubt, use just 1 core.
 
 # Name of the targets file
 targetsFileName <- paste0("targets.", aID, ".txt")
@@ -107,8 +67,75 @@ UEB <- TRUE                                                 # TRUE => capcalera 
 # analysis through this parameter.
 samples2remove <- "" # c("41.CEL","42.CEL","44.CEL")
 
-# Report with Nozzle.R1
+# the name of the main html file where the list of files produced is shown.
 report.filename <- "ResultsFiles"
+study.proposalFileName <- "YYYY-MM-XXX-YYY-ANNN-StudyBudget.pdf"
+study.reportFileName <- "YYYY-MM-XXX-YYY-ANNN-MainReport.pdf"
+
+#############################
+# Package dependencies
+#############################
+## ----librerias, eval=TRUE------------------------------------------------
+## Bioconductor
+installifnot <- function (pckgName){
+  if(!(require(pckgName, character.only=TRUE))){
+    source("http://Bioconductor.org/biocLite.R")
+    biocLite(pckgName)
+  }
+}
+# Names of packages to be installed from BIOCONDUCTOR if not present yet in this machine
+pBIOC <- c("Biobase",
+           "affy",
+           "arrayQualityMetrics",
+           "genefilter",
+           "limma",
+           "annotate",
+           "gplots")
+
+if( any(!pBIOC %in% rownames(installed.packages())) ){
+  installifnot(pBIOC[!pBIOC %in% rownames(installed.packages())])
+}
+
+# Names of packages to be installed from CRAN if not present yet in this machine
+pCRAN <- c("devtools",
+              "SortableHTMLTables",
+              "plotly",
+              "Nozzle.R1",
+              "VennDiagram",
+              "stringr",
+              "xml2",
+              "parallel",
+              #For help type ?data.table or https://github.com/Rdatatable/data.table/wiki
+              #The fastest way to learn (by data.table authors): https://www.datacamp.com/courses/data-analysis-the-data-table-way
+              "data.table",
+              "doMC")
+
+if( any(!pCRAN %in% rownames(installed.packages())) ){
+  install.packages(pCRAN[!pCRAN %in% rownames(installed.packages())])
+}
+
+if(!require(rCharts)) install_github('rCharts', 'ramnathv')
+#if(!require(plotly)) devtools::install_github("ropensci/plotly")
+#if(!require(Nozzle.R1)) install.packages( "Nozzle.R1", type="source" );
+# "Nozzle: a report generation toolkit for data analysis pipelines"
+# http://bioinformatics.oxfordjournals.org/content/early/2013/02/17/bioinformatics.btt085
+
+#Load required libraries
+packages <- c(pBIOC, pCRAN)
+for (ii in 1:length(packages)) {
+  require(as.character(packages[ii]), character.only=TRUE)
+}
+
+
+###################################
+# Basic dynamic parameters for the pipeline
+###################################
+## number of cores to use from your computer (with doMC or parallel packages)
+nCores <- detectCores(all.tests = FALSE, logical = FALSE) # In case of doubt, use just all -1 core.
+
+###################
+# Start Report with Nozzle.R1
+###################
 # Remove any previous leftover
 if (file.exists(paste0(report.filename, ".html"))) file.remove(paste0(report.filename, ".html"))
 if (file.exists(paste0(report.filename, ".RData"))) file.remove(paste0(report.filename, ".RData"))
@@ -133,36 +160,13 @@ report.s0a.p5 <- newParagraph( "Most results are stored as ", asStrong(".txt"), 
                     general purpose office suits, internet browsers or pdf readers." );
  
 report.s0b <- newSection( "Main Documents" );
-study.proposalFileName <- file.path(resultsRelDir, "YYYY-MM-XXX-YYY-ANNN-StudyBudget.pdf")
 study.proposalRelFileName <- file.path(resultsRelDir, study.proposalFileName)
 report.s0b.p1 <- newParagraph( "Study proposal: ", asLink(study.proposalRelFileName, study.proposalRelFileName ));
-study.reportFileName <- file.path(resultsRelDir, "YYYY-MM-XXX-YYY-ANNN-MainReport.pdf")
 study.reportRelFileName <- file.path(resultsRelDir, study.reportFileName)
 report.s0b.p2 <- newParagraph( "Report with description of methodology and main results: ", asEmph("Not available yet")) ;
                                #, asLink(study.reportRelFileName, study.reportRelFileName ));
 
 report.s1 <- newSection( "Base information" );
-
-#############################
-# DATA LOADING
-#############################
-# If the object with normalized data exists, load it. Otherwise, generate it again
-if (!exists("data.eset.vsn.rma2.filtered")){
-  # Object data.eset.vsn.rma2.filtered doesn't exist in memory
-  # load it from disk (if present on disk)
-  if (file.exists(file.path(dataRelDir,
-                          paste0("data.vsn.rma2.", aID,".Rda")))) {
-  ## ----loadData------------------------------------------------------------
-  load(file=file.path(dataRelDir, paste0("data.vsn.rma2.", aID,".Rda")))
-  } else {
-  ## ----generateData------------------------------------------------------------
-  source("Rcode/DataPreprocessing.R")
-  }
-}
-#exprs.filtered <- exprs(data.eset.vsn.rma2.filtered)
-eset.vsn.rma2.filtered <- data.eset.vsn.rma2.filtered
-class(eset.vsn.rma2.filtered)
-
 
 # Report
 report.s1s1 <- newSection( "Samples and Groups" );
@@ -231,6 +235,115 @@ rownames(design) <- targets$ShortName  # Serveix per poder associar les files de
 numParameters <- ncol(design)
 
 print(design) #comentar aquesta linia si no es vol visualitzar la matriu de disseny
+
+#############################
+# DATA LOADING
+#############################
+# If the file from Expression Console with annotation information is present, load its data and avoid further steps to use generated data by other means
+# rma.XXXNNN.ec.annotated.txt
+
+if (file.exists(file.path(dataRelDir, paste0("rma.", aID, ".ec.annotated.txt")))) {
+  data.rma.ec.annot <- fread(
+    file.path(dataRelDir, paste0("rma.", aID, ".ec.annotated.txt"))
+    #         , sep="auto", sep2="auto",
+    #         nrows=-1L, header="auto", na.strings="NA",
+    #         stringsAsFactors=FALSE, verbose=getOption("datatable.verbose"), autostart=1L,
+    #         skip=0L, select=NULL, drop=NULL, colClasses=NULL,
+    #         integer64=getOption("datatable.integer64"),         # default: "integer64"
+    #         dec=if (sep!=".") "." else ",", col.names, 
+    #         check.names=FALSE, encoding="unknown", strip.white=TRUE, 
+    #         showProgress=getOption("datatable.showProgress"),   # default: TRUE
+    #         data.table=getOption("datatable.fread.datatable")   # default: TRUE
+    #             , data.table=FALSE   # set to FALSE to produce a data.frame
+    , data.table=FALSE   # set to FALSE to produce a data.frame
+  )
+  #colnames(data.rma.ec.annot)
+  psn.col.idx <- which(colnames(data.rma.ec.annot)=="Probe Set Name")
+  rownames(data.rma.ec.annot) <- as.character(data.frame(data.rma.ec.annot)[,psn.col.idx])
+  
+  # Clean the column names
+  colnames(data.rma.ec.annot) <- gsub(".rma-dabg-Signal", ".CEL", colnames(data.rma.ec.annot))
+  colnames(data.rma.ec.annot) <- gsub("Transcript ID(Array Design)", "Transcript_ID",
+                                      colnames(data.rma.ec.annot), fixed=TRUE)
+  #rownames(data.rma.ec.annot) <- as.character(data.frame(data.rma.ec.annot)$Transcript_ID)
+  #colnames(data.rma.ec)
+  # We need to keep the columns with expression data, and no more. 
+  # Therere, we need to know the column number of the last column with expression data 
+  data.lastcol.idx <- which(colnames(data.rma.ec.annot)=="Species Scientific Name")-1
+  #head(data.rma.ec[,1:data.lastcol.idx])
+  # Then we can remove column 1 (ProbesetID) and all the others after  data.lastcol.idx
+  data.rma.ec <- as.matrix(data.rma.ec.annot[,2:data.lastcol.idx])
+  # head(data.rma.ec)
+  # Sort columns with natural sort
+  require(naturalsort)
+  ns.cols.data.rma.ec <-naturalsort(colnames(data.rma.ec)) # ns -> natural sort
+  data.rma.ec <- data.rma.ec[, ns.cols.data.rma.ec] # Indexes from data.vsn.rma sorted with natural sort
+  #head(data.rma.ec)  
+  
+  #class(data.rma.ec)
+  #head(data.rma.ec)
+  #data.rma.ec <- as.matrix(as.numeric(data.rma.ec[,1:tid.idx+1]))
+  #head(data.rma.ec)[,1:48]
+  #data.rma.ec <- data.rma.ec[,1:48]
+  
+  # --------------
+  # DATA.TABLE TIP
+  # --------------
+  # when data table, to select columns as in data frame, you need to add ", with = FALSE"
+  #data.rma.ec <- data.rma.ec[,1:48, with = FALSE]
+  #-------
+  
+  #class(data.rma.ec)
+  #str(data.rma.ec)
+  # Create the expression set by hand from this expression data
+  require(Biobase)
+  #head(data.rma.ec)
+  # Create a minimal Expression set with just assay Data
+  #min.eset.data.rma.ec <- ExpressionSet(assayData=data.rma.ec)
+  #class(min.eset.data.rma.ec)
+  
+  # Add Phenotypic Data
+  pData <- targets
+  rownames(pData) <- pData$SampleName
+  #summary(pData)
+  #table(rownames(pData)==colnames(data.rma.ec))
+  #sapply(pData, class)
+  
+  # Create the phenoData object to be appended later inside the eset
+  phenoData <- new("AnnotatedDataFrame", data=pData)
+  #class(phenoData)
+  
+  # Assemble the expression set
+  eset.data.rma.ec <- ExpressionSet(assayData=data.rma.ec,
+                                    phenoData=phenoData
+                                    #                           , experimentData=experimentData
+                                    #                           , annotation="hgu95av2")
+  )
+  
+  # Assign the expression set we will use in further steps in the pipeline 
+  # to the object we created here
+  my.eset <- eset.data.rma.ec
+  
+} else if (!exists("data.eset.vsn.rma2.filtered")){
+  # If the object with normalized data exists, load it. Otherwise, generate it again
+  
+  # Object data.eset.vsn.rma2.filtered doesn't exist in memory
+  # load it from disk (if present on disk)
+  if (file.exists(file.path(dataRelDir,
+                            paste0("data.vsn.rma2.", aID,".Rda")))) {
+    ## ----loadData------------------------------------------------------------
+    load(file=file.path(dataRelDir, paste0("data.vsn.rma2.", aID,".Rda")))
+  } else {
+    ## ----generateData------------------------------------------------------------
+    source("Rcode/DataPreprocessing.R")
+  }
+  #exprs.filtered <- exprs(data.eset.vsn.rma2.filtered)
+  # Assign the expression set we will use in further steps in the pipeline 
+  # to the object we obtained here
+  my.eset <- data.eset.vsn.rma2.filtered
+  #class(my.eset)  
+}
+# ###### end of data loading
 
 ## ----setContrasts, eval=TRUE---------------------------------------------
 require(limma)
@@ -338,7 +451,7 @@ report.s1s2 <- addTo( report.s1s2, report.s1p2a, report.s1p2b, report.s1l1,
 
 ## ----linearmodelfit,echo=F, eval=TRUE------------------------------------
 require(limma)
-fit<-lmFit(eset.vsn.rma2.filtered, design)
+fit<-lmFit(my.eset, design)
 fit.main<-contrasts.fit(fit, cont.matrix)
 fit.main<-eBayes(fit.main)
 
@@ -367,6 +480,31 @@ colnames(key.params) <- c("Parameter", colnames(df.compNamesAll))
 #report.s1s3 <- newSection( "Section removed/refactored (it doesn't exist anymore)" );
 
 #############################
+# Fetch rawData affyBatch object (load or create it)
+#############################
+# If rawData object doesn't exist in memory, obtain it somehow
+if (!exists("rawData")) { # it doesn't exist in memory
+  # If the corresponding Rda file exists on disk, load it
+  if (file.exists(file.path(baseDir, dataRelDir, paste0("data.raw2.", aID,".Rda")))) {
+    load(file=file.path(baseDir, dataRelDir, paste0("data.raw2.", aID,".Rda")))
+  } else { # it doesn't exist in memory nor on disk as .Rda
+    require(affy)
+    fns <- list.celfiles(path=file.path(baseDir, celfilesRelDir),full.names=TRUE)
+    # Remove rows only if there is some sample to be removed
+    if (length(samples2remove) > 1) {
+      cel2remove.idx <- match(unique(grep(paste(samples2remove,collapse="|"),
+                                          fns, value=TRUE)), fns)
+      fns <- fns[-cel2remove.idx]
+    }
+    cat("Reading files:\n",paste(fns,collapse="\n"),"\n")
+    cat("Removed from the analysis:\n",paste(samples2remove,collapse="\n"),"\n")
+    ##read a binary celfile
+    
+    rawData2 <- ReadAffy(filenames=fns)
+  }  
+}
+
+#############################
 # Quality Control (raw)
 #############################
 # Section borrowed from the the standard Basic Pipe code.
@@ -384,6 +522,88 @@ rawData <- rawData2
 #                     intgroup = "Grupo",
 #                     do.logtransform = FALSE)
 
+#---------------------------------------------------------------------------------------------
+###QUALITY CONTROL OF ARRAYS: RAW DATA
+#---------------------------------------------------------------------------------------------
+setwd(resultsDir)
+#dim(rawData)
+#dim(exprs(rawData))
+#str(rawData)
+
+#PRINCIPAL COMPONENT ANALYSIS
+plotPCA <- function ( X, labels=NULL, colors=NULL, dataDesc="", scale=FALSE, formapunts=NULL, myCex=0.8,...)
+{
+  #   # Manual debugging
+  #   ?prcomp
+  #   class(exprs(my.data))
+  #   head(exprs(my.data))
+  #   table(is.na(exprs(my.data))) # there are 17 NA in the normalized data set
+  #   my.data.na.idx <- which(is.na(exprs(my.data)))
+  #   # [1] 50339 50340 50341 50342 50343 50344 50345 50346 50347 50348 50349 50350 50351 50352 50353
+  #   # [16] 50354 50355
+  #   exprs(my.data)[my.data.na.idx]
+  #   exprs(my.data)[50338]
+  #   
+  #   my.matrix.no.na <- exprs(my.data)[-my.data.na.idx]
+  #   X <- my.matrix.no.na
+  pcX<-prcomp(t(X), scale=scale) # o prcomp(t(X))
+  loads<- round(pcX$sdev^2/sum(pcX$sdev^2)*100,1)
+  xlab<-c(paste("PC1",loads[1],"%"))
+  ylab<-c(paste("PC2",loads[2],"%"))
+  if (is.null(colors)) colors=1
+  xExtra = (max(pcX$x[,1]) - min(pcX$x[,1]))/5
+  yExtra = (max(pcX$x[,2]) - min(pcX$x[,2]))/10
+  plot(pcX$x[,1:2],xlab=xlab,ylab=ylab, col=colors, pch=formapunts, 
+       xlim=c(min(pcX$x[,1])-xExtra, max(pcX$x[,1])+xExtra),
+       ylim=c(min(pcX$x[,2])-yExtra, max(pcX$x[,2])+yExtra))
+  text(pcX$x[,1],pcX$x[,2], labels, pos=3, cex=myCex)
+  title(paste("Plot of first 2 PCs for expressions in", dataDesc, sep=" "), cex=0.8)
+}
+
+#DEFINE SOME USEFUL VARIABLES FOR THE GRAPHICS
+sampleNames <- as.character(targets$ShortName)
+sampleColor<- as.character(targets$Colores)
+
+doQC <- function ( my.data, my.data.type ) {
+  # Values for manual debugging
+  #my.data <- rawData
+  #my.data.type <- "Raw" # Set it to "Raw" or "Normalized"
+  #my.data <- my.eset
+  #my.data.type <- "Normalized"
+  
+  #BOXPLOT
+  boxplot(my.data, las=2, 
+          main=paste0("Intensity distribution of ", my.data.type," data"),
+          cex.axis=0.6, col=sampleColor, names=sampleNames)
+  
+  #HIERARQUICAL CLUSTERING
+  clust.euclid.average <- hclust(dist(t(exprs(my.data))),method="average")
+  plot(clust.euclid.average, labels=sampleNames, 
+       main=paste0("Hierarchical clustering of ", my.data.type,"Data"), 
+       cex=0.7,  hang=-1)
+  
+  #dim(exprs(my.data))
+  #summary(exprs(my.data))
+  plotPCA(exprs(my.data), labels=sampleNames, 
+          dataDesc=paste0(my.data.type," data"),
+          colors=sampleColor, formapunts=c(rep(16,4),rep(17,4)), myCex=0.6)
+  
+  #SAVE TO A FILE
+  pdf(paste0("QCPlots_", my.data.type,".pdf"))
+  boxplot(my.data, las=2, 
+          main=paste0("Intensity distribution of ", my.data.type," data"),
+          cex.axis=0.6, col=sampleColor, names=sampleNames)
+  plot(clust.euclid.average, labels=sampleNames, 
+       main=paste0("Hierarchical clustering of samples of ", my.data.type,"Data"), 
+       cex=0.7,  hang=-1)
+  plotPCA(exprs(my.data), labels=sampleNames, 
+          dataDesc=paste0(my.data.type, " data"),
+          colors=sampleColor, formapunts=c(rep(16,4),rep(17,4)), myCex=0.6)
+  dev.off()
+}
+########-------------------
+
+doQC(rawData, "Raw")
 
 # Add the section to the report 
 report.s1s4 <- newSection( "Quality control (raw data)" );
@@ -410,17 +630,19 @@ report.s1s4 <- addTo( report.s1s4, report.s1p4a1, report.s1p4a2, report.s1p4a3, 
 #############################
 # Quality Control (norm)
 #############################
+# This step doQC with normalized data fails, due to missing values in X for he prcomp function
+doQC(my.eset, "Normalized")
+
 # Section borrowed from the the standard Basic Pipe code.
+phenoData(my.eset)$Grupo<-targets$Grupo
+phenoData(my.eset)$ShortName<-targets$ShortName
+phenoData(my.eset)$Colores<-targets$Colores
 
-phenoData(eset.vsn.rma2.filtered)$Grupo<-targets$Grupo
-phenoData(eset.vsn.rma2.filtered)$ShortName<-targets$ShortName
-phenoData(eset.vsn.rma2.filtered)$Colores<-targets$Colores
-
-# arrayQualityMetrics(expressionset =eset.vsn.rma2.filtered,
-#                     outdir = file.path(resultsDir, "QCDir.norm"),
-#                     force = TRUE,
-#                     intgroup = "Grupo",
-#                     do.logtransform = FALSE)
+# arrayQualityMetrics(expressionset = my.eset,
+#                      outdir = file.path(resultsDir, "QCDir.norm"),
+#                      force = TRUE,
+#                      intgroup = "Grupo",
+#                      do.logtransform = FALSE)
 
 # Add the section to the report 
 report.s1s5 <- newSection( "Quality control (normalized data)" );
@@ -445,11 +667,22 @@ if(length(pValCutOff)!=length(compGroupName)) warning("L'objecte pValCutOff ha d
 if(length(adjMethod)!=length(compGroupName)) warning("L'objecte adjMethod ha de tenir el mateix nombre d'elements que compGroupName!")
 if(length(minLogFoldChange)!=length(compGroupName)) warning("L'objecte minLogFoldChange ha de tenir el mateix nombre d'elements que compGroupName!")
 
+setwd(baseDir)
 #############################
 # Feature annotation reference
 #############################
-anotacion.hg.fileName.noext <- "featureAnotation" 
-outFile <- anotacion.hg.fileName.noext # Name set in DataPreprocessing.R
+if (!exists("annotation.affy.hg")){
+  # If the object annotation.affy.hg exists, load it. Otherwise, generate it again
+  
+  # Object data.eset.vsn.rma2.filtered doesn't exist in memory
+  # load it from disk (if present on disk)
+  if (file.exists(file.path(dataRelDir, "data.annotation.affy.hg.Rda"))) {
+    ## ----loadData------------------------------------------------------------
+    load(file=file.path(dataRelDir, "data.annotation.affy.hg.Rda"))
+  }
+}
+annotation.affy.hg.fileName.noext <- "featureAnotation" 
+outFile <- annotation.affy.hg.fileName.noext # Name set in DataPreprocessing.R
 outFileName <- paste0(outFile, ".csv")
 outFileNameRelPath <- file.path( resultsRelDir, outFileName )
   
@@ -468,7 +701,7 @@ if (create.dTable.featAnot == TRUE) {
   # Only the first 6 are the needed ones for the html file generated. Example:
   #  Probe_Set_ID Species_Scientific_Name Sequence.Type Sequence.Source   Transcript_ID  Probe.Set.Name
   #  20500112            Homo sapiens         miRNA         miRBase   hsa-let-7a-5p MIMAT0000062_st
-  featAnot.dTable=dTable(anotacion.hg[,1:ncol(anotacion.hg)], sPaginationType = "full_numbers", 
+  featAnot.dTable=dTable(annotation.affy.hg[,1:ncol(annotation.affy.hg)], sPaginationType = "full_numbers", 
                          bScrollInfinite = T,
                          bScrollCollapse = T,
                          sScrollY = "300px",
@@ -502,9 +735,9 @@ if (create.dTable.featAnot == TRUE) {
   #      "aaSorting": [], which in R code might imply writing:
   #      "aaSorting": list(), which in R code might imply writing:
   #featAnot.dTable$templates$script =  "http://timelyportfolio.github.io/rCharts_dataTable/chart_customsort.html" 
-  for (cc in 1:ncol(anotacion.hg)) { # XXXX Only the first 7 are the needed ones for the html file generated
+  for (cc in 1:ncol(annotation.affy.hg)) { # XXXX Only the first 7 are the needed ones for the html file generated
     featAnot.dTable$params$table$aoColumns[cc] =
-      list( list(sType = "string_ignore_null", sTitle = colnames(anotacion.hg[cc])) )
+      list( list(sType = "string_ignore_null", sTitle = colnames(annotation.affy.hg[cc])) )
   }
   outFileName <- paste0(outFile, "-dTable.html")
   outFileNameRelPath <- file.path( resultsRelDir, outFileName )
@@ -581,7 +814,7 @@ if (exists("topTabExtended")) rm(topTabExtended);topTabExtended <- list()
 #str(topTab)
 
 # Temporary BD containing the expression values for the selected features
-BD <- exprs(eset.vsn.rma2.filtered)
+BD <- exprs(my.eset)
 if (exists("my.cels.idx")) rm(my.cels.idx); my.cels.idx <- list()
 if (exists("my.cels")) rm(my.cels); my.cels <- list()
 
@@ -646,9 +879,9 @@ topTabLoop <- foreach (ii = 1:length(wCont)) %do% { # ii is the index of the lis
     colnames(topTab.tmp)[1] <- "Probe.Set.Name"
     #head(topTab.tmp)
     # Add column TranscriptID at this point, merging through the common column Probe.Set.Name
-    #head(anotacion.hg)
-    tid <- data.frame(anotacion.hg$Transcript_ID,anotacion.hg$Probe.Set.Name)
-    colnames(tid) <- str_replace(colnames(tid), "anotacion.hg.", "")
+    #head(annotation.affy.hg)
+    tid <- data.frame(annotation.affy.hg$Transcript_ID,annotation.affy.hg$Probe.Set.Name)
+    colnames(tid) <- str_replace(colnames(tid), "annotation.affy.hg.", "")
     #head(tid)
     topTab.tmp <- merge(topTab.tmp, tid, by = "Probe.Set.Name")
     # head(topTab.tmp.tid)
@@ -671,7 +904,9 @@ topTabLoop <- foreach (ii = 1:length(wCont)) %do% { # ii is the index of the lis
     create.dTable.topTab <- T
     if (create.dTable.topTab == TRUE) {
       ## Sort topTab.tmp before creating the dTable
-      # No need to re-sort since it's already sorted by p-value
+      #head(topTab.tmp[,1:ncol(topTab.tmp)])
+      # Reorder results by p.value again
+      topTab.tmp <-  topTab.tmp[order(topTab.tmp$P.Value),]
       #head(topTab.tmp[,1:ncol(topTab.tmp)])
       
       # Create a dTable, a filterable html table: sortable columns plus search box that filster records in real time
@@ -680,14 +915,14 @@ topTabLoop <- foreach (ii = 1:length(wCont)) %do% { # ii is the index of the lis
       # (rowname)                         Probe.Set.Name      logFC  AveExpr         t      P.Value adj.P.Val  B Transcript_ID
       # ENSG00000252190_st ENSG00000252190_st  0.1148340 4.995241  3.976190 0.0001824323 0.3810522  0.6738682   foobar
       filterable.dTable=dTable(topTab.tmp[,1:ncol(topTab.tmp)], sPaginationType = "full_numbers", 
-                              # aaSorting=list() ) # This list() should indicate to avoid any attempt of sorting client side at display time 
-                               aaSorting=list(c(4, "asc")) ) # This c(4, "asc") sorts ascending on the 5th column. 
+                              aaSorting=list() ) # This list() should indicate to avoid any attempt of sorting client side at display time 
+                              # aaSorting=list(c(4, "asc")) ) # This c(4, "asc") sorts ascending on the 5th column. 
                               # If you want no initial sorting client side because it's been sorted server side already, 
                               # you can disable this client initialization with
                               # /* Disable initial sort */ From http://stackoverflow.com/a/4964423
                               #      "aaSorting": [], which in R code might imply writing:
                               #      "aaSorting": list(), which in R code might imply writing:
-      filterable.dTable$templates$script =  "http://timelyportfolio.github.io/rCharts_dataTable/chart_customsort.html" 
+      #filterable.dTable$templates$script =  "http://timelyportfolio.github.io/rCharts_dataTable/chart_customsort.html" 
       for (cc in 1:ncol(topTab.tmp)) { # XXXX Only the first 8 are the needed ones for the html file generated
         filterable.dTable$params$table$aoColumns[cc] =
           list( list(sType = "string_ignore_null", sTitle = colnames(topTab.tmp[cc])) )
@@ -826,10 +1061,10 @@ for (ii in 1:length(wCont)) { # ii is the index of the list with the multiple co
     # Rename volcanoPointNames to use TranscriptID instead of Probe.Set.Name. 
     # E.g.: "14q0" instead of "14q0_st". Or "hsa-let-7a-5p" instead of "MIMAT0000062_st"  
     #head(volcanoPointNames)
-    #head(anotacion.hg)
+    #head(annotation.affy.hg)
     df1 <- data.frame(volcanoPointNames)
     colnames(df1) <-"Probe.Set.Name"
-    df2 <- anotacion.hg
+    df2 <- annotation.affy.hg
     volcanoPointNames_df <- merge(df1,df2, all.x=TRUE)
     volcanoPointNames_df <- volcanoPointNames_df$Transcript_ID
     #length(volcanoPointNames_df)
@@ -844,7 +1079,7 @@ for (ii in 1:length(wCont)) { # ii is the index of the list with the multiple co
 #     require(data.table)
 #     dt1 <- data.table(volcanoPointNames)
 #     colnames(dt1) <-"Probe.Set.Name"
-#     dt2 <- data.table(anotacion.hg)
+#     dt2 <- data.table(annotation.affy.hg)
 #     #?merge.data.table
 #     setkey(dt1,"Probe.Set.Name")
 #     setkey(dt2,"Probe.Set.Name")
@@ -864,7 +1099,7 @@ for (ii in 1:length(wCont)) { # ii is the index of the list with the multiple co
 #     volcanoPointNames_dtid[diff.idx[1:2]];
 #     volcanoPointNames_dtidpn[c(diff.idx[1]-1, diff.idx[1:2])];
 #     
-#     anotacion.hg[anotacion.hg$Transcript_ID=="ACA59",]
+#     annotation.affy.hg[annotation.affy.hg$Transcript_ID=="ACA59",]
 #     volcanoPointNames[grep("ACA59",volcanoPointNames)]
 #     str(volcanoPointNames_df);str(volcanoPointNames_dtid);
 #     head(volcanoPointNames_df);head(volcanoPointNames_dtid);
@@ -1100,8 +1335,8 @@ for (ii in 1:length(wCont)) { # ii is the index of the list with the multiple co
     my.cels.idx[[ wCont[[ii]][jj] ]] <- as.numeric(as.character(my.cels.df[[ wCont[[ii]][jj] ]] [,2]))
     my.cels[[ wCont[[ii]][jj] ]] <- as.character(my.cels.df[[ wCont[[ii]][jj] ]] [,3])
     
-    # head(exprs(eset.vsn.rma2.filtered))
-    exprs2cluster[[ wCont[[ii]][jj] ]] <- exprs(eset.vsn.rma2.filtered)[listVenn.psn[[ wCont[[ii]][jj] ]] ,
+    # head(exprs(my.eset))
+    exprs2cluster[[ wCont[[ii]][jj] ]] <- exprs(my.eset)[listVenn.psn[[ wCont[[ii]][jj] ]] ,
                                                                 my.cels[[ wCont[[ii]][jj] ]]   ]
     #str(exprs2cluster[[ wCont[[ii]][jj] ]])
     #class(exprs2cluster[[ wCont[[ii]][jj] ]])
@@ -1123,7 +1358,7 @@ for (ii in 1:length(wCont)) { # ii is the index of the list with the multiple co
     mxy.tid <- mxy[!names(mxy) %in% c("Probe.Set.Name", "Transcript_ID")]
     #head(mxy.tid)
     
-    groupColors[[ wCont[[ii]][jj] ]] <-  as.character(pData(eset.vsn.rma2.filtered)$Colores[ my.cels.idx[[ wCont[[ii]][jj] ]] ])
+    groupColors[[ wCont[[ii]][jj] ]] <-  as.character(pData(my.eset)$Colores[ my.cels.idx[[ wCont[[ii]][jj] ]] ])
     mainTitle <- paste0(my.compName) ## Titol
     # Compose the filename
     outFileName.noext <- paste( "heatmap", my.compName, 
@@ -1318,7 +1553,6 @@ writeReport( report.r, filename=report.filename ); # w/o extension
 # Phase 4: edit the report and other html files produced so that css and js libraries use relative paths and not absolute, so that they work when moved to another computer
 
 # For html edition as simple text from R, we can use the base functions "readLines" and "cat" (to file)
-base_url <- "/home/xavi/R/x86_64-pc-linux-gnu-library/3.2/rCharts/libraries/datatables/"
 # Copy the css and js files from the reports folder to the results folder for later reuse within the ResultsFiles.html generated 
 #file.link(from, to)
 # Create folders for js and css in results Dir if they don't exist yet
@@ -1345,12 +1579,12 @@ for (folder in folders2create) {
 # to be compressed and send elsewhere for the researcher with all the required css and js files in it. Copyright licenses should be respected (citation, etc).
 filenames <- list.files(path = resultsDir, pattern = "html")
 setwd(resultsDir)
-## Replace base_url with nothing since these js and css folders have been copied to the resultsDir folder.
+## Replace base_path_in_local_urls with nothing since these js and css folders have been copied to the resultsDir folder.
 #foreach( ff in filenames ){
 replaceResult <- foreach (ff = 1:length(filenames)) %dopar% {
   #ff <- 1
   xx <- readLines(filenames[ff])
-  yy <- gsub( base_url, "", xx )
+  yy <- gsub( base_path_in_local_urls, "", xx )
   cat(yy, file=filenames[ff], sep="\n")
   
 }
@@ -1360,9 +1594,9 @@ replaceResult <- foreach (ff = 1:length(filenames)) %dopar% {
 files2create <- c(study.proposalFileName, study.reportFileName)
 for (f2c in files2create) { # f2c = file to create
   # prepare to copy files if they do not exist yet in destination
+  from  <- file.path(docsDir, f2c)
   to    <- file.path(resultsDir, f2c)
   if (!file.exists(to) && file.exists(from)) {
-    from  <- file.path(docsDir, f2c)
     resultsFileLink <- file.link(from, to)
   } # end if clause for file copy 
 } # loop over files
