@@ -1,19 +1,30 @@
-###################################################
-## BasicA.R
-##
-## Basic Analysis of Microarrays when the standard 
-## "BasicPipe" pipeline from the UEB-VHIR cannot be used
-## See git hostory to see contributors
-## to this script.
-##
-## UEB-VHIR (2015) http://ueb.vhir.org 
-##
-###################################################
+---
+title: "BasicA.Rmd"
+author: "UEB Staff - http://ueb.vhir.org"
+output:
+  html_document:
+    toc: true
+    theme: united
+---
 
+<!-- You can write Rmd comments as a regular html comments even if they will be present in the html source --> 
+[//]: # (You can write pure Rmd comments that won't be in the html source this other way )
+<!-- To extract R from Rmd you can use some commands like: 
+library(knitr)
+purl("./MyFile.Rmd")
+--> 
 
-###################################
-# Basic hardcoded parameters for the pipeline
-###################################
+# Introduction to the Pipeline 'Basic Analysis for Microarrays'
+Basic Analysis of Microarrays when the standard 
+"BasicPipe" pipeline from the UEB-VHIR cannot be used
+See git hostory to see contributors
+to this script.
+
+UEB-VHIR (2015) http://ueb.vhir.org 
+
+## Basic hardcoded parameters for the pipeline
+
+```{r Basic hardcoded parameters for the pipeline}
 analysisName <- "YYYY-MM-XXX-YYY-ANNN"            # Nom del directori del projecte (e.g. "aaaa-mm-NomCognomInvestigador-CENTRE-IdEstudi")
 aID <- "LUQ320"                                               # Canviar XXXnnn per les 3 lletres de l'investigador/a + l'Id numeric de l'estudi
 ## ----preparaDirectorios, eval=TRUE---------------------------------------
@@ -68,14 +79,17 @@ UEB <- TRUE                                                 # TRUE => capcalera 
 # in the contrasts matrix for the multiple comparisons further below.
 samples2remove <- "" # c("41.CEL","42.CEL","44.CEL")
 
+
 # the name of the main html file where the list of files produced is shown.
 report.filename <- "ResultsFiles"
+#study.proposalFileName <- "YYYY-MM-XXX-YYY-ANNN-StudyBudget.pdf"
 study.proposalFileName <- "YYYY-MM-XXX-YYY-ANNN-StudyBudget.pdf"
 study.reportFileName <- "YYYY-MM-XXX-YYY-ANNN-MainReport.pdf"
+```
 
-#############################
-# Package dependencies
-#############################
+## Package dependencies
+
+```{r Package dependencies}
 ## ----librerias, eval=TRUE------------------------------------------------
 ## Bioconductor
 installifnot <- function (pckgName){
@@ -127,16 +141,18 @@ for (ii in 1:length(packages)) {
   require(as.character(packages[ii]), character.only=TRUE)
 }
 
+```
 
-###################################
-# Basic dynamic parameters for the pipeline
-###################################
+## Basic dynamic parameters for the pipeline
+
+```{r Basic dynamic parameters for the pipeline}
 ## number of cores to use from your computer (with doMC or parallel packages)
 nCores <- detectCores(all.tests = FALSE, logical = FALSE) # In case of doubt, use just all -1 core.
+```
 
-###################
-# Start Report with Nozzle.R1
-###################
+## Start Report with Nozzle.R1
+
+```{r Start Report with Nozzle.R1}
 # Remove any previous leftover
 if (file.exists(paste0(report.filename, ".html"))) file.remove(paste0(report.filename, ".html"))
 if (file.exists(paste0(report.filename, ".RData"))) file.remove(paste0(report.filename, ".RData"))
@@ -171,7 +187,11 @@ report.s1 <- newSection( "Base information" );
 
 # Report
 report.s1s1 <- newSection( "Samples and Groups" );
+```
 
+## Load targets file and Create the design matrix
+
+```{r Load targets file and Create the design matrix}
 ## ----matDesign, eval=TRUE------------------------------------------------
 #design<-matrix(
 #            c(1,1,1,1,1,0,0,0,0,0,0,0,0,0,0,
@@ -216,7 +236,7 @@ lev <- targets[,column2design]  # nom de la columna del targets.txt que conte
 ### design estandar sense efecte batch:
 design <- model.matrix( ~ 0 + lev)        
 ### si hi haguessin efectes batch, o altres efectes a tenir en compte com a factors, caldria afegir noves línies aqui, per exemeple:
-#   batch1 <- as.factor(targets$AmplBatch)
+#   batch1 <- as.factor(targets$BATCH)
 #   batch2 <- as.factor(targets$HybrBatch)
 # i el design inclouria aquests batchos despres del lev, aixi:
 #   design <- model.matrix( ~0 +lev +batch1 +batch2)
@@ -236,10 +256,11 @@ rownames(design) <- targets$ShortName  # Serveix per poder associar les files de
 numParameters <- ncol(design)
 
 print(design) #comentar aquesta linia si no es vol visualitzar la matriu de disseny
+```
 
-#############################
-# DATA LOADING
-#############################
+## Data Loading
+
+```{r Data Loading}
 # If the file from Expression Console with annotation information is present, load its data and avoid further steps to use generated data by other means
 # rma.XXXNNN.ec.annotated.txt
 
@@ -345,7 +366,11 @@ if (file.exists(file.path(dataRelDir, paste0("rma.", aID, ".ec.annotated.txt")))
   #class(my.eset)  
 }
 # ###### end of data loading
+```
 
+## Set Contrasts
+
+```{r Set Contrasts}
 ## ----setContrasts, eval=TRUE---------------------------------------------
 require(limma)
 #cont.matrix <- makeContrasts (
@@ -450,6 +475,9 @@ report.s1l2 <- newList( isNumbered=FALSE,
 report.s1s2 <- addTo( report.s1s2, report.s1p2a, report.s1p2b, report.s1l1, 
                       report.s1p2c, report.s1l2 )
 
+```
+
+```{r Run the Linear Model Fit}
 ## ----linearmodelfit,echo=F, eval=TRUE------------------------------------
 require(limma)
 fit<-lmFit(my.eset, design)
@@ -479,7 +507,11 @@ key.params <- cbind(rownames(key.params), key.params)
 colnames(key.params) <- c("Parameter", colnames(df.compNamesAll))
 
 #report.s1s3 <- newSection( "Section removed/refactored (it doesn't exist anymore)" );
+```
 
+## Fetch rawData affyBatch object (load or create it)
+
+```{r Fetch rawData affyBatch object (load or create it)}
 #############################
 # Fetch rawData affyBatch object (load or create it)
 #############################
@@ -504,10 +536,14 @@ if (!exists("rawData")) { # it doesn't exist in memory
     rawData2 <- ReadAffy(filenames=fns)
   }  
 }
+```
 
-#############################
-# Quality Control (raw)
-#############################
+## Quality Control 
+
+### QC with Raw data - Array Quality Metrics
+
+```{r QC with Raw data - Array Quality Metrics}
+
 # Section borrowed from the the standard Basic Pipe code.
 #rawData <- xx
 # or ????
@@ -523,6 +559,11 @@ rawData <- rawData2
 #                     intgroup = "Grupo",
 #                     do.logtransform = FALSE)
 
+```
+
+### QC - Functions and params for Custom QC
+
+```{r QC - Functions and params for Custom QC}
 #---------------------------------------------------------------------------------------------
 ###QUALITY CONTROL OF ARRAYS: RAW DATA
 #---------------------------------------------------------------------------------------------
@@ -603,8 +644,16 @@ doQC <- function ( my.data, my.data.type ) {
   dev.off()
 }
 ########-------------------
+```
 
+### QC with Raw data - Custom commands
+
+Commented out so far since boxplot required miRNA-4_1.cdf
+
+```{r QC with Raw data - Custom commands}
 doQC(rawData, "Raw")
+# Comment the previous line out if microarray came from miRNA4.1 and 
+# no package yet from Bioconductor, since boxplot required miRNA-4_1.cdf
 
 # Add the section to the report 
 report.s1s4 <- newSection( "Quality control (raw data)" );
@@ -626,14 +675,21 @@ report.s1p4a3 <- newParagraph( "After reviewing the quality checks on raw data i
                                asStrong( samples2remove.collapsed ));
 report.s1h4 <- newHtml( "<iframe src=\"", resultsRelDir, "/QCDir.raw/index.html\" frameborder=1 height=600 scrolling=auto width=\"900\"></iframe>", style="background-color: snow;" )
 report.s1s4 <- addTo( report.s1s4, report.s1p4a1, report.s1p4a2, report.s1p4a3, report.s1h4 ) 
+```
 
+### QC with Normalized data - Custom commands
 
+```{r QC with Normalized data - Custom commands}
 #############################
 # Quality Control (norm)
 #############################
 # This step doQC with normalized data fails, due to missing values in X for he prcomp function
 doQC(my.eset, "Normalized")
+```
 
+### QC with Normalized data - Array Quality Metrics
+
+```{r QC with Normalized data - Array Quality Metrics}
 # Section borrowed from the the standard Basic Pipe code.
 phenoData(my.eset)$Grupo<-targets$Grupo
 phenoData(my.eset)$ShortName<-targets$ShortName
@@ -652,7 +708,11 @@ report.s1p5 <- newParagraph( "A similar quality check has been performed on the 
                               to remove samples: ", asStrong( samples2remove.collapsed ));
 report.s1h5 <- newHtml( "<iframe src=\"", resultsRelDir, "/QCDir.norm/index.html\" frameborder=1 height=600 scrolling=auto width=\"900\"></iframe>", style="background-color: snow;" )
 report.s1s5 <- addTo( report.s1s5, report.s1p5, report.s1h5 ) 
+```
 
+## Display Feature selection Parameters
+
+```{r Display Feature selection Parameters}
 #############################
 # Display Feature selection Parameters
 #############################
@@ -668,10 +728,13 @@ if(length(pValCutOff)!=length(compGroupName)) warning("L'objecte pValCutOff ha d
 if(length(adjMethod)!=length(compGroupName)) warning("L'objecte adjMethod ha de tenir el mateix nombre d'elements que compGroupName!")
 if(length(minLogFoldChange)!=length(compGroupName)) warning("L'objecte minLogFoldChange ha de tenir el mateix nombre d'elements que compGroupName!")
 
+```
+
+## Feature annotation reference from Affymetrix
+
+```{r Feature annotation reference  from Affymetrix}
 setwd(baseDir)
-#############################
-# Feature annotation reference
-#############################
+
 if (!exists("annotation.affy.hg")){
   # If the object annotation.affy.hg exists, load it. Otherwise, generate it again
   
@@ -693,6 +756,7 @@ report.s1p7 <- newParagraph( "List of Transcript ID for the correspoding Probese
 report.s1file7a.csv <- newHtml( "File (CSV): <a href=", outFileNameRelPath,">",
                                 outFileNameRelPath, "</a>",
                                 style="background-color: snow;" )
+
 
 # When requested, create the dTable, filterable and sortable, etc.
 create.dTable.featAnot <- T
@@ -759,11 +823,18 @@ if (report.dTable.featAnot == TRUE) {
 } else { # if no report of dTable, add at least, the link to the csv file
   report.s1s7 <- addTo( report.s1s7, report.s1p7, report.s1file7a.csv)
 } # end of if report dTable
+```
 
+## Set the number of cores to use for parallel commands
 
+```{r Set the number of cores to use for parallel commands}
 # Set the number of cores to use
 registerDoMC(nCores)
+```
 
+## Top Tables generation
+
+```{r Top Tables generation}
 #############################################################
 # TOP TABLES
 #############################################################
@@ -961,10 +1032,11 @@ topTabLoop <- foreach (ii = 1:length(wCont)) %do% { # ii is the index of the lis
 #topTabLoop[[1]]$elements[[2]]$text
 #rm(report.s2s1)
 #report.s2s1
+```
 
-###################################################
-## NumFeatureChanged (formarly named NumGeneChanged )
-###################################################
+## NumFeatureChanged (formerly named NumGeneChanged)
+
+```{r NumFeatureChanged (formerly named NumGeneChanged)}
 # Add it to the report
 report.s2s2 <- newSection( "Number of features changed in each case" );
 report.s2p2 <- newParagraph( "Summary table with the number of features changed in each case for each pValue Type (adjusted or not) and Cutoff");
@@ -1027,10 +1099,11 @@ report.s2s2 <- addTo( report.s2s2, report.s2t2a)
 #report.s2file <- newParagraph( "File: <a href=\"", outFileNameRelPath,"\">",
 #                                 outFileNameRelPath, "</a>")
 #report.s2s2 <- addTo( report.s2s2, report.s2file)
+```
 
-###################################################
-## Volcano Plots
-###################################################
+## Volcano Plots generation
+
+```{r Volcano Plots generation}
 # Add it to the report
 report.s2s3 <- newSection( "Volcano plots" );
 report.s2p3 <- newParagraph( "Files with the volcano plot for each comparison");
@@ -1136,10 +1209,11 @@ for (ii in 1:length(wCont)) { # ii is the index of the list with the multiple co
     report.s2s3 <- addTo( report.s2s3, report.s2file)
   }
 }
+```
 
-###################################################
-## Venn Diagram
-###################################################
+## Venn Diagrams generation
+
+```{r Venn Diagrams generation}
 # Add it to the report
 report.s2s4 <- newSection( "Venn Diagrams" );
 report.s2p4 <- newParagraph( "Files with the Venn Diagrams for the groups of comparisons (cases of more than one comparison in each group)");
@@ -1228,7 +1302,11 @@ for (ii in 1:length(wCont)) { # ii is the index of the list with the multiple co
                               outFileNameRelPath.pdf, "</a>",
                               style="background-color: snow;" )
     report.s2s4 <- addTo( report.s2s4, report.s2file)
-    
+    ```
+
+## Venn Diagrams: save sets of features to .csv files on disk
+
+```{r Venn Diagrams: save sets of features to .csv files on disk}
     ############################
     ## Save on disk the list of Features for each group of multiple comparisons
     ## Derived from 
@@ -1276,7 +1354,11 @@ for (ii in 1:length(wCont)) { # ii is the index of the list with the multiple co
   
 } # end of ii loop, the index of the list with the multiple comparison group names
 
+```
 
+## htmlPages (unused chunk so far)
+
+```{r htmlPages (unused chunk so far)}
 # ## ----htmlPages-----------------------------------------------------------
 # listOfTables <- list(AvsB = topTab_AvsB, AvsL = topTab_AvsL, BvsL = topTab_BvsL) 
 # for (i in 1:length(listOfTables)){
@@ -1304,10 +1386,11 @@ for (ii in 1:length(wCont)) { # ii is the index of the list with the multiple co
 #            table.center = TRUE, 
 #            repository=list("en"))
 # }
+```
 
-###################################################
-## Heatmaps
-###################################################
+## Heatmaps generation
+
+```{r Heatmaps generation}
 # Add it to the report
 report.s2s5 <- newSection( "Heatmap plots" );
 report.s2p5 <- newParagraph( "Files with the Heatmap plots for each comparison");
@@ -1485,8 +1568,11 @@ for (ii in 1:length(wCont)) { # ii is the index of the list with the multiple co
     
   } # end the loop of jj
 } # end of ii loop, the index of the list with the multiple comparison group names
+```
 
+## list files (unused chunk so far)
 
+```{r list files (unused chunk so far)}
 # ## ----listaArchivos,echo=FALSE,print=FALSE,results=tex, eval=TRUE---------
 # require(gdata)
 # listaArchivos <-read.table(file.path(resultsDir,"listaArchivos.txt"), head=TRUE, sep="\t") 
@@ -1499,10 +1585,12 @@ for (ii in 1:length(wCont)) { # ii is the index of the list with the multiple co
 # ## ----listaArchivos2html,echo=FALSE,print=FALSE, eval=TRUE----------------
 # require(hwriter)
 # hwrite(listaArchivos,file.path(resultsDir, "listaArchivos.html"))
+```
 
-###################################################
-## Acknowledgement
-###################################################
+## Acknowledgement request
+
+```{r Acknowledgement request}
+
 # Add the common request to cite our service in their papers at the Acknowledgements section
 report.s10 <- newSection( "Other considerations" );
 
@@ -1514,10 +1602,11 @@ report.s10.p2 <- newParagraph( asCode( "\"Statistical analysis ( Bioinformatics 
                                        Vall d'Hebron Research Institute (VHIR) - http://ueb.vhir.org \"") );
 
 report.s10 <- addTo( report.s10, report.s10.p1, report.s10.p2);
+```
 
-###################################################
 ## Make the report
-###################################################
+
+```{r Make the report}
 # Report with Nozzle.R1
 # Phase 2: assemble report structure bottom-up
 report.s0a <- addTo( report.s0a, report.s0a.p1, report.s0a.p2, report.s0a.p3, report.s0a.p4, report.s0a.p5);
@@ -1527,6 +1616,7 @@ report.s0b <- addTo( report.s0b, report.s0b.p1, report.s0b.p2);
 report.s1 <- addTo( report.s1, report.s1s1, report.s1s2, report.s1s4, report.s1s5,
                     report.s1s7); # sections s1s3 and s1s6 have been removed from the report by Alex.
 report.s2 <- addTo( report.s2, report.s2s1, report.s2s2, report.s2s3, report.s2s4, report.s2s5 );
+
 report.r <- addTo( report.r, report.s0a, report.s0b, report.s1, report.s2 );
 report.r <- addTo( report.r, report.s10 ); # "Other considerations" section, at the end.
 
@@ -1551,10 +1641,25 @@ report.r <- setContactInformation( report.r, email="ueb@vhir.org", subject="Prob
 writeReport( report.r, filename=report.filename ); # w/o extension
 #Two files called my_report.html and my_report.RData will be written to the current working directory.
 
-# Phase 4: edit the report and other html files produced so that css and js libraries use relative paths and not absolute, so that they work when moved to another computer
+```
 
-# For html edition as simple text from R, we can use the base functions "readLines" and "cat" (to file)
-# Copy the css and js files from the reports folder to the results folder for later reuse within the ResultsFiles.html generated 
+## Tweak the report and other html files (js, css, ...)
+
+```{r Tweak the report and other html files (js, css, ...)}
+# Phase 4
+```
+
+Edit the report and other html files produced so that css and js libraries use relative paths and not absolute, so that they work when moved to another computer
+
+For html edition as simple text from R, we can use the base functions "readLines" and "cat" (to file)
+
+
+
+### Copy required css, js and pdf files to the results folder
+
+Copy the css and js files from the reports folder to the results folder for later reuse within the ResultsFiles.html generated. Copy also over the results folder the other main documents produced elsewhere.
+
+```{r Copy required css, js and pdf files to the results folder}
 #file.link(from, to)
 # Create folders for js and css in results Dir if they don't exist yet
 folders2create <- c("js", "css")
@@ -1577,19 +1682,6 @@ for (folder in folders2create) {
   } # loop over files
 } # loop over folders
 
-# to be compressed and send elsewhere for the researcher with all the required css and js files in it. Copyright licenses should be respected (citation, etc).
-filenames <- list.files(path = resultsDir, pattern = "html")
-setwd(resultsDir)
-## Replace base_path_in_local_urls with nothing since these js and css folders have been copied to the resultsDir folder.
-#foreach( ff in filenames ){
-replaceResult <- foreach (ff = 1:length(filenames)) %dopar% {
-  #ff <- 1
-  xx <- readLines(filenames[ff])
-  yy <- gsub( base_path_in_local_urls, "", xx )
-  cat(yy, file=filenames[ff], sep="\n")
-  
-}
-
 
 # copy over the results folder the other main documents produced elsewhere
 files2create <- c(study.proposalFileName, study.reportFileName)
@@ -1602,6 +1694,31 @@ for (f2c in files2create) { # f2c = file to create
   } # end if clause for file copy 
 } # loop over files
 
+```
+
+### Replace base_path_in_local_urls
+
+Replace base_path_in_local_urls with nothing since these js and css folders have been copied to the resultsDir folder, since the ResultFiles.html and associated files are to be compressed and sent elsewhere for the researcher with all the required css and js files in it. Copyright licenses should be respected (citation, etc).
+
+```{r Replace base_path_in_local_urls}
+
+filenames <- list.files(path = resultsDir, pattern = "html")
+setwd(resultsDir)
+## 
+#foreach( ff in filenames ){
+replaceResult <- foreach (ff = 1:length(filenames)) %dopar% {
+  #ff <- 1
+  xx <- readLines(filenames[ff])
+  yy <- gsub( base_path_in_local_urls, "", xx )
+  cat(yy, file=filenames[ff], sep="\n")
+  
+}
+
+```
+
+### html edition from R using XML nodes (not used yet)
+
+```{r html edition from R using XML nodes (not used yet)}
 #   # For html edition from R, See: http://blog.rstudio.org/2015/04/21/xml2/
 #   require(xml2)
 #   base_url <- "/home/xavi/R/x86_64-pc-linux-gnu-library/3.2/rCharts/libraries/datatables/"
@@ -1611,3 +1728,4 @@ for (f2c in files2create) { # f2c = file to create
 #   # xml_url(f2e)
 #   # xml_contents(f2e)
 #   # url_relative(f2r, basde_url)
+```
