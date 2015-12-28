@@ -1,0 +1,295 @@
+\documentclass[12pt]{article}
+\usepackage{amsmath} % formulas matematicas 
+\usepackage[left=2.5cm,top=3cm,bottom=3cm,right=2.5cm]{geometry}   % text margins
+\usepackage{hyperref}
+\usepackage{graphicx}
+\usepackage{longtable}
+\usepackage{multirow}
+\usepackage[table,xcdraw]{xcolor}
+\usepackage{fancyhdr}
+\usepackage{eurosym}
+\renewcommand{\baselinestretch}{1.2} % per canviar interlineado
+\pagestyle{fancy}
+
+%------------------------------------------------------------------------------------------------------------
+%------Capçalera ------------------------------------------------------------------------------------------- 
+%------------------------------------------------------------------------------------------------------------
+\headheight=70pt %para cambiar el tamaño del encabezado
+\fancyhead[L] %la "L" indica a la izquierda
+{
+\begin{minipage}[b]{0,5\textwidth}
+ \includegraphics[width=90mm]{UEB_fonsTransparent.png}
+\end{minipage}
+\begin{minipage}[b]{0,5\textwidth}
+\small %tamaño de letra pequeño
+{\textsf{}}
+\end{minipage}}
+\fancyhead[C] %la "C" indica al centro
+{\textbf{\textsf{}}} %textsf es un tipo de letra
+\fancyhead[R] %la "R" indica a la derecha
+{\small{\textsf{
+Vall d'Hebron Research Institute\\
+VHIR Modular buidilng\\
+Passeig Vall d'Hebron 119-129\\
+08035 Barcelona\\
+Tel: 934894007 \\
+\href{mailto:ueb@vhir.org}{ueb@vhir.org} }
+}}
+
+\begin{document}
+
+
+\vspace{3cm}
+
+%------------------------------------------------------------------------------------------------------------
+%------Study Proposal --------------------------------------------------------------------------------------- 
+%------------------------------------------------------------------------------------------------------------
+
+\begin{table}[h]
+\begin{tabular}{|
+>{\columncolor[HTML]{BFC0E1}}l p{11cm} |l|}
+\hline
+\multicolumn{2}{|c|}{\cellcolor[HTML]{6F1E78}{\color[HTML]{FFFFFF} \textbf{STUDY PROPOSAL}}}                \\ \hline				%col #6f1e78
+\multicolumn{2}{|l|}{\cellcolor[HTML]{656565}{\color[HTML]{FFFFFF} \textbf{Study Identification}}}          \\ \hline				%col #656565
+\textbf{Study title}                & \begin{tabular}[c]{@{}l@{}}  Title\\ of \\ study		\end{tabular}   \\ \hline % Title of study 	%col #bfc0e1
+\textbf{Study number}               & \begin{tabular}[c]{@{}l@{}}  ( TO BE DETERMINED )		\end{tabular}   \\ \hline %( TO BE DETERMINED )
+\textbf{Preliminary interview date} & \begin{tabular}[c]{@{}l@{}}  yyyy/mm/dd				\end{tabular}   \\ \hline %yyyy/mm/dd
+\textbf{Responsible analyst}        & \begin{tabular}[c]{@{}l@{}}  Analyst name \\ Alex Sanchez	\end{tabular}   \\ \hline % Analyst name // Alex Sanchez
+\multicolumn{2}{|l|}{\cellcolor[HTML]{656565}{\color[HTML]{FFFFFF} \textbf{Contact information}}}  \\ \hline 
+\textbf{Name}                       & \begin{tabular}[c]{@{}l@{}}  Researcher's name		\end{tabular}   \\ \hline % Researcher's name
+\textbf{Laboratory\/ Departament}   & \begin{tabular}[c]{@{}l@{}}  Researcher's lab		\end{tabular}   \\ \hline % Researcher's lab
+\textbf{Institution}                & \begin{tabular}[c]{@{}l@{}}  Researcher's institution	\end{tabular}   \\ \hline % Researcher's institution
+\textbf{Telephone number}           & \begin{tabular}[c]{@{}l@{}}  Researcher's phone number	\end{tabular}   \\ \hline % Researcher's phone number
+\textbf{E-mail}                     & \begin{tabular}[c]{@{}l@{}}  Researcher's e-mail	\end{tabular}   \\ \hline % Researcher's e-mail
+\end{tabular}
+\end{table}
+
+
+
+%------------------------------------------------------------------------------------------------------------
+%----- General information of study -------------------------------------------------------------------------
+%------------------------------------------------------------------------------------------------------------
+\begin{table}[h]
+\begin{tabular}{|l|}
+\hline
+\rowcolor[HTML]{6F1E78} 
+{\color[HTML]{FFFFFF} \textbf{General Information of the study} \hspace{10cm}} \\ \hline
+\rowcolor[HTML]{656565} 
+{\color[HTML]{FFFFFF} \textbf{Objectives}} \\ \hline
+\end{tabular}
+\end{table}
+
+If available, put a brief introduction to the topic here explaining, for instance, the scientific motivation of 
+the study, the disease which the study is focused on, the pathways that are intended to analyze or highlight, 
+the mechanism of action of the protein which expression is being studied, and/or any hypothesis to be considered
+in the current case...\\
+
+The main objective of this study is %to find differentially expressed genes in samples from a certain A and B... conditions.
+\\
+
+The experimental conditions to be considered in this study are:
+
+\begin{enumerate}
+ \item Factor A (\emph{A})% <-- put here the name of Factor A
+    \begin{enumerate}
+      \item N samples from level A1 (\emph{A1})% <-- Level A1
+      \item N samples from level A2 (\emph{A2})% <-- Level A2
+    \end{enumerate}
+ \item Factor B (\emph{B})% <-- put here the name of Factor B
+    \begin{enumerate}
+      \item N samples from level B1 (\emph{B1})% <-- Level B1
+      \item N samples from level B2 (\emph{B2})% <-- Level B2
+    \end{enumerate}
+\end{enumerate}
+
+%------------------------------------------------------------------------------------------------------------
+%------Table samples --------------------------------------------------------------------------------------- 
+%------------------------------------------------------------------------------------------------------------
+
+%--------- Si es vol generar una taula diferent  http://www.tablesgenerator.com/
+
+\begin{table}[h]
+\begin{tabular}{cccc}
+\multicolumn{4}{c}{Table showing the distribution of samples among each experimental condition} \\
+ & \multicolumn{3}{c}{\textbf{Factor B}} \\ \cline{2-4} 
+\multicolumn{1}{c |}{} & \multicolumn{1}{c|}{\cellcolor[HTML]{BFC0E1}} & \multicolumn{1}{p{5cm}|}{\cellcolor[HTML]{BFC0E1}\centering{\vspace{0cm}Level B1}} & \multicolumn{1}{p{5cm}|}{\cellcolor[HTML]{BFC0E1}{\color[HTML]{000000} \centering{ \hspace{1.5cm}Level B2}}} \\ \cline{2-4} 
+\multicolumn{1}{c |}{} & \multicolumn{1}{c|}{\cellcolor[HTML]{BFC0E1}
+Level A1} & \multicolumn{1}{c|}{	2	} & \multicolumn{1}{c|}{	2	} \\ \cline{2-4}    % Cambiar `` 	2	''
+\multicolumn{1}{c |}{\multirow{-3}{*}{\textbf{Factor A}}} & \multicolumn{1}{c|}{\cellcolor[HTML]{BFC0E1}
+Level A2} & \multicolumn{1}{c|}{	2	} & \multicolumn{1}{c|}{	2	} \\ \cline{2-4}    % Cambiar `` 	2	''
+\end{tabular}
+\end{table}
+\newpage
+
+	 		
+The specific objective of the study is to find differential expression in the following comparisons:
+
+\begin{enumerate}
+ \item Effect of the A condition...   			% modificar
+    \begin{enumerate}
+      \item  A2 vs A1 = A2 -- A1 = $\Delta _1$ 	% modificar	
+      \item ...						% modificar
+    \end{enumerate}
+
+ \item Effect of the B condition...			% modificar
+     \begin{enumerate}
+      \item B2 vs B1 = B2 -- B1 = $\Delta _2$		% modificar
+      \item ....					% modificar
+    \end{enumerate}
+    
+ \item Difference between A and B conditions...	% modificar
+     \begin{enumerate}
+      \item $ B - A = (A2 - A1) - (B2 - B1) = \Delta _2 – \Delta _1$ % modificar
+    \end{enumerate}
+    
+ \item Difference between..				% modificar
+     \begin{enumerate}
+      \item .. 						% modificar
+      \item ..						% modificar
+    \end{enumerate}
+\end{enumerate}
+
+%------------------------------------------------------------------------------------------------------------
+%------Observations and comments----------------------------------------------------------------------------- 
+%------------------------------------------------------------------------------------------------------------
+\begin{table}[h]
+\begin{tabular}{|
+>{\columncolor[HTML]{656565}}c |}
+\hline
+{\color[HTML]{FFFFFF} \textbf{Observations and comments \hspace{10cm}}} \\ \hline
+\end{tabular}
+\end{table}
+There are no additional observations regarding the general design of study
+
+\clearpage
+%------------------------------------------------------------------------------------------------------------
+%------Materials -------------------------------------------------------------------------------------------- 
+%------------------------------------------------------------------------------------------------------------
+
+\begin{table}[h]
+\begin{tabular}{|
+>{\columncolor[HTML]{BFC0E1}}l |l|}
+\hline
+\multicolumn{2}{|l|}{\cellcolor[HTML]{6F1E78}{\color[HTML]{FFFFFF} \textbf{Materials}}}                                                                                                                                                                                                                                                \\ \hline
+\multicolumn{2}{|l|}{\cellcolor[HTML]{656565}{\color[HTML]{FFFFFF} \textbf{Basic information of the samples}}}                                                                                                                                                                                                                         \\ \hline
+\multicolumn{1}{|r|}{\cellcolor[HTML]{BFC0E1}\textbf{Organism}}            								                                                                                                                             
+& \begin{tabular}[c]{@{}l@{}}		Scientific name				\end{tabular}   \\ \hline  % Scientific name
+
+\multicolumn{1}{|r|}{\cellcolor[HTML]{BFC0E1}
+\begin{tabular}[c]{@{}r@{}}\textbf{Sample type}\\ \emph{(patients, animals, tissues, stem cells...)}\end{tabular}}                                                         
+& \begin{tabular}[c]{@{}l@{}}		to be confirmed, e.g. Brain tissues	\end{tabular}   \\ \hline  % to be confirmed, e.g. Brain tissues
+
+\multicolumn{1}{|r|}{\cellcolor[HTML]{BFC0E1}\textbf{Model of the arrays/ technology}}                                                                                                                  
+& \begin{tabular}[c]{@{}l@{}}		Name of the arrays / technology	\end{tabular}   \\ \hline  % Name of the arrays / technology
+
+\multicolumn{1}{|r|}{\cellcolor[HTML]{BFC0E1}\begin{tabular}[c]{@{}r@{}}\textbf{Sample size}\\ \emph{(number of chips, sequences}\end{tabular}}                                                                         
+& \begin{tabular}[c]{@{}l@{}}		Total samples (and num of samples for each \\ experimental condition..) 	\end{tabular}     \\ \hline %Total samples (and num of samples for each experimental condition..)
+
+\multicolumn{2}{|l|}{\cellcolor[HTML]{656565}{\color[HTML]{FFFFFF} \textbf{Labeling and description of the samples (targets)}}}                                                                                                                                                                                                        \\ \hline
+\multicolumn{2}{|l|}{\cellcolor[HTML]{FFFC9E}{\color[HTML]{FE0000} \textbf{\begin{tabular}[c]{@{}l@{}}IMPORTANT NOTE: \\ The researcher must provide a spreadsheet (see attached document), to \\  the UEB, whith the given table properly completed, as well as any additional\\ information that they would consider\end{tabular}}}} \\ \hline
+\end{tabular}
+\end{table}
+
+
+
+%------------------------------------------------------------------------------------------------------------
+%------Observations and comments----------------------------------------------------------------------------- 
+%------------------------------------------------------------------------------------------------------------
+\begin{table}[h]
+\begin{tabular}{|
+>{\columncolor[HTML]{656565}}c |}
+\hline
+{\color[HTML]{FFFFFF} \textbf{Observations and comments \hspace{10cm}}} \\ \hline
+\end{tabular}
+\end{table}
+\newpage
+They are no additional observations regarding sample manipulation or labeling in this study
+
+\clearpage
+
+\begin{table}[h]
+\begin{tabular}{|l|}
+\hline
+\rowcolor[HTML]{6F1E78} 
+{\color[HTML]{FFFFFF} \textbf{Analysis Proposal} \hspace{12cm}} \\ \hline
+\rowcolor[HTML]{656565} 
+{\color[HTML]{FFFFFF} \textbf{Methods}} \\ \hline
+\end{tabular}
+\end{table}
+
+%------------------------------------------------------------------------------------------------------------
+%------Methods ---------------------------------------------------------------------------------------------- 
+%------------------------------------------------------------------------------------------------------------
+\begin{enumerate}
+ \item Quality Control of the Arrays						% plantilla microarrays
+ \item Filtering and Normalization
+ \item Selection of Differentially Expressed Genes
+    \begin{enumerate}
+     \item Single comparisons
+	\begin{enumerate}
+	 \item Lists of genes
+	 \item Volcano Plots
+	\end{enumerate}
+      \item Multiple comparisons
+	  \begin{enumerate}
+	   \item Lists of genes selected in more than one comparison
+	   \item Venn's diagrams
+	  \end{enumerate}
+	\item Heatmaps
+    \end{enumerate}
+  \item Analyses of the Biological Significance
+      \begin{enumerate}
+       \item Analysis of the Gene Ontology
+       \item Analysis of the KEGG pathways
+      \end{enumerate}
+   \item Report generation and results presentation
+
+
+\end{enumerate}
+
+%------------------------------------------------------------------------------------------------------------
+%------Observations and comments----------------------------------------------------------------------------- 
+%------------------------------------------------------------------------------------------------------------
+\begin{table}[h]
+\begin{tabular}{|
+>{\columncolor[HTML]{656565}}c |}
+\hline
+{\color[HTML]{FFFFFF} \textbf{Observations and comments \hspace{10cm}}} \\ \hline
+\end{tabular}
+\end{table}
+There are no additional observations regarding the general design of study
+
+\clearpage
+
+%------------------------------------------------------------------------------------------------------------
+%------Dates and cost of the service------------------------------------------------------------------------- 
+%------------------------------------------------------------------------------------------------------------
+\begin{table}[h]
+\begin{tabular}{|l p{12.5cm}|l|}
+\hline
+\multicolumn{2}{|l|}{\cellcolor[HTML]{6F1E78}{\color[HTML]{FFFFFF} \textbf{Dates and Cost of the Service}}}  \\ \hline
+\multicolumn{2}{|l|}{\cellcolor[HTML]{656565}{\color[HTML]{FFFFFF} \textbf{Estimated dates}}}                \\ \hline
+\multicolumn{1}{|r|}{\cellcolor[HTML]{FFFFFF}\textbf{Proposal date}} & \begin{tabular}[c]{@{}l@{}} yyyy/mm/dd  \end{tabular} \\ \hline %yyyy/mm/dd
+\multicolumn{1}{|r|}{\cellcolor[HTML]{FFFFFF}\textbf{Starting date}} & \begin{tabular}[c]{@{}l@{}} yyyy/mm/dd  \end{tabular} \\ \hline %yyyy/mm/dd (when proposal accepted and data available)
+\multicolumn{1}{|r|}{\textbf{Ending Date}}                           & \begin{tabular}[c]{@{}l@{}} yyyy/mm/dd \end{tabular} \\ \hline  %yyyy/mm/dd (in X weeks)
+\multicolumn{2}{|l|}{\cellcolor[HTML]{656565}{\color[HTML]{FFFFFF} \textbf{Estimated cost}}} \\ \hline
+\multicolumn{2}{|l|}{\cellcolor[HTML]{FFFFFF}0000,0 \EUR}   \\ \hline  									    % Cost
+\end{tabular}
+\end{table}
+
+
+%------------------------------------------------------------------------------------------------------------
+%------Service Agreement------------------------------------------------------------------------------------ 
+%------------------------------------------------------------------------------------------------------------
+\begin{table}[h]
+\begin{tabular}{| p{7.5cm} >{\columncolor[HTML]{FFFFFF}} r |l|}
+\hline
+\multicolumn{2}{|l|}{\cellcolor[HTML]{6F1E78}{\color[HTML]{FFFFFF} \textbf{Service Agreement}}} \\ \hline
+{\color[HTML]{000000} \textbf{Date}}: yyyy/mm/dd 			& \\ \hline 	%yyyy/mm/dd
+\textbf{} & \includegraphics[width=80mm]{FirmaAlex.jpg} \\ \hline
+\multicolumn{1}{|c|}{\cellcolor[HTML]{FFFFFF}\begin{tabular}[c]{@{}c@{}}\textbf{Signature}\\ (research responsible)\end{tabular}} & \multicolumn{1}{c|}{\begin{tabular}[c]{@{}c@{}}\textbf{Signature}\\ (UEB responsible)\end{tabular}} \\ \hline
+\end{tabular}
+\end{table}
+
+
+\end{document}
