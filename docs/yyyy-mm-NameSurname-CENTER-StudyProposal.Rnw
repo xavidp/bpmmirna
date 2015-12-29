@@ -4,7 +4,7 @@
 \usepackage{hyperref}
 \usepackage{graphicx}
 \usepackage[utf8]{inputenc}
-\usepackage[spanish]{babel}
+\usepackage[english]{babel}
 \usepackage{longtable}
 \usepackage{multirow}
 \usepackage[table,xcdraw]{xcolor}
@@ -88,19 +88,24 @@ in the current case...\\
 
 The main objective of this study is %to find differentially expressed genes in samples from a certain A and B... conditions.
 \\
+<<load Rda, echo=FALSE>>=
+    #setwd("..")
+    load(file=file.path("..", "reports", paste0("tex.all.Rda")))
+@
 
 The experimental conditions to be considered in this study are:
 
 \begin{enumerate}
- \item Factor A (\emph{A})% <-- put here the name of Factor A
+ \item \Sexpr{cont.fA.title} (\emph{A})% <-- put here the name of Factor A
     \begin{enumerate}
-      \item N samples from level A1 (\emph{A1})% <-- Level A1
-      \item N samples from level A2 (\emph{A2})% <-- Level A2
+      \item \Sexpr{cont.fA.level.count[1]} samples from level \Sexpr{cont.fA.level.descs[1]} (\emph{\Sexpr{cont.fA.level.names[1]}})% <-- Level A1
+      \item \Sexpr{cont.fA.level.count[2]} samples from level \Sexpr{cont.fA.level.descs[2]} (\emph{\Sexpr{cont.fA.level.names[2]}})% <-- Level A2
+      \item \Sexpr{cont.fA.level.count[3]} samples from level \Sexpr{cont.fA.level.descs[3]} (\emph{\Sexpr{cont.fA.level.names[3]}})% <-- Level A3
     \end{enumerate}
- \item Factor B (\emph{B})% <-- put here the name of Factor B
+ \item \Sexpr{cont.fB.title} (\emph{B})% <-- put here the name of Factor B
     \begin{enumerate}
-      \item N samples from level B1 (\emph{B1})% <-- Level B1
-      \item N samples from level B2 (\emph{B2})% <-- Level B2
+      \item \Sexpr{cont.fB.level.count[1]} samples from level \Sexpr{cont.fB.level.descs[1]} (\emph{\Sexpr{cont.fB.level.names[1]}})% <-- Level B1
+      \item \Sexpr{cont.fB.level.count[2]} samples from level \Sexpr{cont.fB.level.descs[2]} (\emph{\Sexpr{cont.fB.level.names[2]}})% <-- Level B2
     \end{enumerate}
 \end{enumerate}
 
@@ -112,19 +117,23 @@ The experimental conditions to be considered in this study are:
 
 \begin{table}[h]
 \begin{tabular}{cccc}
-\multicolumn{4}{c}{Table showing the distribution of samples among each experimental condition} \\
- & \multicolumn{3}{c}{\textbf{Factor B}} \\ \cline{2-4} 
-\multicolumn{1}{c |}{} & \multicolumn{1}{c|}{\cellcolor[HTML]{BFC0E1}} & \multicolumn{1}{p{5cm}|}{\cellcolor[HTML]{BFC0E1}\centering{\vspace{0cm}Level B1}} & \multicolumn{1}{p{5cm}|}{\cellcolor[HTML]{BFC0E1}{\color[HTML]{000000} \centering{ \hspace{1.5cm}Level B2}}} \\ \cline{2-4} 
+\multicolumn{4}{c}{The distribution of samples among experimental conditions is as follows: } \\
+ & \multicolumn{3}{c}{\textbf{\Sexpr{cont.fB.title}}} \\ \cline{2-4} 
+\multicolumn{1}{c |}{} & \multicolumn{1}{c|}{\cellcolor[HTML]{BFC0E1}} & \multicolumn{1}{p{5cm}|}{\cellcolor[HTML]{BFC0E1}\centering{\vspace{0cm}\Sexpr{cont.fB.level.names[1]}}} & \multicolumn{1}{p{5cm}|}{\cellcolor[HTML]{BFC0E1}{\color[HTML]{000000} \centering{ \hspace{1.5cm}\Sexpr{cont.fB.level.names[2]}}}} \\ \cline{2-4} 
 \multicolumn{1}{c |}{} & \multicolumn{1}{c|}{\cellcolor[HTML]{BFC0E1}
-Level A1} & \multicolumn{1}{c|}{	2	} & \multicolumn{1}{c|}{	2	} \\ \cline{2-4}    % Cambiar `` 	2	''
-\multicolumn{1}{c |}{\multirow{-3}{*}{\textbf{Factor A}}} & \multicolumn{1}{c|}{\cellcolor[HTML]{BFC0E1}
-Level A2} & \multicolumn{1}{c|}{	2	} & \multicolumn{1}{c|}{	2	} \\ \cline{2-4}    % Cambiar `` 	2	''
+\Sexpr{cont.fA.level.names[1]}} & \multicolumn{1}{c|}{	\Sexpr{cont.fAB.level.count[1,1]}	} & \multicolumn{1}{c|}{	\Sexpr{cont.fAB.level.count[1,2]}	} \\ \cline{2-4}    % Cambiar `` 	2	''
+\multicolumn{1}{c |}{} & \multicolumn{1}{c|}{\cellcolor[HTML]{BFC0E1}
+\Sexpr{cont.fA.level.names[2]}} & \multicolumn{1}{c|}{	\Sexpr{cont.fAB.level.count[2,1]}	} & \multicolumn{1}{c|}{	\Sexpr{cont.fAB.level.count[2,2]}	} \\ \cline{2-4}    % Cambiar `` 	2	''
+\multicolumn{1}{c |}{\multirow{-3}{*}{\textbf{\Sexpr{cont.fA.title}}}} & \multicolumn{1}{c|}{\cellcolor[HTML]{BFC0E1}
+\Sexpr{cont.fA.level.names[3]}} & \multicolumn{1}{c|}{  \Sexpr{cont.fAB.level.count[3,1]}	} & \multicolumn{1}{c|}{	\Sexpr{cont.fAB.level.count[3,2]}	} \\ \cline{2-4}    % Cambiar `` 	2	''
 \end{tabular}
 \end{table}
 \newpage
 
 	 		
 The specific objective of the study is to find differential expression in the following comparisons:
+
+\input{../reports/tex.compNamesAll.tex}
 
 \begin{enumerate}
  \item Effect of the A condition...   			% modificar

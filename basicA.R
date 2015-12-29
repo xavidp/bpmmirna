@@ -109,6 +109,8 @@ pCRAN <- c("devtools",
               #For help type ?data.table or https://github.com/Rdatatable/data.table/wiki
               #The fastest way to learn (by data.table authors): https://www.datacamp.com/courses/data-analysis-the-data-table-way
               "data.table",
+              "doParallel",
+              "xtable",
               "doMC")
 
 if( any(!pCRAN %in% rownames(installed.packages())) ){
@@ -133,6 +135,10 @@ for (ii in 1:length(packages)) {
 ###################################
 ## number of cores to use from your computer (with doMC or parallel packages)
 nCores <- detectCores(all.tests = FALSE, logical = FALSE) # In case of doubt, use just all -1 core.
+# makeCluster(spec, type, ...)
+# makePSOCKcluster(names, ...)
+# makeForkCluster(nnodes = getOption("mc.cores", 2L), ...)
+# stopCluster(cl = NULL)
 
 ###################
 # Start Report with Nozzle.R1
@@ -220,6 +226,17 @@ design <- model.matrix( ~ 0 + lev)
 #   batch2 <- as.factor(targets$HybrBatch)
 # i el design inclouria aquests batchos despres del lev, aixi:
 #   design <- model.matrix( ~0 +lev +batch1 +batch2)
+
+# Create a latex version of the R object
+tex.table.design <-xtable(design,
+                   label='design',
+                   caption='Design Matrix used in this analysis')
+#print(tex.table, tabular.environment='longtable', floating=FALSE, size="small")
+print.xtable(tex.table.design, 
+             file = file.path(reportsDir, paste0("tex.design.tex")),
+             tabular.environment='longtable', 
+             floating=FALSE, 
+             size="small")
 
 #colnames(design) <- levels(lev)
 ### la definicio de colnames(design) pot ser molt mes complexa si hi ha efectes batch al design, com aquest exemple:
@@ -353,7 +370,25 @@ require(limma)
 #      AvsL = L-A,
 #      BvsL = L-B,
 #      levels=design)
-#print(cont.matrix)
+
+# Params for Factor A
+cont.fA.title <- "My Factor A"
+cont.fA.level.names <- c("A1", "A2", "A3")
+cont.fA.level.descs <- c("My level A1",
+                         "My level A2",
+                         "My level A3")
+# Params for Factor B
+cont.fB.title <- "My Factor B"
+cont.fB.level.names <- c("B1", "B2")
+cont.fB.level.descs <- c("My level B1",
+                         "My level B2")
+# Counts of Samples for each of both Factors A & B
+cont.fAB.level.count <- rbind( c(7, 6), # A1 items correspond to count also for levels B1, B2 (respectively)
+                               c(5, 4), # A2 items correspond to count also for levels B1, B2 (respectively)
+                               c(3, 2)) # A3 items correspond to count also for levels B1, B2 (respectively)
+cont.fA.level.count <- rowSums(cont.fAB.level.count)
+cont.fB.level.count <- colSums(cont.fAB.level.count)
+
 cont.matrix <- makeContrasts(
   ### ---------------------------------------------------------------------------
   ### REMEMBER THAT THIS IS JUST AN EXAMPLE!!!
@@ -370,6 +405,11 @@ cont.matrix <- makeContrasts(
   CTL.MetvsCTL.NoM    = ( (CTL.ht25.Met*5/10) + (CTL.lt25.Met*6/10) ) - ( (CTL.ht25.NoM*5/10) + (CTL.lt25.NoM*4/10) ),
   levels = design)
 
+# Attempt to make this dynamic and parametrized
+colnames(cont.matrix)
+# Fetch weights of each level in the comparisons
+colSums(design)
+
 cont.matrix.file <- "contrasts.matrix.csv"
 outFileNameRelPath <- file.path( resultsRelDir, cont.matrix.file )
 write.csv2(cont.matrix, file=outFileNameRelPath )
@@ -385,6 +425,18 @@ splitterIntracond   <- "."  # Intracondition splitter in the Comparison String
 compGroupName <- c("G1.CAN.vs.CTL", "G2.CAN.OBEvsCAN.nOB", "G3.CAN.Met.vs.CAN.NoM", 
                    "G4.CTL.OBEvsCTL.nOB", "G5.CTL.Met.vs.CTL.NoM") # si son comparacions multiples, fer tant noms com grups de comparacions (N) hi hagi
 
+#print(cont.matrix)
+
+# Create a latex version of the R object
+tex.table.cont.matrix <-xtable(cont.matrix,
+     label='cont.matrix',
+     caption='Contrasts Matrix used in this analysis')
+#print(tex.table, tabular.environment='longtable', floating=FALSE, size="small")
+print.xtable(tex.table.cont.matrix, 
+             file = file.path(reportsDir, paste0("tex.cont.matrix.tex")),
+             tabular.environment='longtable', 
+             floating=FALSE, 
+             size="small")
 
 wCont <- list(1:1, 2:2, 3:3, 4:4, 5:5) # Relacionat amb la contrastsMatrix. 
 # Llista amb N vectors, que defineixen els N conjunts (grups) de contrastos (comparacions)
@@ -400,6 +452,19 @@ for (ii in 1:length(wCont)) {
   compNamesAll[[ii]] <- colnames(cont.matrix)[ wCont[[ii]] ]
   names(compNamesAll)[ii] <- compGroupName[[ii]]  
 }
+
+# Create a latex version of the R object
+tex.table.compNamesAll <-xtable(data.frame(compNamesAll),
+                   label='compNamesAll',
+                   caption='Comparison names within each group')
+#print(tex.table, tabular.environment='longtable', floating=FALSE, size="small")
+print.xtable(tex.table.compNamesAll, 
+             file = file.path(reportsDir, paste0("tex.compNamesAll.tex")),
+             tabular.environment='longtable', 
+             floating=FALSE, 
+             include.rownames=FALSE,
+             size="tiny")
+#             size="footnotesize")
 
 #print(cont.matrix) #comentar aquesta linia si no es vol visualitzar la matriu de contrasts
 report.s1s2 <- newSection( "Comparisons performed" );
@@ -477,6 +542,17 @@ key.params <- rbind(pValCutOff, adjMethod, minLogFoldChange)
 # Row names need to be added as the first column, in order to be shown in the Report with Nozzle
 key.params <- cbind(rownames(key.params), key.params)
 colnames(key.params) <- c("Parameter", colnames(df.compNamesAll))
+
+# Create a latex version of the R object
+tex.table.key.params <-xtable(key.params,
+                   label='key.params',
+                   caption='Key parameters used in this analysis')
+#print(tex.table, tabular.environment='longtable', floating=FALSE, size="small")
+print.xtable(tex.table.key.params, 
+             file = file.path(reportsDir, paste0("tex.key.params.tex")),
+             tabular.environment='longtable', 
+             floating=FALSE, 
+             size="small")
 
 #report.s1s3 <- newSection( "Section removed/refactored (it doesn't exist anymore)" );
 
@@ -572,25 +648,30 @@ doQC <- function ( my.data, my.data.type ) {
   #my.data <- my.eset
   #my.data.type <- "Normalized"
   
-  #BOXPLOT
+  #BOXPLOT & SAVE TO A PNG FILE
+  png(paste("QCPlots", my.data.type, "boxplot", aID, "png", sep="."))
   boxplot(my.data, las=2, 
           main=paste0("Intensity distribution of ", my.data.type," data"),
           cex.axis=0.6, col=sampleColor, names=sampleNames)
+  dev.off()
   
-  #HIERARQUICAL CLUSTERING
+  #HIERARQUICAL CLUSTERING & SAVE TO A PNG FILE
+  png(paste("QCPlots", my.data.type, "dendrogram", aID, "png", sep="."))
   clust.euclid.average <- hclust(dist(t(exprs(my.data))),method="average")
   plot(clust.euclid.average, labels=sampleNames, 
        main=paste0("Hierarchical clustering of ", my.data.type,"Data"), 
        cex=0.7,  hang=-1)
+  dev.off()
   
-  #dim(exprs(my.data))
-  #summary(exprs(my.data))
+  #PCA & SAVE TO A PNG FILE
+  png(paste("QCPlots", my.data.type, "pca", aID, "png", sep="."))
   plotPCA(exprs(my.data), labels=sampleNames, 
           dataDesc=paste0(my.data.type," data"),
           colors=sampleColor, formapunts=c(rep(16,4),rep(17,4)), myCex=0.6)
+  dev.off()
   
-  #SAVE TO A FILE
-  pdf(paste0("QCPlots_", my.data.type,".pdf"))
+  #SAVE TO A PDF FILE
+  pdf(paste("QCPlots", my.data.type, "ALL", aID, "pdf", sep="."))
   boxplot(my.data, las=2, 
           main=paste0("Intensity distribution of ", my.data.type," data"),
           cex.axis=0.6, col=sampleColor, names=sampleNames)
@@ -762,8 +843,8 @@ if (report.dTable.featAnot == TRUE) {
 
 
 # Set the number of cores to use
-registerDoMC(nCores)
-
+#registerDoMC(nCores)
+registerDoParallel(cores=nCores-1)
 #############################################################
 # TOP TABLES
 #############################################################
@@ -1611,3 +1692,35 @@ for (f2c in files2create) { # f2c = file to create
 #   # xml_url(f2e)
 #   # xml_contents(f2e)
 #   # url_relative(f2r, basde_url)
+
+###################################################
+## Save other R objects to Rda on disk to be reused by Rnw
+###################################################
+file.from <- file.path(reportsDir, paste0("tex.all.", aID,".Rda"))
+file.to <- file.path(reportsDir, paste0("tex.all.Rda"))
+save(tex.table.compNamesAll,
+     tex.table.cont.matrix,
+     tex.table.design,
+     tex.table.key.params,
+     dataDir,
+     docsDir,
+     resultsDir,
+     celfilesDir,
+     reportsDir,
+     cont.matrix,
+     design,
+     cont.fA.title,
+     cont.fA.level.names,
+     cont.fA.level.descs,
+     cont.fB.title,
+     cont.fB.level.names,
+     cont.fB.level.descs,
+     cont.fAB.level.count,
+     cont.fA.level.count,
+     cont.fB.level.count,
+     file=file.from)
+# Make hard link to file name without aId, so that it can be easily read from the .Rnw file
+if (!file.exists(file.to) && file.exists(file.from)) {
+  texFileLink <- file.link(file.from, file.to)
+}
+
