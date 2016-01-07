@@ -20,7 +20,8 @@ aID <- "LUQ320"                                               # Canviar XXXnnn p
 # Some parameters for the reports in html produced by data.tables, Nozzle, etc.
 # base_url will be replaced by nothing at the end of the pipeline from absolute url's in html files produced
 # so that absolute url's links are converted into relative url's, and therefore, they do work in other computers. 
-base_path_in_local_urls <- "/home/xavi/R/x86_64-pc-linux-gnu-library/3.2/rCharts/libraries/datatables/"
+base_path_in_local_urls1 <- "/home/xavi/R/x86_64-pc-linux-gnu-library/3.2/rCharts/libraries/datatables/"
+base_path_in_local_urls2 <- "/home/xavi/R/x86_64-pc-linux-gnu-library/3.2/rCharts/libraries/dimple/"
 # Base Working directory and subdirectories
 baseDir <- paste0("/home/xavi/Estudis/", analysisName) # Pentinella
 #baseDir <- "/mnt/magatzem02/tmp/YYYY-MM-XXX-YYY-ANNN" # MainHead
@@ -73,6 +74,14 @@ report.filename <- "ResultsFiles"
 study.proposalFileName <- "YYYY-MM-XXX-YYY-ANNN-StudyBudget.pdf"
 study.reportFileName <- "YYYY-MM-XXX-YYY-ANNN-MainReport.pdf"
 
+# Choice of Quality Control Type 
+# ---------------------------
+# QCrType = for raw data
+# QCnType = for normalized data
+QCrType <- 1 # Types of Quality Control: 0=none, 1=Custom QC, 2=ArrayQualityMetrics 
+QCnType <- 2 # Types of Quality Control: 0=none, 1=Custom QC, 2=ArrayQualityMetrics 
+
+  
 #############################
 # Package dependencies
 #############################
@@ -111,6 +120,12 @@ pCRAN <- c("devtools",
               "data.table",
               "doParallel",
               "xtable",
+              "plyr",
+              "dplyr",
+              "reshape2",
+              "rjson",
+              "d3heatmap",
+              "htmlwidgets",
               "doMC")
 
 if( any(!pCRAN %in% rownames(installed.packages())) ){
@@ -152,14 +167,14 @@ report.r <- newCustomReport( "Results Files for Analysis ", aID );
 #report.r <- setReportSubTitle( report.r, "Analysis of differentially expressed miRNA between ... cancer and ... control samples from Affymetrix miRNA 4.0 plate arrays");
 
 report.s0a <- newSection( "Overview" );
-report.s0a.p1 <- newParagraph( "Results Files, Version 1" );
+report.s0a.p1 <- newParagraph( "Results Files, Version 1. Analysis: ", analysisTitle );
 report.s0a.p2 <- newParagraph( "This html file contains links to a series of files with results generated \
                     in the analyses performed in the Statistics and Bioinformatics Unit.");
-report.s0a.p3 <- newParagraph( "Briefly stated the main goal of the study (indeed the first part of the study) \
-                    is to select differentially expressed microRNAs associated with different subtypes of lung cancer. \
-                    The samples are divided in two main groups: 'Control' with two subgroups \
-                    ('With Risk Factor' and 'Without Risk Factor') \
-                    and 'Cancer' with three subtypes ('Epidermoid', 'Adenocarcinoma', and 'Microcytic').");
+report.s0a.p3 <- newParagraph( "Briefly stated the main goal of the study is \
+                    to select differentially expressed features (microRNAs, genes, ...) associated with different subtypes of XXX... \
+                    The samples are divided in XXX main groups: 'Control' with two subgroups \
+                    ('Group 1' and 'Group 2') \
+                    and 'Cancer' with subtypes 1, 2 and 3...");
 report.s0a.p4 <- newParagraph( "The comparisons performed have been indicated by the researchers.");
 report.s0a.p5 <- newParagraph( "Most results are stored as ", asStrong(".txt"), " or ", asStrong(".csv"),
                     ", as well as ", asStrong(".html"), " or ", asStrong(".pdf"), " files\
@@ -321,17 +336,25 @@ if (file.exists(file.path(dataRelDir, paste0("rma.", aID, ".ec.annotated.txt")))
   #class(min.eset.data.rma.ec)
   
   # Add Phenotypic Data
+  pData.all <- targets.all
   pData <- targets
+  rownames(pData.all) <- pData.all$SampleName
   rownames(pData) <- pData$SampleName
   #summary(pData)
   #table(rownames(pData)==colnames(data.rma.ec))
   #sapply(pData, class)
   
   # Create the phenoData object to be appended later inside the eset
+  phenoData.all <- new("AnnotatedDataFrame", data=pData.all)
   phenoData <- new("AnnotatedDataFrame", data=pData)
   #class(phenoData)
   
   # Assemble the expression set
+  eset.data.rma.ec.all <- ExpressionSet(assayData=data.rma.ec,
+                                    phenoData=phenoData.all
+                                    #                           , experimentData=experimentData
+                                    #                           , annotation="hgu95av2")
+  )
   eset.data.rma.ec <- ExpressionSet(assayData=data.rma.ec,
                                     phenoData=phenoData
                                     #                           , experimentData=experimentData
@@ -340,9 +363,10 @@ if (file.exists(file.path(dataRelDir, paste0("rma.", aID, ".ec.annotated.txt")))
   
   # Assign the expression set we will use in further steps in the pipeline 
   # to the object we created here
+  my.eset.all <- eset.data.rma.ec.all
   my.eset <- eset.data.rma.ec
   
-} else if (!exists("data.eset.vsn.rma2.filtered")){
+} else if (!exists("data.eset.vsn.rma2.filtered") || !exists("data.eset.vsn.rma2.filtered.all") ){
   # If the object with normalized data exists, load it. Otherwise, generate it again
   
   # Object data.eset.vsn.rma2.filtered doesn't exist in memory
@@ -358,6 +382,7 @@ if (file.exists(file.path(dataRelDir, paste0("rma.", aID, ".ec.annotated.txt")))
   #exprs.filtered <- exprs(data.eset.vsn.rma2.filtered)
   # Assign the expression set we will use in further steps in the pipeline 
   # to the object we obtained here
+  my.eset.all <- data.eset.vsn.rma2.filtered.all
   my.eset <- data.eset.vsn.rma2.filtered
   #class(my.eset)  
 }
@@ -383,9 +408,12 @@ cont.fB.level.names <- c("B1", "B2")
 cont.fB.level.descs <- c("My level B1",
                          "My level B2")
 # Counts of Samples for each of both Factors A & B
-cont.fAB.level.count <- rbind( c(7, 6), # A1 items correspond to count also for levels B1, B2 (respectively)
-                               c(5, 4), # A2 items correspond to count also for levels B1, B2 (respectively)
-                               c(3, 2)) # A3 items correspond to count also for levels B1, B2 (respectively)
+cont.fAB.level.count <- rbind( c(0, 0), # A1 items correspond to count also for levels B1, B2 (respectively)
+                               c(0, 0), # A2 items correspond to count also for levels B1, B2 (respectively)
+                               c(0, 0)) # A3 items correspond to count also for levels B1, B2 (respectively)
+# cont.fAB.level.count <- rbind( c(7, 6), # A1 items correspond to count also for levels B1, B2 (respectively)
+#                                c(5, 4), # A2 items correspond to count also for levels B1, B2 (respectively)
+#                                c(3, 2)) # A3 items correspond to count also for levels B1, B2 (respectively)
 cont.fA.level.count <- rowSums(cont.fAB.level.count)
 cont.fB.level.count <- colSums(cont.fAB.level.count)
 
@@ -397,12 +425,26 @@ cont.matrix <- makeContrasts(
   ### (I.E. YOU NEED TO TWEAK THE NUMBERS CORRESPONDING TO THE NEW NUMBER OF CEL FILES
   ### FOR EACH CASE IN WHICH YOU REMOVED SAMPLES)
   ### ---------------------------------------------------------------------------
-  CANvsCTL           =  ( (CAN.ht25.NoM*5/10) + (CAN.ht25.Met*5/10) + (CAN.lt25.NoM*5/10) + (CAN.lt25.Met*5/10) ) -
-                        ( (CTL.ht25.NoM*5/10) + (CTL.ht25.Met*5/10) + (CTL.lt25.NoM*4/10) + (CTL.lt25.Met*6/10) ), 
-  CAN.ht25vsCAN.lt25  = ( (CAN.ht25.NoM*5/10) + (CAN.ht25.Met*5/10) ) - ( (CAN.lt25.NoM*5/10) + (CAN.lt25.Met*5/10) ),
-  CAN.MetvsCAN.NoM    = ( (CAN.ht25.Met*5/10) + (CAN.lt25.Met*5/10) ) - ( (CAN.ht25.NoM*5/10) + (CAN.lt25.NoM*5/10) ),
-  CTL.ht25vsCTL.lt25  = ( (CTL.ht25.NoM*5/10) + (CTL.ht25.Met*5/10) ) - ( (CTL.lt25.NoM*4/10) + (CTL.lt25.Met*6/10) ),
-  CTL.MetvsCTL.NoM    = ( (CTL.ht25.Met*5/10) + (CTL.lt25.Met*6/10) ) - ( (CTL.ht25.NoM*5/10) + (CTL.lt25.NoM*4/10) ),
+#   CANvsCTL           =  ( (CTL.ht25.NoM*5/10) + (CTL.ht25.Met*5/10) + (CTL.lt25.NoM*4/10) + (CTL.lt25.Met*6/10) -
+#                         ( (CAN.ht25.NoM*5/10) + (CAN.ht25.Met*5/10) + (CAN.lt25.NoM*5/10) + (CAN.lt25.Met*5/10) ) ), 
+#   CAN.ht25vsCAN.lt25  = ( (CAN.lt25.NoM*5/10) + (CAN.lt25.Met*5/10) ) - ( (CAN.ht25.NoM*5/10) + (CAN.ht25.Met*5/10) ),
+#   CAN.MetvsCAN.NoM    = ( (CAN.ht25.NoM*5/10) + (CAN.lt25.NoM*5/10) ) - ( (CAN.ht25.Met*5/10) + (CAN.lt25.Met*5/10) ),
+#   CTL.ht25vsCTL.lt25  = ( (CTL.lt25.NoM*4/10) + (CTL.lt25.Met*6/10) ) - ( (CTL.ht25.NoM*5/10) + (CTL.ht25.Met*5/10) ),
+#   CTL.MetvsCTL.NoM    = ( (CTL.ht25.NoM*5/10) + (CTL.lt25.NoM*4/10) ) - ( (CTL.ht25.Met*5/10) + (CTL.lt25.Met*6/10) ),
+  CANvsCTL                  = ( (CTL.Obe.NoM*5/10) + (CTL.Obe.Met*5/10) + (CTL.NoO.NoM*4/10) + (CTL.NoO.Met*6/10) ) -
+                              ( (CAN.Obe.NoM*5/10) + (CAN.Obe.Met*5/10) + (CAN.NoO.NoM*5/10) + (CAN.NoO.Met*5/10) ), 
+  CAN.ObevsCTL.Obe          = ( (CTL.Obe.NoM*5/10) + (CTL.Obe.Met*5/10) ) - ( (CAN.Obe.NoM*5/10) + (CAN.Obe.Met*5/10) ),
+  CAN.NoOvsCTL.NoO          = ( (CTL.NoO.NoM*4/10) + (CTL.NoO.Met*6/10) ) - ( (CAN.NoO.NoM*5/10) + (CAN.NoO.Met*5/10) ),
+  ObevsNoO                  = (( (CTL.Obe.NoM*5/10) + (CTL.Obe.Met*5/10) ) - ( (CAN.Obe.NoM*5/10) + (CAN.Obe.Met*5/10) )) -
+                              (( (CTL.NoO.NoM*4/10) + (CTL.NoO.Met*6/10) ) - ( (CAN.NoO.NoM*5/10) + (CAN.NoO.Met*5/10) )),
+  CAN.MetvsCTL.Met          = ( (CTL.Obe.Met*5/10) + (CTL.NoO.Met*6/10) ) - ( (CAN.Obe.Met*5/10) + (CAN.NoO.Met*5/10) ),
+  CAN.NoMvsCTL.NoM          = ( (CTL.Obe.NoM*5/10) + (CTL.NoO.NoM*4/10) ) - ( (CAN.Obe.NoM*5/10) + (CAN.NoO.NoM*5/10) ),
+  MetvsNoM                  = (( (CTL.Obe.Met*5/10) + (CTL.NoO.Met*6/10) ) - ( (CAN.Obe.Met*5/10) + (CAN.NoO.Met*5/10) )) -
+                              (( (CTL.Obe.NoM*5/10) + (CTL.NoO.NoM*4/10) ) - ( (CAN.Obe.NoM*5/10) + (CAN.NoO.NoM*5/10) )),
+  CAN.Obe.MetvsCTL.Obe.Met  = ( (CTL.Obe.Met*5/10) - ( CAN.Obe.Met*5/10 ) ),
+  CAN.Obe.NoMvsCTL.Obe.NoM  = ( (CTL.Obe.NoM*5/10) - ( CAN.Obe.NoM*5/10 ) ),
+  CAN.NoO.MetvsCTL.NoO.Met  = ( (CTL.NoO.Met*5/10) - ( CAN.NoO.Met*5/10 ) ),
+  CAN.NoO.NoMvsCTL.NoO.NoM  = ( (CTL.NoO.NoM*4/10) - ( CAN.NoO.NoM*6/10 ) ),
   levels = design)
 
 # Attempt to make this dynamic and parametrized
@@ -422,9 +464,15 @@ splitterIntracond   <- "."  # Intracondition splitter in the Comparison String
                             #  and CTL.V2.C2 into the vars CTL V2 and C2) 
                             # This param is used later on to obtain the condition names of the comparison
 
-compGroupName <- c("G1.CAN.vs.CTL", "G2.CAN.OBEvsCAN.nOB", "G3.CAN.Met.vs.CAN.NoM", 
-                   "G4.CTL.OBEvsCTL.nOB", "G5.CTL.Met.vs.CTL.NoM") # si son comparacions multiples, fer tant noms com grups de comparacions (N) hi hagi
+compGroupName <- c("G1.CAN.vs.CTL",
+                   "G2.Obesity",
+                   "G3.Metformin", 
+                   "G4.ALL_bySubgroups") # si son comparacions multiples, fer tant noms com grups de comparacions (N) hi hagi
 
+compGroupName.desc <- c("Group 1. Cancer (CAN) versus no Cancer (CTL)",
+                        "Group 2. Obesity effect in Cancer",
+                        "Group 3. Metformin treatment effect in Cancer",
+                        "Group 4. Cancer versus no Cancer depending on Obesity and Metformin effects (assuming no interaction)")
 #print(cont.matrix)
 
 # Create a latex version of the R object
@@ -438,7 +486,7 @@ print.xtable(tex.table.cont.matrix,
              floating=FALSE, 
              size="small")
 
-wCont <- list(1:1, 2:2, 3:3, 4:4, 5:5) # Relacionat amb la contrastsMatrix. 
+wCont <- list(1:1, 2:4, 5:7, 8:11) # Relacionat amb la contrastsMatrix. 
 # Llista amb N vectors, que defineixen els N conjunts (grups) de contrastos (comparacions)
 # si N>1, cal indicar els rangs per separat
 # e.g. list(1:8, 9:13, 14:17)
@@ -454,7 +502,7 @@ for (ii in 1:length(wCont)) {
 }
 
 # Create a latex version of the R object
-tex.table.compNamesAll <-xtable(data.frame(compNamesAll),
+tex.table.compNamesAll <-xtable(data.frame(t(plyr::ldply(compNamesAll, rbind))),
                    label='compNamesAll',
                    caption='Comparison names within each group')
 #print(tex.table, tabular.environment='longtable', floating=FALSE, size="small")
@@ -567,13 +615,18 @@ if (!exists("rawData")) { # it doesn't exist in memory
   } else { # it doesn't exist in memory nor on disk as .Rda
     require(affy)
     fns <- list.celfiles(path=file.path(baseDir, celfilesRelDir),full.names=TRUE)
+    cat("Reading files:\n",paste(fns,collapse="\n"),"\n")
+    # Read all CELL files and keep them in rawDataN.all object, to allow performing QC charts on all data
+    # even if we decided to remove some sample afterwards, so that the report can include the charts
+    # with all data to make it clear why we removed those samples2remove
+    rawData2.all <- ReadAffy(filenames=fns)
+    
     # Remove rows only if there is some sample to be removed
     if (length(samples2remove) > 1) {
       cel2remove.idx <- match(unique(grep(paste(samples2remove,collapse="|"),
                                           fns, value=TRUE)), fns)
       fns <- fns[-cel2remove.idx]
     }
-    cat("Reading files:\n",paste(fns,collapse="\n"),"\n")
     cat("Removed from the analysis:\n",paste(samples2remove,collapse="\n"),"\n")
     ##read a binary celfile
     
@@ -582,47 +635,26 @@ if (!exists("rawData")) { # it doesn't exist in memory
 }
 
 #############################
-# Quality Control (raw)
+# Quality Control - Custom QC functions
 #############################
-# Section borrowed from the the standard Basic Pipe code.
-#rawData <- xx
-# or ????
-rawData <- rawData2
-
-# phenoData(rawData)$Grupo<-targets$Grupo
-# phenoData(rawData)$ShortName<-targets$ShortName
-# phenoData(rawData)$Colores<-targets$Colores
-# 
-# arrayQualityMetrics(expressionset =rawData,
-#                     outdir = file.path(resultsDir, "QCDir.raw"),
-#                     force = TRUE,
-#                     intgroup = "Grupo",
-#                     do.logtransform = FALSE)
-
-#---------------------------------------------------------------------------------------------
-###QUALITY CONTROL OF ARRAYS: RAW DATA
-#---------------------------------------------------------------------------------------------
-setwd(resultsDir)
-#dim(rawData)
-#dim(exprs(rawData))
-#str(rawData)
 
 #PRINCIPAL COMPONENT ANALYSIS
 plotPCA <- function ( X, labels=NULL, colors=NULL, dataDesc="", scale=FALSE, formapunts=NULL, myCex=0.8,...)
 {
   #   # Manual debugging
   #   ?prcomp
-  #   class(exprs(my.data))
-  #   head(exprs(my.data))
-  #   table(is.na(exprs(my.data))) # there are 17 NA in the normalized data set
-  #   my.data.na.idx <- which(is.na(exprs(my.data)))
+  #   class(exprs(my.eset))
+  #   head(exprs(my.eset))
+  #   table(is.na(exprs(my.eset))) # there are 17 NA in the normalized data set
+  #   my.data.na.idx <- which(is.na(exprs(my.eset)))
   #   # [1] 50339 50340 50341 50342 50343 50344 50345 50346 50347 50348 50349 50350 50351 50352 50353
   #   # [16] 50354 50355
-  #   exprs(my.data)[my.data.na.idx]
-  #   exprs(my.data)[50338]
+  #   exprs(my.eset)[my.data.na.idx]
+  #   exprs(my.eset)[50338]
   #   
-  #   my.matrix.no.na <- exprs(my.data)[-my.data.na.idx]
+  #   my.matrix.no.na <- exprs(my.eset)[-my.data.na.idx]
   #   X <- my.matrix.no.na
+  # X <-exprs(my.eset); scale <- FALSE; formapunts=NULL; colors=colors; myCex=0.8; dataDesc="";
   pcX<-prcomp(t(X), scale=scale) # o prcomp(t(X))
   loads<- round(pcX$sdev^2/sum(pcX$sdev^2)*100,1)
   xlab<-c(paste("PC1",loads[1],"%"))
@@ -637,9 +669,84 @@ plotPCA <- function ( X, labels=NULL, colors=NULL, dataDesc="", scale=FALSE, for
   title(paste("Plot of first 2 PCs for expressions in", dataDesc, sep=" "), cex=0.8)
 }
 
-#DEFINE SOME USEFUL VARIABLES FOR THE GRAPHICS
-sampleNames <- as.character(targets$ShortName)
-sampleColor<- as.character(targets$Colores)
+plotPCAsvg  <- function ( X, aID=NULL, colors=NULL, dataDesc=NULL, scale=FALSE, myCex=0.8, ...)
+{
+  # Calculate again the PCA itself
+  pcX<-prcomp(t(X), scale=scale) # o prcomp(t(X))
+  # Repeat the plot but using rcharts and some controls
+  require(rCharts)
+  require(rjson)
+  #   n1 <- rPlot(x[,2] ~ x[,1], data = pcX$x, color = sampleColor, type = "point")
+  #   n1
+  #   # see http://rcharts.io/icontrols/
+  #   n1$addControls("x", value = "x[,1]", values = names(mtcars))
+  #   n1$addControls("y", value = "x[,2]", values = names(mtcars))
+  #   n1$addControls("color", value = "Grupo", values = names(mtcars))
+  #   n1
+  
+  # Using Dimple. Derived from http://timelyportfolio.github.io/rCharts_systematic_cluster/pimco_pcplots.html
+  # See http://timelyportfolio.github.io/docs/_build/html/dimple/api.html
+  pca.df <- data.frame(rownames(pcX$x),targets.all$Grupo,pcX$x[,1],pcX$x[,2])
+  colnames(pca.df) <- c("Sample","Group","PC1","PC2")
+  dP <- dPlot(
+    PC2 ~ PC1,
+    groups = c("Sample","Group"),
+    data = pca.df,
+    type = "bubble"
+  )
+  dP$xAxis( type = "addMeasureAxis" )
+  dP$colorAxis (
+    type = "addColorAxis",
+    colorSeries = 'Sample',
+    palette = colors
+  )
+  dP$legend(x=0,y=0,height=300,width=500,horizontalAlign="left")
+  
+  #   # How to tweak axis titles and chart title. From: http://stackoverflow.com/a/22947557
+  #   dP$setTemplate(
+  #     afterScript = 
+  #       '
+  #       d3.selectAll(".axis.title")
+  #       .text(function () {
+  #         var t = d3.select(this).text();
+  #         if (t === "PC1") {
+  #             return "foo";
+  #         } else if (t === "PC2") {
+  #             return "bar";
+  #         } else {
+  #             return t;
+  #         }
+  #       }); 
+  #     '
+  #   )
+  
+  #   # How to tweak axis titles and chart title. From: http://stackoverflow.com/a/23489597
+  #   dP$setTemplate(afterScript = "
+  #       <script>
+  #         myChart.draw()
+  #         myChart.axes[0].titleShape.text('Displacement')
+  #         myChart.axes[1].titleShape.text('Miles Per Gallon')
+  #         myChart.svg.append('text')
+  #             .attr('x', 40)
+  #             .attr('y', 20)
+  #             .text('Plot of Miles Per Gallon / Displacement')
+  #             .style('text-anchor','beginning')
+  #             .style('font-size', '100%')
+  #             .style('font-family','sans-serif')
+  #       </script>               
+  #     ")
+  
+  #dP$addControls("y", value = "UnitSales", values = names(data))
+  #dP$addControls("groups", value = "", values = names(data))
+  
+  # From: http://stackoverflow.com/a/33478250
+  # dP$setTemplate(afterScript = '<script>
+  # myChart.assignColor("mysample","#377EB8");
+  # myChart.draw();
+  # </script>')
+  
+  dP$save(paste("QCPlots", dataDesc, "pca", aID, "html", sep="."))
+}
 
 doQC <- function ( my.data, my.data.type ) {
   # Values for manual debugging
@@ -649,14 +756,16 @@ doQC <- function ( my.data, my.data.type ) {
   #my.data.type <- "Normalized"
   
   #BOXPLOT & SAVE TO A PNG FILE
-  png(paste("QCPlots", my.data.type, "boxplot", aID, "png", sep="."))
+  boxplot.png <- paste("QCPlots", my.data.type, "boxplot", aID, "png", sep=".")
+  png(boxplot.png)
   boxplot(my.data, las=2, 
           main=paste0("Intensity distribution of ", my.data.type," data"),
           cex.axis=0.6, col=sampleColor, names=sampleNames)
   dev.off()
   
   #HIERARQUICAL CLUSTERING & SAVE TO A PNG FILE
-  png(paste("QCPlots", my.data.type, "dendrogram", aID, "png", sep="."))
+  dendrogram.png <- paste("QCPlots", my.data.type, "dendrogram", aID, "png", sep=".")
+  png(dendrogram.png)
   clust.euclid.average <- hclust(dist(t(exprs(my.data))),method="average")
   plot(clust.euclid.average, labels=sampleNames, 
        main=paste0("Hierarchical clustering of ", my.data.type,"Data"), 
@@ -664,14 +773,16 @@ doQC <- function ( my.data, my.data.type ) {
   dev.off()
   
   #PCA & SAVE TO A PNG FILE
-  png(paste("QCPlots", my.data.type, "pca", aID, "png", sep="."))
+  pca.png <- paste("QCPlots", my.data.type, "pca", aID, "png", sep=".")
+  png(pca.png)
   plotPCA(exprs(my.data), labels=sampleNames, 
           dataDesc=paste0(my.data.type," data"),
           colors=sampleColor, formapunts=c(rep(16,4),rep(17,4)), myCex=0.6)
   dev.off()
   
   #SAVE TO A PDF FILE
-  pdf(paste("QCPlots", my.data.type, "ALL", aID, "pdf", sep="."))
+  QCPlots.all.pdf <- paste("QCPlots", my.data.type, "AllCharts", aID, "pdf", sep=".")
+  pdf(QCPlots.all.pdf)
   boxplot(my.data, las=2, 
           main=paste0("Intensity distribution of ", my.data.type," data"),
           cex.axis=0.6, col=sampleColor, names=sampleNames)
@@ -679,60 +790,317 @@ doQC <- function ( my.data, my.data.type ) {
        main=paste0("Hierarchical clustering of samples of ", my.data.type,"Data"), 
        cex=0.7,  hang=-1)
   plotPCA(exprs(my.data), labels=sampleNames, 
-          dataDesc=paste0(my.data.type, " data"),
+          dataDesc=paste0(my.data.type),
           colors=sampleColor, formapunts=c(rep(16,4),rep(17,4)), myCex=0.6)
   dev.off()
+  # SAVE SVG version of just the PCA
+  plotPCAsvg(exprs(my.data), dataDesc=my.data.type,
+             aID=aID, colors=sampleColor, myCex=0.6)
+
+  # Return filenames of files produced
+  return (list(boxplot.png, dendrogram.png, pca.png, QCPlots.all.pdf))
 }
 ########-------------------
 
-doQC(rawData, "Raw")
+# Re-set just in case the working dir to the results Dir
+setwd(resultsDir)
+#DEFINE SOME USEFUL VARIABLES FOR THE GRAPHICS
+sampleNames <- as.character(targets$ShortName)
+sampleColor<- as.character(targets$Colores)
 
-# Add the section to the report 
-report.s1s4 <- newSection( "Quality control (raw data)" );
-report.s1p4a1 <- newParagraph( "Different types of quality checks have been performed on the raw data \
+#############################
+# Quality Control (raw)
+#############################
+# Types of Quality Control: 0=none, 1=Custom QC, 2=ArrayQualityMetrics 
+# QCrType = for raw data
+# QCnType = for normalized data
+if (QCrType == 1) {
+  # ---------------------------
+  # Custom QC
+  # ---------------------------
+  qc.filenames.all <- list()
+  qc.filenames.all <- doQC(rawData.all, "Raw.AllSamples")  
+  qc.filenames <- list()
+  qc.filenames <- doQC(rawData, "Raw.ValidSamples")  
+  
+  # Add the section to the report 
+  report.s1s4c <- newSection( "Quality control (raw data)" );
+  report.s1p4a1 <- newParagraph( "Different types of quality checks have been performed on the raw data \
+                            before deciding that they were valid for the analysis. \
+                            Indeed they have been repeated twice: once with raw data and \
+                            another with normalized data (next section).");
+  report.s1p4a2 <- newParagraph( "The checks consist of 3 plots \
+                               that can be seen below.");
+  
+  # Define here the following objects since they are common for both cases below of QCrType
+  outFileNameRelPath.pdf <- file.path(resultsRelDir, qc.filenames[[4]])
+  
+  # Add BOXPLOT to the report as screenshot
+  outFileNameRelPath.png <- file.path(resultsRelDir, qc.filenames[[1]])
+  report.s1f4c1png <- newFigure( outFileNameRelPath.png, 
+                                 fileHighRes=outFileNameRelPath.pdf,
+                                 "QC Plot (Raw - Valid Samples) - BoxPlot" );
+  
+  # Add DENDROGRAM to the report as screenshot
+  outFileNameRelPath.png <- file.path(resultsRelDir, qc.filenames[[2]])
+  report.s1f4c2png <- newFigure( outFileNameRelPath.png, 
+                                 fileHighRes=outFileNameRelPath.pdf,
+                                 "QC Plot (Raw - Valid Samples) - Dendrogram" );
+  
+  # Add PCA to the report as screenshot
+  outFileNameRelPath.png <- file.path(resultsRelDir, qc.filenames[[3]])
+  report.s1f4c3png <- newFigure( outFileNameRelPath.png, 
+                                 fileHighRes=outFileNameRelPath.pdf,
+                                 "QC Plot (Raw - Valid Samples) - PCA" );
+  # Add PCA to the report as Interactive SVG
+  pca.filename <- paste0(resultsRelDir, "/QCPlots.Raw.ValidSamples.pca.", aID, ".html")
+  report.s1f4c3html <- newHtml( "Interactive Version of the PCA File (HTML): <a href=\"", pca.filename,"\">", pca.filename, "</a>",
+                                style="background-color: snow;" )
+  
+  # Add link to multichart QCPlot PDF
+  report.s1f4c <- newHtml( "Multipage File with the 3 static charts (PDF): <a href=\"", outFileNameRelPath.pdf,"\">",
+                           outFileNameRelPath.pdf, "</a>",
+                           style="background-color: snow;" )
+  
+  # Create text strings about which samples are removed and their count (if any)
+  samples2remove.count <- length(samples2remove[samples2remove != ""]) 
+  samples2remove.collapsed <- paste(samples2remove, collapse=", ") 
+  if (samples2remove.count > 0) {
+    samples2remove.collapsed.text <- paste0(": ", samples2remove.collapsed) 
+  } else {
+    samples2remove.collapsed.text <- ""
+  }
+  report.s1p4a3 <- newParagraph( "After reviewing the quality checks on raw data it has been decided to remove ", 
+                                 asStrong( samples2remove.count ), " sample/s",
+                                 asStrong( samples2remove.collapsed.text ), ".");
+  
+  # Write the resulting files to the report
+  report.s1s4c  <- addTo( report.s1s4c,  report.s1p4a1, report.s1p4a2, report.s1p4a3, 
+                          report.s1f4c1png, report.s1f4c2png, report.s1f4c3png, 
+                          report.s1f4c3html, report.s1f4c)
+  
+} else if (QCrType == 2) {
+  # ---------------------------
+  # ArrayQualityMetrics
+  # ---------------------------
+  # Section borrowed from the the standard Basic Pipe code.
+  #rawData <- xx
+  # or ????
+  rawData.all <- rawData2.all
+  rawData <- rawData2
+  
+  phenoData(rawData.all)$Grupo<-targets.all$Grupo
+  phenoData(rawData.all)$ShortName<-targets.all$ShortName
+  phenoData(rawData.all)$Colores<-targets.all$Colores
+  phenoData(rawData)$Grupo<-targets$Grupo
+  phenoData(rawData)$ShortName<-targets$ShortName
+  phenoData(rawData)$Colores<-targets$Colores
+
+  arrayQualityMetrics(expressionset =rawData.all,
+                      outdir = file.path(resultsDir, "QCDir.raw.all"),
+                      force = TRUE,
+                      intgroup = "Grupo",
+                      do.logtransform = FALSE)
+  if (samples2remove != "") {
+    # Do the QC again with the subset of samples only (removing the ones indicated in samples2remove)
+    arrayQualityMetrics(expressionset =rawData,
+                        outdir = file.path(resultsDir, "QCDir.raw.valid"),
+                        force = TRUE,
+                        intgroup = "Grupo",
+                        do.logtransform = FALSE)
+  }
+  
+  # Add the section to the report 
+  report.s1s4a <- newSection( "Quality control (raw data)" );
+  report.s1p4a1 <- newParagraph( "Different types of quality checks have been performed on the raw data \
                             before deciding that they were valid for the analysis. \
                             Indeed they have been repeated twice: once with raw data and \
                             another with normalized data (next section). A comprehensive report \
-                            is provided for the raw data (QCDir.raw/index.html) \
-                            and for the normalized data (QCDir.norm/index.html) to help the user to understand \
+                            is provided for the raw data (QCDir.raw.valid/index.html) \
+                            and for the normalized data (QCDir.norm.valid/index.html) to help the user to understand \
                             whether a particular array can be considered as an outlier.");
-report.s1p4a2 <- newParagraph( "The check consists of a relatively high number of summaries and plots \
+  report.s1p4a2 <- newParagraph( "The check consists of a relatively high number of summaries and plots \
                                that can be seen below. Each plot is acompanied by a brief description \
                                of what this means and how it may be interpreted. The quality report \
                                also contains a summary table providing advice on which samples \
                                might be candidates for being considered as outliers and should perhaps \
                                be removed.");
-samples2remove.collapsed <- paste(samples2remove, collapse=", ") 
-report.s1p4a3 <- newParagraph( "After reviewing the quality checks on raw data it has been decided to remove three samples: ",
-                               asStrong( samples2remove.collapsed ));
-report.s1h4 <- newHtml( "<iframe src=\"", resultsRelDir, "/QCDir.raw/index.html\" frameborder=1 height=600 scrolling=auto width=\"900\"></iframe>", style="background-color: snow;" )
-report.s1s4 <- addTo( report.s1s4, report.s1p4a1, report.s1p4a2, report.s1p4a3, report.s1h4 ) 
+  # Create text strings about which samples are removed and their count (if any)
+  samples2remove.count <- length(samples2remove[samples2remove != ""]) 
+  samples2remove.collapsed <- paste(samples2remove, collapse=", ") 
+  if (samples2remove.count > 0) {
+    samples2remove.collapsed.text <- paste0(": ", samples2remove.collapsed) 
+  } else {
+    samples2remove.collapsed.text <- ""
+  }
+  report.s1p4a3 <- newParagraph( "After reviewing the quality checks on raw data it has been decided to remove ", 
+                                 asStrong( samples2remove.count ), " sample/s",
+                                 asStrong( samples2remove.collapsed.text ), ".");
+  report.s1h4 <- newHtml( "<iframe src=\"", resultsRelDir, "/QCDir.raw.valid/index.html\" frameborder=1 height=600 scrolling=auto width=\"900\"></iframe>", style="background-color: snow;" )
+  report.s1s4a <- addTo( report.s1s4a, report.s1p4a1, report.s1p4a2, report.s1p4a3, report.s1h4 ) 
+
+} # end of section depending on QCrType
 
 
 #############################
 # Quality Control (norm)
 #############################
-# This step doQC with normalized data fails, due to missing values in X for he prcomp function
-doQC(my.eset, "Normalized")
+# Types of Quality Control: 0=none, 1=Custom QC, 2=ArrayQualityMetrics 
+# QCrType = for raw data
+# QCnType = for normalized data
+if (QCnType == 1) {
+  # ---------------------------
+  # Custom QC (norm)
+  # ---------------------------
+  # This step doQC with normalized data fails, due to missing values in X for he prcomp function
+  qc.filenames.all <- list()
+  qc.filenames.all <- doQC(my.eset.all, "Normalized.AllSamples")
+  qc.filenames <- list()
+  qc.filenames <- doQC(my.eset, "Normalized.ValidSamples")
+  
+  # Add the section to the report 
+  report.s1s5c <- newSection( "Quality control (normalized data)" );
+  
+  # Define here the following objects since they are common for both cases below of QCrType
+  outFileNameRelPath.pdf <- file.path(resultsRelDir, qc.filenames[[4]])
+  
+  # Add BOXPLOT to the report as screenshot
+  outFileNameRelPath.png <- file.path(resultsRelDir, qc.filenames[[1]])
+  report.s1f5c1png <- newFigure( outFileNameRelPath.png, 
+                                 fileHighRes=outFileNameRelPath.pdf,
+                                 "QC Plot (Normalized - Valid Samples) - BoxPlot" );
+  
+  # Add DENDROGRAM to the report as screenshot
+  outFileNameRelPath.png <- file.path(resultsRelDir, qc.filenames[[2]])
+  report.s1f5c2png <- newFigure( outFileNameRelPath.png, 
+                                 fileHighRes=outFileNameRelPath.pdf,
+                                 "QC Plot (Normalized - Valid Samples) - Dendrogram" );
+  
+  # Add PCA to the report as screenshot
+  outFileNameRelPath.png <- file.path(resultsRelDir, qc.filenames[[3]])
+  report.s1f5c3png <- newFigure( outFileNameRelPath.png, 
+                                 fileHighRes=outFileNameRelPath.pdf,
+                                 "QC Plot (Normalized - Valid Samples) - PCA" );
+  # Add PCA to the report as Interactive SVG
+  pca.filename <- paste0(resultsRelDir, "/QCPlots.Normalized.ValidSamples.pca.", aID, ".html")
+  report.s1f5c3html <- newHtml( "Interactive Version of the PCA File (HTML): <a href=\"", pca.filename,"\">", pca.filename, "</a>",
+                                style="background-color: snow;" )
+  
+  # Add link to multichart QCPlot PDF
+  report.s1f5c <- newHtml( "Multipage File with the 3 static charts (PDF): <a href=\"", outFileNameRelPath.pdf,"\">",
+                           outFileNameRelPath.pdf, "</a>",
+                           style="background-color: snow;" )
+  
+  # In case you requested a QC on normalized data only (QCrType != 1, 
+  # no previous section on raw data), some extra paragraph needs to be added here
+  if (QCrType != 1) {
+    report.s1p5c1 <- newParagraph( "Different types of quality checks have been performed on the normalized data \
+                            before deciding that they were valid for the analysis. ");
+    report.s1p5c2 <- newParagraph( "The checks consist of 3 plots \
+                               that can be seen below.");
+    # Create text strings about which samples are removed and their count (if any)
+    samples2remove.count <- length(samples2remove[samples2remove != ""]) 
+    samples2remove.collapsed <- paste(samples2remove, collapse=", ") 
+    if (samples2remove.count > 0) {
+      samples2remove.collapsed.text <- paste0(": ", samples2remove.collapsed) 
+    } else {
+      samples2remove.collapsed.text <- ""
+    }
+    report.s1p5c3 <- newParagraph( "After reviewing the quality checks on normalized data it has been decided to remove ", 
+                                   asStrong( samples2remove.count ), " sample/s",
+                                   asStrong( samples2remove.collapsed.text ), ".");
+    # Write the resulting files to the report
+    report.s1s5c  <- addTo( report.s1s5c,  report.s1p5c1, report.s1p5c2, report.s1p5c3,
+                            report.s1f5c1png, report.s1f5c2png, report.s1f5c3png, 
+                            report.s1f5c3html, report.s1f5c)
 
-# Section borrowed from the the standard Basic Pipe code.
-phenoData(my.eset)$Grupo<-targets$Grupo
-phenoData(my.eset)$ShortName<-targets$ShortName
-phenoData(my.eset)$Colores<-targets$Colores
+  } else {
+    report.s1p5c <- newParagraph( "A similar quality check has been performed on the samples after they have been normalized. \
+                                The results are consistent with those obtained with raw data confirming the decision \
+                                to remove ",
+                                  asStrong( samples2remove.count ), " sample/s",
+                                  asStrong( samples2remove.collapsed.text ), ".");
+    # Write the resulting files to the report
+    report.s1s5c  <- addTo( report.s1s5c,  report.s1s5c,
+                            report.s1f5c1png, report.s1f5c2png, report.s1f5c3png, 
+                            report.s1f5c3html, report.s1f5c)
+  }
+  
+} else if (QCnType == 2) {
+  # ---------------------------
+  # ArrayQualityMetrics (norm)
+  # ---------------------------
+  # Section borrowed from the the standard Basic Pipe code.
+  phenoData(my.eset.all)$Grupo<-targets.all$Grupo
+  phenoData(my.eset.all)$ShortName<-targets.all$ShortName
+  phenoData(my.eset.all)$Colores<-targets.all$Colores
+  phenoData(my.eset)$Grupo<-targets$Grupo
+  phenoData(my.eset)$ShortName<-targets$ShortName
+  phenoData(my.eset)$Colores<-targets$Colores
+  
+  arrayQualityMetrics(expressionset = my.eset.all,
+                      outdir = file.path(resultsDir, "QCDir.norm.all"),
+                      force = TRUE,
+                      intgroup = "Grupo",
+                      do.logtransform = FALSE)
+  
+  if (samples2remove != "") {
+    # Do the QC again with the subset of samples only (removing the ones indicated in samples2remove)
+    arrayQualityMetrics(expressionset = my.eset,
+                        outdir = file.path(resultsDir, "QCDir.norm.valid"),
+                        force = TRUE,
+                        intgroup = "Grupo",
+                        do.logtransform = FALSE)
+  }
+  
+  # Create text strings about which samples are removed and their count (if any)
+  samples2remove.count <- length(samples2remove[samples2remove != ""]) 
+  samples2remove.collapsed <- paste(samples2remove, collapse=", ") 
+  
+  # Add the section to the report 
+  report.s1s5a <- newSection( "Quality control (normalized data)" );
+  
+  # Define here these 2 objects since they are common for both cases below of QCrType
+  report.s1h5 <- newHtml( "<iframe src=\"", resultsRelDir, "/QCDir.norm.valid/index.html\" frameborder=1 height=600 scrolling=auto width=\"900\"></iframe>", style="background-color: snow;" )
+  report.s1f5 <- newHtml( "File (HTML): <a href=\"", resultsRelDir,"/QCDir.norm.valid/index.html\">QCDir.norm.valid/index.html</a>",
+                          style="background-color: snow;" )
+  
+  # In case you requested a QC on normalized data only (no previous section on raw data), some extra paragraph needs to be added here
+  if (QCrType != 2) {
+    report.s1p5a1 <- newParagraph( "Different types of quality checks have been performed on the normalized data \
+                              before deciding that they were valid for the analysis. \
+                              A comprehensive report is provided for the normalized data \
+                              (QCDir.norm/index.html) to help the user to understand \
+                              whether a particular array can be considered as an outlier.");
+    report.s1p5a2 <- newParagraph( "The check consists of a relatively high number of summaries and plots \
+                                 that can be seen below. Each plot is acompanied by a brief description \
+                                 of what this means and how it may be interpreted. The quality report \
+                                 also contains a summary table providing advice on which samples \
+                                 might be candidates for being considered as outliers and should perhaps \
+                                 be removed.");
+    # Create text strings about which samples are removed and their count (if any)
+    samples2remove.count <- length(samples2remove[samples2remove != ""]) 
+    samples2remove.collapsed <- paste(samples2remove, collapse=", ") 
+    if (samples2remove.count > 0) {
+      samples2remove.collapsed.text <- paste0(": ", samples2remove.collapsed) 
+    } else {
+      samples2remove.collapsed.text <- ""
+    }
+    report.s1p5a3 <- newParagraph( "After reviewing the quality checks on normalized data it has been decided to remove ", 
+                                   asStrong( samples2remove.count ), " sample/s",
+                                   asStrong( samples2remove.collapsed.text ), ".");
+    report.s1s5a <- addTo( report.s1s5a, report.s1p5a, report.s1p5b, report.s1p5c,
+                           report.s1h5, report.s1f5 ) 
+  } else {
+    report.s1p5a <- newParagraph( "A similar quality check has been performed on the samples after they have been normalized. \
+                                The results are consistent with those obtained with raw data confirming the decision \
+                                to remove ",
+                                  asStrong( samples2remove.count ), " sample/s",
+                                  asStrong( samples2remove.collapsed.text ), ".");
+    report.s1s5a <- addTo( report.s1s5a, report.s1p5, report.s1h5, report.s1f5 ) 
+  }
+}
 
-# arrayQualityMetrics(expressionset = my.eset,
-#                      outdir = file.path(resultsDir, "QCDir.norm"),
-#                      force = TRUE,
-#                      intgroup = "Grupo",
-#                      do.logtransform = FALSE)
-
-# Add the section to the report 
-report.s1s5 <- newSection( "Quality control (normalized data)" );
-report.s1p5 <- newParagraph( "A similar quality check has been performed on the samples after they have been normalized. \
-                              The results are consistent with those obtained with raw data confirming the decision \
-                              to remove samples: ", asStrong( samples2remove.collapsed ));
-report.s1h5 <- newHtml( "<iframe src=\"", resultsRelDir, "/QCDir.norm/index.html\" frameborder=1 height=600 scrolling=auto width=\"900\"></iframe>", style="background-color: snow;" )
-report.s1s5 <- addTo( report.s1s5, report.s1p5, report.s1h5 ) 
 
 #############################
 # Display Feature selection Parameters
@@ -761,6 +1129,18 @@ if (!exists("annotation.affy.hg")){
   if (file.exists(file.path(dataRelDir, "data.annotation.affy.hg.Rda"))) {
     ## ----loadData------------------------------------------------------------
     load(file=file.path(dataRelDir, "data.annotation.affy.hg.Rda"))
+  } else {
+    # We create the object annotation.affy.hg just now from rma.affy.annotated.ref.txt
+    setwd(file.path(baseDir, dataRelDir))
+    annotation.affy<-read.csv("rma.affy.annotated.ref.txt",sep="\t",header=TRUE)
+    # we keep just human data
+    annotation.affy.hg<-annotation.affy[annotation.affy$Species_Scientific_Name == "Homo sapiens",]
+    rownames(annotation.affy.hg)<-annotation.affy.hg$Probe_Set_ID
+    annotation.affy.hg<-annotation.affy.hg[!duplicated(annotation.affy.hg[,5]),]
+    # We save it on disk as Rda to prevent runnig these instructions again if not needed
+    save(annotation.affy.hg, file=file.path(baseDir, dataRelDir,
+                                                   paste0("data.annotation.affy.hg.Rda")))
+    setwd(baseDir)
   }
 }
 annotation.affy.hg.fileName.noext <- "featureAnotation" 
@@ -899,6 +1279,9 @@ if (exists("topTabExtended")) rm(topTabExtended);topTabExtended <- list()
 BD <- exprs(my.eset)
 if (exists("my.cels.idx")) rm(my.cels.idx); my.cels.idx <- list()
 if (exists("my.cels")) rm(my.cels); my.cels <- list()
+if (exists("my.compName")) rm(my.compName); my.compName <- list()
+if (exists("my.conds")) rm(my.conds); my.conds <- list()
+if (exists("my.conds.units")) rm(my.conds.units); my.conds.units <- list()
 
 # Create topTab object in memory
 # ----------------------
@@ -918,19 +1301,19 @@ topTabLoop <- foreach (ii = 1:length(wCont)) %do% { # ii is the index of the lis
   #wCont[ii] ; ii <- 1; jj <- 1;
   foreach (jj = 1:length(wCont[[ii]])) %do% { # jj is the index of the list with the single comparisons from within each group of comparisons
     
-    my.compName <- colnames(cont.matrix)[ wCont[[ii]][jj] ]
-    my.conds <- unlist(strsplit(my.compName, splitterCond, fixed = TRUE)) 
-    my.conds.units <- unlist(strsplit(my.conds, splitterIntracond, fixed = TRUE)) 
+    my.compName[[ii]] <- colnames(cont.matrix)[ wCont[[ii]][jj] ]
+    my.conds[[ii]] <- unlist(strsplit(my.compName[[ii]], splitterCond, fixed = TRUE)) 
+    my.conds.units[[ii]] <- unlist(strsplit(my.conds[[ii]], splitterIntracond, fixed = TRUE)) 
     
     # my.cels.idx and my.cels below are the list of cel files to be appended to the TopTable object
     # before the csv generation, but avoided when printing the html version
     # We keep the values in a list since we will use this info later when creating heatmaps
-#    my.cels.idx[[ wCont[[ii]][jj] ]] <- grep( paste0(my.conds, collapse="|"), targets$Grupo)
-    my.cels.idx[[ wCont[[ii]][jj] ]] <- grep( paste0(my.conds.units, collapse="|"), targets$Grupo)
+#    my.cels.idx[[ wCont[[ii]][jj] ]] <- grep( paste0(my.conds[[ii]], collapse="|"), targets$Grupo)
+    my.cels.idx[[ wCont[[ii]][jj] ]] <- grep( paste0(my.conds.units[[ii]], collapse="|"), targets$Grupo)
     my.cels[[ wCont[[ii]][jj] ]] <- as.character(targets$SampleName[ my.cels.idx[[ wCont[[ii]][jj] ]] ] ) 
     write.csv2(cbind(my.cels.idx[[ wCont[[ii]][jj] ]], my.cels[[ wCont[[ii]][jj] ]]), 
                file=file.path( resultsDir, paste("celfiles.in.comparison.",
-                                                 my.compName, ".csv", sep="")) )
+                                                 my.compName[[ii]], ".csv", sep="")) )
     
     #head(topTab[[ wCont[[ii]][jj] ]] )
     topTabExtended[[ wCont[[ii]][jj] ]] <- cbind(topTab[[ wCont[[ii]][jj] ]],
@@ -1023,7 +1406,7 @@ topTabLoop <- foreach (ii = 1:length(wCont)) %do% { # ii is the index of the lis
       report.s2s1s1 <- newSection( names(compNamesAll)[ii], " | ", compNamesAll[[ii]][jj] );
       
       # Write the resulting topTable files to the report
-      report.s2s1h1 <- newHtml( "<iframe src=\"", outFileNameRelPath, "\" frameborder=1 height=450 scrolling=auto width=\"1000\"></iframe>", style="background-color: snow;" )
+      report.s2s1h1 <- newHtml( "<iframe src=\"", outFileNameRelPath, "\" frameborder=1 height=500 scrolling=auto width=\"1000\"></iframe>", style="background-color: snow;" )
       report.s2file1b <- newHtml( "File (HTML): <a href=\"", outFileNameRelPath,"\">", outFileNameRelPath, "</a>",
                                   style="background-color: snow;" )
       report.s2s1s1 <- addTo( report.s2s1s1, report.s2s1h1, report.s2file1a.csv, report.s2file1b)
@@ -1109,6 +1492,19 @@ report.s2s2 <- addTo( report.s2s2, report.s2t2a)
 #                                 outFileNameRelPath, "</a>")
 #report.s2s2 <- addTo( report.s2s2, report.s2file)
 
+# Save data frame numFeatureChangedFC.df as table in .tex format
+# Create a latex version of the R object
+tex.table.nFC <-xtable(numFeatureChangedFC.df,
+                          label='numFeatureChanged',
+                          caption='Number of features changed between comparisons for given p.value cutoffs and methods (adjusted p.value or not)')
+#print(tex.table, tabular.environment='longtable', floating=FALSE, size="small")
+print.xtable(tex.table.nFC, 
+             file = file.path(reportsDir, paste0("tex.numFeatureChanged.tex")),
+             tabular.environment='longtable', 
+             floating=FALSE, 
+             size="small")
+
+
 ###################################################
 ## Volcano Plots
 ###################################################
@@ -1122,9 +1518,9 @@ for (ii in 1:length(wCont)) { # ii is the index of the list with the multiple co
   #wCont[ii]
   for (jj in 1:length(wCont[[ii]])) { # jj is the index of the list with the single comparisons from within each group of comparisons
     # ii <- 1; jj<- 1
-    my.compName <-colnames(cont.matrix)[ wCont[[ii]][jj] ]
+    my.compName[[ii]] <-colnames(cont.matrix)[ wCont[[ii]][jj] ]
     # Compose the filenames
-    outFileName.noext <- paste("volcanoPlot", my.compName, sep="")
+    outFileName.noext <- paste("volcanoPlot", my.compName[[ii]], sep="")
     outFileNameRelPath.noext <- file.path( resultsRelDir, outFileName.noext )
     outFileName.pdf <- paste0(outFileName.noext, ".pdf")
     outFileName.png <- paste0(outFileName.noext, ".png")
@@ -1192,14 +1588,14 @@ for (ii in 1:length(wCont)) { # ii is the index of the list with the multiple co
     # Generate the pdf
     pdf(file=outFileName.pdf, paper="special", width=6, height=6)
     volcanoplot(fit.main, coef= wCont[[ii]][jj] , highlight=10, names=volcanoPointNames_df, 
-                main=paste("Differentially expressed features in ", my.compName, sep="\n"))
+                main=paste("Differentially expressed features in ", my.compName[[ii]], sep="\n"))
     abline(v=c(-1,1))
     dev.off()
     #cat("\\includegraphics{", file, "}\n\n", sep="")
     # Generate the png
     png(file=outFileName.png)
     volcanoplot(fit.main, coef= wCont[[ii]][jj] , highlight=10, names=volcanoPointNames_df, 
-                main=paste("Differentially expressed features in ", my.compName, sep="\n"))
+                main=paste("Differentially expressed features in ", my.compName[[ii]], sep="\n"))
     abline(v=c(-1,1))
     dev.off()
     
@@ -1207,7 +1603,7 @@ for (ii in 1:length(wCont)) { # ii is the index of the list with the multiple co
     # figure file paths
     report.s2f3a <- newFigure( outFileNameRelPath.png, 
                                fileHighRes=outFileNameRelPath.pdf,
-                               "Differentially expressed features for the comparison ", my.compName );
+                               "Differentially expressed features for the comparison ", my.compName[[ii]] );
     report.s2s3 <- addTo( report.s2s3, report.s2f3a)
 
     # Write the resulting files to the report
@@ -1269,6 +1665,8 @@ for (ii in 1:length(wCont)) { # ii is the index of the list with the multiple co
   if (length(wCont[[ii]]) > 1) {
     
     mainTitle <- paste0("Venn diagram for ", compGroupName[ii]," (", pValString[ii]," < ", pValCutOff[ii], ")") ## Titol
+    # Set not to write the log file. Taken from http://stackoverflow.com/a/34030113
+    flog.threshold(ERROR)
     
     ## Creació Venn Diagram
     venn.plot <- venn.diagram(listVenn.tid[ wCont[[ii]] ], # The list of DE features in each comparison of each multiple comparison group
@@ -1408,10 +1806,10 @@ for (ii in 1:length(wCont)) { # ii is the index of the list with the multiple co
   #wCont[ii]
   for (jj in 1:length(wCont[[ii]])) { # jj is the index of the list with the single comparisons from within each group of comparisons
     # ii <- 1; jj<- 1
-    my.compName <-colnames(cont.matrix)[ wCont[[ii]][jj] ]
+    my.compName[[ii]] <-colnames(cont.matrix)[ wCont[[ii]][jj] ]
     # read mycels from the stored file on disk, created in the section related to TopTables
     my.cels.df[[ wCont[[ii]][jj] ]] <-read.table(file.path(resultsDir, 
-                                                           paste0("celfiles.in.comparison.", my.compName, ".csv")
+                                                           paste0("celfiles.in.comparison.", my.compName[[ii]], ".csv")
     ),
     head=TRUE, sep=";") 
     my.cels.idx[[ wCont[[ii]][jj] ]] <- as.numeric(as.character(my.cels.df[[ wCont[[ii]][jj] ]] [,2]))
@@ -1441,9 +1839,9 @@ for (ii in 1:length(wCont)) { # ii is the index of the list with the multiple co
     #head(mxy.tid)
     
     groupColors[[ wCont[[ii]][jj] ]] <-  as.character(pData(my.eset)$Colores[ my.cels.idx[[ wCont[[ii]][jj] ]] ])
-    mainTitle <- paste0(my.compName) ## Titol
+    mainTitle <- paste0(my.compName[[ii]]) ## Titol
     # Compose the filename
-    outFileName.noext <- paste( "heatmap", my.compName, 
+    outFileName.noext <- paste( "heatmap", my.compName[[ii]], 
                                 pValString[ii], pValCutOff[ii], sep=".")
     outFileNameRelPath.noext <- file.path( resultsRelDir, outFileName.noext )
     
@@ -1452,7 +1850,7 @@ for (ii in 1:length(wCont)) { # ii is the index of the list with the multiple co
     pdf(paste0(outFileName.noext, ".pdf"))
     heatmap(as.matrix(mxy.tid), col=bluered(75),
             ColSideColors=groupColors[[ wCont[[ii]][jj] ]], cexCol=0.9,
-            main = mainTitle, xlab="Samples", ylab="")
+            main = mainTitle, xlab="", ylab="")
             # main = mainTitle, xlab="Samples", ylab="Features")
     dev.off()
 
@@ -1461,7 +1859,7 @@ for (ii in 1:length(wCont)) { # ii is the index of the list with the multiple co
     png(paste0(outFileName.noext, ".png"))
     heatmap(as.matrix(mxy.tid), col=bluered(75),
             ColSideColors=groupColors[[ wCont[[ii]][jj] ]], cexCol=0.9,
-            main = mainTitle, xlab="Samples", ylab="")
+            main = mainTitle, xlab="", ylab="")
             #main = mainTitle, xlab="Samples", ylab="Features")
     dev.off()
     
@@ -1479,7 +1877,7 @@ for (ii in 1:length(wCont)) { # ii is the index of the list with the multiple co
     figureFile1 <- paste0(outFileNameRelPath.noext, ".png");
     figureFileHighRes1a <- paste0(outFileNameRelPath.noext, ".pdf");
     report.s2f5a <- newFigure( figureFile1, fileHighRes=figureFileHighRes1a,
-                               "Heatmap plot for the comparison ", my.compName );
+                               "Heatmap plot for the comparison ", my.compName[[ii]] );
     report.s2s5 <- addTo( report.s2s5, report.s2f5a)
 
 
@@ -1490,13 +1888,13 @@ for (ii in 1:length(wCont)) { # ii is the index of the list with the multiple co
     report.s2s5 <- addTo( report.s2s5, report.s2file)
 
     # When requested, create the plotly heatmap locally as png
-    plotly.heatmaps.create <- FALSE # Disabled to avoid re-genearing them each time the script is rerun
+    create.plotly.heatmaps <- FALSE # Disabled to avoid re-genearing them each time the script is rerun
     # When requested, create the dynamic plotly heatmap posted in the plot.ly server
-    plotly.heatmaps.post <- FALSE # Disabled to avoid re-genearing them each time the script is rerun
+    post.plotly.heatmaps <- FALSE # Disabled to avoid re-genearing them each time the script is rerun
     # When requested, report the dynamic plotly heatmap posted in the plot.ly server
-    plotly.heatmaps.report <- FALSE # Disabled to avoid re-genearing them each time the script is rerun
+    report.plotly.heatmaps <- FALSE # Disabled to avoid re-genearing them each time the script is rerun
     
-    if (plotly.heatmaps.create == TRUE) {
+    if (create.plotly.heatmaps == TRUE) {
       ## ----plotHeatMap2, fig=T, eval=TRUE--------------------------------------
       require(plotly)
       # remove.packages("plotly")
@@ -1506,7 +1904,7 @@ for (ii in 1:length(wCont)) { # ii is the index of the list with the multiple co
       # See: https://plot.ly/r/getting-started/ for setting plotly variables for the R session
       Sys.setenv("plotly_username"="ueb") # it shouldn't be needed but it is in my machine "pentinella", for some reason
       Sys.setenv("plotly_api_key"="2gfg7ckkuz") # it shouldn't be needed but it is in my machine "pentinella", for some reason
-      mainTitle <- paste0("Heatmap_plotly", my.compName) ## Titol
+      mainTitle <- paste0("Heatmap_plotly", my.compName[[ii]]) ## Titol
       # Save Heatmap to file online (it can't be saved on disk, it seems, other than in temporary session)
       # Testing Plotly
       # It works in the laptop with VHIR_Externa or MainHead, but not with the desktop (using ethernet cable behind proxy)
@@ -1523,7 +1921,7 @@ for (ii in 1:length(wCont)) { # ii is the index of the list with the multiple co
       Png <- plotly_IMAGE(py, out_file = file.path(resultsDir, paste0(mainTitle, ".png")))
       
       # POST (create) a new plot.ly heatmap in plot.ly server only when requested
-      if (plotly.heatmaps.post == TRUE) {
+      if (post.plotly.heatmaps == TRUE) {
         plotly_POST(py, filename=mainTitle, world_readable=TRUE)
       }
       
@@ -1550,20 +1948,60 @@ for (ii in 1:length(wCont)) { # ii is the index of the list with the multiple co
                                                          ".embed") # 
     } # end of chunk to create plotly heatmaps when requested
     
-    if (plotly.heatmaps.report == TRUE) {
+    if (report.plotly.heatmaps == TRUE) {
       # Add it to the report
       # figure file paths
       figureFile1 <- file.path(resultsRelDir, paste0(mainTitle, ".png"));
       #figureFileHighRes1b <- "https://plot.ly/~ueb/61.embed";
       figureFileHighRes1b <- heatmap.plotly.link[[ wCont[[ii]][jj] ]]
       report.s2f5b <- newFigure( figureFile1, fileHighRes=figureFileHighRes1b, 
-                                 "Dynamic version of the Heatmap for the comparison ", my.compName, 
+                                 "Dynamic version of the Heatmap for the comparison ", my.compName[[ii]], 
                                  ". Hovering and zooming are possible." );
       
       #report.s2p6 <- newParagraph( "Heatmaps produced. See ", asReference( report.s2f5a ), "for instance");
       report.s2s5 <- addTo( report.s2s5, report.s2f5b)
     } # end of plotly.heatmaps.report
+ 
+    # When requested, create the d3heatmap locally 
+    create.d3.heatmaps <- T # Disabled to avoid re-genearing them each time the script is rerun
+    # When requested, report the dynamic d3 heatmap created
+    report.d3.heatmaps <- T # Disabled to avoid re-genearing them each time the script is rerun
     
+    if (create.d3.heatmaps == TRUE) {
+      #From http://blog.rstudio.org/2015/06/24/d3heatmap/
+      require(d3heatmap)
+      require(scales)
+    
+      #Axis and legend default names seem to be the name of the variable containing them. Therefore we rename the vars here:
+      Expressions <- mxy.tid
+      #head(Expressions)
+      #Samples <- colnames(mxy.tid)
+      #Features <- rownames(mxy.tid)
+      
+      # Thanks to integration with the dendextend package, you can customize dendrograms with cluster colors:
+      d3h <- d3heatmap(Expressions, colors = bluered(75), scale = "none", 
+                dendrogram = "both", k_row = 3, k_col = 5, anim_duration = 0)
+      
+      # Save Heatmap to file
+    
+      # Create a new local d3.heatmap as html
+      require("htmlwidgets")
+      d3.filename <- paste( "heatmap", my.compName[[ii]],
+                            pValString[ii], pValCutOff[ii], "d3.html", sep=".")
+      saveWidget(d3h, file.path(resultsDir, d3.filename))
+      
+    } # end of chunk to create d3heatmaps when requested
+
+    if (report.d3.heatmaps == TRUE) {
+      # Write the resulting file to the report
+      d3.filename <- paste( "heatmap", my.compName[[ii]],
+                            pValString[ii], pValCutOff[ii], "d3.html", sep=".")
+      report.s2f5d3 <- newHtml( "File (HTML): <a href=\"", file.path(resultsRelDir, d3.filename),"\">",
+                                file.path(resultsRelDir, d3.filename), "</a>",
+                                style="background-color: snow;" )
+      report.s2s5 <- addTo( report.s2s5, report.s2f5d3)
+    } # end of plotly.heatmaps.report
+
   } # end the loop of jj
 } # end of ii loop, the index of the list with the multiple comparison group names
 
@@ -1603,10 +2041,34 @@ report.s10 <- addTo( report.s10, report.s10.p1, report.s10.p2);
 # Phase 2: assemble report structure bottom-up
 report.s0a <- addTo( report.s0a, report.s0a.p1, report.s0a.p2, report.s0a.p3, report.s0a.p4, report.s0a.p5);
 report.s0b <- addTo( report.s0b, report.s0b.p1, report.s0b.p2);
-#report.s1 <- addTo( report.s1, report.s1s1, report.s1s2, report.s1s3, report.s1s4, report.s1s5,
-#                    report.s1s6, report.s1s7);
-report.s1 <- addTo( report.s1, report.s1s1, report.s1s2, report.s1s4, report.s1s5,
-                    report.s1s7); # sections s1s3 and s1s6 have been removed from the report by Alex.
+
+# report.s1 will get different sections regarding QC depending on the params set above for the desired QC type for each Analysis
+    # QC Type with Raw data
+    if (QCrType ==1){
+      report.s1s4 <- report.s1s4c # Custom QC 
+    } else if (QCrType ==2) {
+      report.s1s4 <- report.s1s4a # QC usingn ArrayQualityMetrics 
+    } else {
+      report.s1s4 <- NULL # no QC
+    }
+    # QC Type with Normalized data
+    if (QCnType ==1){
+      report.s1s5 <- report.s1s5c # Custom QC 
+    } else if (QCrType ==2) {
+      report.s1s5 <- report.s1s5a # QC usingn ArrayQualityMetrics 
+    } else {
+      report.s1s5 <- NULL # no QC
+    }
+if (QCrType !=0 && QCnType !=0){
+  report.s1 <- addTo( report.s1, report.s1s1, report.s1s2, report.s1s4, report.s1s5, report.s1s7); # sections s1s3 and s1s6 have been removed from the report by Alex.
+} else if (QCrType ==0 && QCnType !=0) {
+  report.s1 <- addTo( report.s1, report.s1s1, report.s1s2, report.s1s5, report.s1s7); # sections s1s3 and s1s6 have been removed from the report by Alex.
+} else if (QCrType !=0 && QCnType ==0) {
+  report.s1 <- addTo( report.s1, report.s1s1, report.s1s2, report.s1s4, report.s1s7); # sections s1s3 and s1s6 have been removed from the report by Alex.
+} else if (QCrType ==0 && QCnType ==0) {
+  report.s1 <- addTo( report.s1, report.s1s1, report.s1s2, report.s1s7); # sections s1s3 and s1s6 have been removed from the report by Alex.
+}
+#rm(report.r); rm(report.s1)
 report.s2 <- addTo( report.s2, report.s2s1, report.s2s2, report.s2s3, report.s2s4, report.s2s5 );
 report.r <- addTo( report.r, report.s0a, report.s0b, report.s1, report.s2 );
 report.r <- addTo( report.r, report.s10 ); # "Other considerations" section, at the end.
@@ -1621,7 +2083,7 @@ report.r <- setMaintainerEmail( report.r, "ueb@vhir.org" );
 report.r <- setMaintainerAffiliation( report.r, "Statistics and Bioinformatics Unit - Vall d'Hebron Research Institute" );
 
 # set the copyright notice for this report
-report.r <- setCopyright( report.r, owner="UEB - VHIR", year=2015, statement="Some rights reserved.", url="http://ueb.vhir.org" ); 
+report.r <- setCopyright( report.r, owner="UEB - VHIR", year=2016, statement="Some rights reserved.", url="http://ueb.vhir.org" ); 
 
 # set contact information for error reports
 report.r <- setContactInformation( report.r, email="ueb@vhir.org", subject="Problem with this Report", message="Hello!\n\nPlease describe the issue here.", label="Report an Issue" );
@@ -1639,23 +2101,37 @@ writeReport( report.r, filename=report.filename ); # w/o extension
 #file.link(from, to)
 # Create folders for js and css in results Dir if they don't exist yet
 folders2create <- c("js", "css")
-files2create <- list(c("jquery.js", "jquery.dataTables.js"),
+files2create1 <- list(c("jquery.js", "jquery.dataTables.js"),
                      c("demo_table.css", "jquery.dataTables_themeroller.css", "jquery.dataTables.css"))
-names(files2create) <- folders2create
+files2create2 <- list(c("d3.v3.js", "dimple.v2.1.0.js"),
+                      c(""))
+names(files2create1) <- folders2create
+names(files2create2) <- folders2create
 # Start loop over folders
 for (folder in folders2create) {
   # Check if folder exists. If not, create it.
   if (!dir.exists(file.path(resultsDir, folder))) dir.create(file.path(resultsDir, folder))
   
-  # Start loop over files within each folder
-  for (f2c in files2create[[folder]]) { # f2c = file to create
+  # Start loop over files set1 (datatables) within each folder
+  for (f2c in files2create1[[folder]]) { # f2c = file to create
     # prepare to copy files if they do not exist yet in destination
     to    <- file.path(resultsDir, folder, f2c)
     if (!file.exists(to)) {
       from  <- file.path(reportsDir, folder, f2c)
       resultsFileLink <- file.link(from, to)
     } # end if clause for file copy 
-  } # loop over files
+  } # loop over files set1
+  
+  # Start loop over files set2 (dimple) within each folder
+  for (f2c in files2create2[[folder]]) { # f2c = file to create
+    # prepare to copy files if they do not exist yet in destination
+    to    <- file.path(resultsDir, folder, f2c)
+    if (!file.exists(to)) {
+      from  <- file.path(reportsDir, folder, f2c)
+      resultsFileLink <- file.link(from, to)
+    } # end if clause for file copy 
+  } # loop over files set2
+  
 } # loop over folders
 
 # to be compressed and send elsewhere for the researcher with all the required css and js files in it. Copyright licenses should be respected (citation, etc).
@@ -1666,7 +2142,8 @@ setwd(resultsDir)
 replaceResult <- foreach (ff = 1:length(filenames)) %dopar% {
   #ff <- 1
   xx <- readLines(filenames[ff])
-  yy <- gsub( base_path_in_local_urls, "", xx )
+  yy <- gsub( base_path_in_local_urls1, "", xx )
+  yy <- gsub( base_path_in_local_urls2, "", yy )
   cat(yy, file=filenames[ff], sep="\n")
   
 }
@@ -1702,11 +2179,13 @@ save(tex.table.compNamesAll,
      tex.table.cont.matrix,
      tex.table.design,
      tex.table.key.params,
+     tex.table.nFC,
      dataDir,
      docsDir,
      resultsDir,
      celfilesDir,
      reportsDir,
+     targets.all,
      cont.matrix,
      design,
      cont.fA.title,
@@ -1718,6 +2197,12 @@ save(tex.table.compNamesAll,
      cont.fAB.level.count,
      cont.fA.level.count,
      cont.fB.level.count,
+     wCont,
+     compNamesAll,
+     compGroupName,
+     my.compName,
+     my.conds,
+     my.conds.units,
      file=file.from)
 # Make hard link to file name without aId, so that it can be easily read from the .Rnw file
 if (!file.exists(file.to) && file.exists(file.from)) {
