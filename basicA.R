@@ -752,7 +752,7 @@ plotPCAsvg  <- function ( X, aID=NULL, group=NULL, colors=NULL, dataDesc=NULL, s
   dP$save(paste("QCPlots", dataDesc, "pca", aID, "html", sep="."))
 }
 
-doQC <- function ( my.data, my.data.type, my.sampleNames, my.sampleColor, my.group) {
+doQCPlots <- function ( my.data, my.data.type, my.sampleNames, my.sampleColor, my.group) {
   # Values for manual debugging
   #my.data <- rawData; my.data.type <- "Raw" # Set it to "Raw" or "Normalized"
   #my.data <- my.eset.all; my.data.type <- "Normalized.AllSamples"; my.sampleNames <- sampleNames.all; my.sampleColor <- sampleColor.all;
@@ -803,41 +803,20 @@ doQC <- function ( my.data, my.data.type, my.sampleNames, my.sampleColor, my.gro
   # Return filenames of files produced
   return (list(boxplot.png, dendrogram.png, pca.png, QCPlots.all.pdf))
 }
-########-------------------
 
-# Re-set just in case the working dir to the results Dir
-setwd(resultsDir)
-#DEFINE SOME USEFUL VARIABLES FOR THE GRAPHICS
-sampleNames.all <- as.character(targets.all$ShortName)
-sampleColor.all <- as.character(targets.all$Colores)
-group.all       <- as.character(targets.all$Grupo)
-sampleNames     <- as.character(targets$ShortName)
-sampleColor     <- as.character(targets$Colores)
-group           <- as.character(targets$Grupo)
+doQCCustomRaw <- function(my.QCdata, my.QCdesc, my.QCsampleNames,  my.QCsampleColor, my.QCgroup) {
 
-#############################
-# Quality Control (raw)
-#############################
-# Types of Quality Control: 0=none, 1=Custom QC, 2=ArrayQualityMetrics 
-# QCrType = for raw data
-# QCnType = for normalized data
-if (QCrType == 1) {
-  # ---------------------------
-  # Custom QC
-  # ---------------------------
-  qc.filenames.all <- list()
-  qc.filenames.all <- doQC(rawData.all, "Raw.AllSamples", sampleNames.all, sampleColor.all, group.all)  
   qc.filenames <- list()
-  qc.filenames <- doQC(rawData, "Raw.ValidSamples", sampleNames, sampleColor, group)  
+  qc.filenames <- doQCPlots(my.QCdata, my.QCdesc, my.QCsampleNames, my.QCsampleColor, my.QCgroup)  
   
   # Add the section to the report 
-  report.s1s4c <- newSection( "Quality control (raw data)" );
+  my.report.s1s4c <- newSection( "Quality control (", my.QCdesc, ")" );
   report.s1p4a1 <- newParagraph( "Different types of quality checks have been performed on the raw data \
-                            before deciding that they were valid for the analysis. \
-                            Indeed they have been repeated twice: once with raw data and \
-                            another with normalized data (next section).");
+                                 before deciding that they were valid for the analysis. \
+                                 Indeed they have been repeated twice: once with raw data and \
+                                 another with normalized data (next section).");
   report.s1p4a2 <- newParagraph( "The checks consist of 3 plots \
-                               that can be seen below.");
+                                 that can be seen below.");
   
   # Define here the following objects since they are common for both cases below of QCrType
   outFileNameRelPath.pdf <- file.path(resultsRelDir, qc.filenames[[4]])
@@ -846,21 +825,21 @@ if (QCrType == 1) {
   outFileNameRelPath.png <- file.path(resultsRelDir, qc.filenames[[1]])
   report.s1f4c1png <- newFigure( outFileNameRelPath.png, 
                                  fileHighRes=outFileNameRelPath.pdf,
-                                 "QC Plot (Raw - Valid Samples) - BoxPlot" );
+                                 "QC Plot (", my.QCdesc,") - BoxPlot" );
   
   # Add DENDROGRAM to the report as screenshot
   outFileNameRelPath.png <- file.path(resultsRelDir, qc.filenames[[2]])
   report.s1f4c2png <- newFigure( outFileNameRelPath.png, 
                                  fileHighRes=outFileNameRelPath.pdf,
-                                 "QC Plot (Raw - Valid Samples) - Dendrogram" );
+                                 "QC Plot (", my.QCdesc,") - Dendrogram" );
   
   # Add PCA to the report as screenshot
   outFileNameRelPath.png <- file.path(resultsRelDir, qc.filenames[[3]])
   report.s1f4c3png <- newFigure( outFileNameRelPath.png, 
                                  fileHighRes=outFileNameRelPath.pdf,
-                                 "QC Plot (Raw - Valid Samples) - PCA" );
+                                 "QC Plot (", my.QCdesc,") - PCA" );
   # Add PCA to the report as Interactive SVG
-  pca.filename <- paste0(resultsRelDir, "/QCPlots.Raw.ValidSamples.pca.", aID, ".html")
+  pca.filename <- paste0(resultsRelDir, "/QCPlots.", my.QCdesc,".pca.", aID, ".html")
   report.s1f4c3html <- newHtml( "Interactive Version of the PCA File (HTML): <a href=\"", pca.filename,"\">", pca.filename, "</a>",
                                 style="background-color: snow;" )
   
@@ -873,52 +852,150 @@ if (QCrType == 1) {
   samples2remove.count <- length(samples2remove[samples2remove != ""]) 
   samples2remove.collapsed <- paste(samples2remove, collapse=", ") 
   if (samples2remove.count > 0) {
-    samples2remove.collapsed.text <- paste0(": ", samples2remove.collapsed) 
+    samples2remove.collapsed.text <- paste0(" - ", samples2remove.collapsed, " - ") 
   } else {
     samples2remove.collapsed.text <- ""
   }
-  report.s1p4a3 <- newParagraph( "After reviewing the quality checks on raw data it has been decided to remove ", 
+  report.s1p4a3 <- newParagraph( "After reviewing the quality checks on ", my.QCdesc," it has been decided to remove ", 
                                  asStrong( samples2remove.count ), " sample/s",
                                  asStrong( samples2remove.collapsed.text ), ".");
   
   # Write the resulting files to the report
-  report.s1s4c  <- addTo( report.s1s4c,  report.s1p4a1, report.s1p4a2, report.s1p4a3, 
+  my.report.s1s4c  <- addTo( my.report.s1s4c,  report.s1p4a1, report.s1p4a2, report.s1p4a3, 
                           report.s1f4c1png, report.s1f4c2png, report.s1f4c3png, 
                           report.s1f4c3html, report.s1f4c)
   
-} else if (QCrType == 2) {
-  # ---------------------------
-  # ArrayQualityMetrics
-  # ---------------------------
-  # Section borrowed from the the standard Basic Pipe code.
-  #rawData <- xx
-  # or ????
-  rawData.all <- rawData2.all
-  rawData <- rawData2
-  
-  phenoData(rawData.all)$Grupo<-targets.all$Grupo
-  phenoData(rawData.all)$ShortName<-targets.all$ShortName
-  phenoData(rawData.all)$Colores<-targets.all$Colores
-  phenoData(rawData)$Grupo<-targets$Grupo
-  phenoData(rawData)$ShortName<-targets$ShortName
-  phenoData(rawData)$Colores<-targets$Colores
+}
 
-  arrayQualityMetrics(expressionset =rawData.all,
-                      outdir = file.path(resultsDir, "QCDir.raw.all"),
+
+doQCCustomNorm <- function(my.QCdata, my.QCdesc, my.QCsampleNames,  my.QCsampleColor, my.QCgroup) {
+  
+  phenoData(my.QCdata)$SampleName   <-my.QCsampleNames
+  phenoData(my.QCdata)$Grupo        <-my.QCgroup
+  phenoData(my.QCdata)$ShortName    <-my.QCsampleNames
+  phenoData(my.QCdata)$Colores      <-my.QCsampleColor
+  
+  qc.filenames <- list()
+  qc.filenames <- doQCPlots(my.QCdata, my.QCdesc, my.QCsampleNames, my.QCsampleColor, my.QCgroup)  
+   
+  # Add the section to the report 
+  my.report.s1s5c <- newSection( "Quality control (", my.QCdesc, ")" );
+  
+  # Define here the following objects since they are common for both cases below of QCrType
+  outFileNameRelPath.pdf <- file.path(resultsRelDir, qc.filenames[[4]])
+  
+  # Add BOXPLOT to the report as screenshot
+  outFileNameRelPath.png <- file.path(resultsRelDir, qc.filenames[[1]])
+  report.s1f5c1png <- newFigure( outFileNameRelPath.png, 
+                                 fileHighRes=outFileNameRelPath.pdf,
+                                 "QC Plot (", my.QCdesc, ") - BoxPlot" );
+  
+  # Add DENDROGRAM to the report as screenshot
+  outFileNameRelPath.png <- file.path(resultsRelDir, qc.filenames[[2]])
+  report.s1f5c2png <- newFigure( outFileNameRelPath.png, 
+                                 fileHighRes=outFileNameRelPath.pdf,
+                                 "QC Plot (", my.QCdesc, ") - Dendrogram" );
+  
+  # Add PCA to the report as screenshot
+  outFileNameRelPath.png <- file.path(resultsRelDir, qc.filenames[[3]])
+  report.s1f5c3png <- newFigure( outFileNameRelPath.png, 
+                                 fileHighRes=outFileNameRelPath.pdf,
+                                 "QC Plot (", my.QCdesc, ") - PCA" );
+  # Add PCA to the report as Interactive SVG
+  pca.filename <- paste0(resultsRelDir, "/QCPlots.", my.QCdesc, ".pca.", aID, ".html")
+  report.s1f5c3html <- newHtml( "Interactive Version of the PCA File (HTML): <a href=\"", pca.filename,"\">", pca.filename, "</a>",
+                                style="background-color: snow;" )
+  
+  # Add link to multichart QCPlot PDF
+  report.s1f5c <- newHtml( "Multipage File with the 3 static charts (PDF): <a href=\"", outFileNameRelPath.pdf,"\">",
+                           outFileNameRelPath.pdf, "</a>",
+                           style="background-color: snow;" )
+  
+  # In case you requested a QC on normalized data only (QCrType != 1, 
+  # no previous section on raw data), some extra paragraph needs to be added here
+  if (QCrType != 1) {
+    # Create text strings about which samples are removed and their count (if any)
+    samples2remove.count <- length(samples2remove[samples2remove != ""]) 
+    samples2remove.collapsed <- paste(samples2remove, collapse=", ") 
+    if (samples2remove.count > 0) {
+      samples2remove.collapsed.text <- paste0(" - ", samples2remove.collapsed, " - ") 
+    } else {
+      samples2remove.collapsed.text <- ""
+    }
+
+    # Write the resulting files to the report
+    # In case we made the QC with all samples again...
+    if (samples2remove == "" || (length(grep("AllSamples", my.QCdesc, fixed=TRUE)) > 0)) {
+      
+        report.s1p5c1.all <- newParagraph( "Different types of quality checks have been performed on the normalized data \
+                              before deciding that they were valid for the analysis. ");
+        report.s1p5c2.all <- newParagraph( "The checks consist of 3 plots \
+                                 that can be seen below.");
+        report.s1p5c3.all <- newParagraph( "After reviewing the quality checks on the Normalized data set, it has been decided to remove ", 
+                                           asStrong( samples2remove.count ), " sample/s",
+                                           asStrong( samples2remove.collapsed.text ), ".");
+        my.report.s1s5c  <- addTo( my.report.s1s5c,  report.s1p5c1.all, report.s1p5c2.all, report.s1p5c3.all,
+                                   report.s1f5c1png, report.s1f5c2png, report.s1f5c3png, 
+                                   report.s1f5c3html, report.s1f5c)
+    
+      } else if (length(grep("ValidSamples", my.QCdesc, fixed=TRUE)) > 0) { # We made the QC with only valid samples this time, given that samples2remove has some Samples
+
+      
+        report.s1p5c.valid <- newParagraph( "After removing this/these ", 
+                                            asStrong( samples2remove.count ), " sample/s ",
+                                            asStrong( samples2remove.collapsed.text ), ", the same plots were repeated \
+                                         to see the new quality of the dataset finally used for the rest of the analysis.");
+        my.report.s1s5c  <- addTo( my.report.s1s5c,  report.s1p5c.valid,
+                                   report.s1f5c1png, report.s1f5c2png, report.s1f5c3png, 
+                                   report.s1f5c3html, report.s1f5c)
+    }
+    
+    return (my.report.s1s5c)
+    
+  } else { #QCrType ==1 # Custom Code for QC Raw Data
+    # Write the resulting files to the report
+    # In case we made the QC with all samples again...
+    if (samples2remove == "" || (length(grep("AllSamples", my.QCdesc, fixed=TRUE)) > 0)) {
+        report.s1p5c.all <- newParagraph( "A similar quality check has been performed on the samples after they have been normalized. \
+                                    The results are consistent with those obtained with raw data confirming the decision \
+                                    to remove ",
+                                      asStrong( samples2remove.count ), " sample/s",
+                                      asStrong( samples2remove.collapsed.text ), ".");
+        # Write the resulting files to the report
+        my.report.s1s5c  <- addTo( my.report.s1s5c,  report.s1p5c,
+                                report.s1f5c1png, report.s1f5c2png, report.s1f5c3png, 
+                                report.s1f5c3html, report.s1f5c)
+    } else if (length(grep("ValidSamples", my.QCdesc, fixed=TRUE)) > 0) { # We made the QC with only valid samples this time, given that samples2remove has some Samples
+        report.s1p5c.valid <- newParagraph( "After removing this/these ", 
+                                            asStrong( samples2remove.count ), " sample/s ",
+                                            asStrong( samples2remove.collapsed.text ), ", the same plots were repeated \
+                                       to see the new quality of the dataset finally used for the rest of the analysis.");
+        # Write the resulting files to the report
+        my.report.s1s5c  <- addTo( my.report.s1s5c,  report.s1p5c.valid,
+                                   report.s1f5c1png, report.s1f5c2png, report.s1f5c3png, 
+                                   report.s1f5c3html, report.s1f5c)        
+    }
+    return (my.report.s1s5c)
+  }
+
+}
+
+# Do QC with ArrayQualityMetrics (from Bioconductor - "Bioc") - Raw Data
+doQCBiocRaw <- function(my.QCdata, my.QCdesc, my.QCsampleNames,  my.QCsampleColor, my.QCgroup, my.QCDir) {
+
+
+  phenoData(my.QCdata)$Grupo      <-my.QCgroup
+  phenoData(my.QCdata)$ShortName  <-my.QCsampleNames
+  phenoData(my.QCdata)$Colores    <-my.QCsampleColor
+  
+  arrayQualityMetrics(expressionset =my.QCdata,
+                      outdir = file.path(resultsDir, my.QCDir),
                       force = TRUE,
                       intgroup = "Grupo",
                       do.logtransform = FALSE)
-  if (samples2remove != "") {
-    # Do the QC again with the subset of samples only (removing the ones indicated in samples2remove)
-    arrayQualityMetrics(expressionset =rawData,
-                        outdir = file.path(resultsDir, "QCDir.raw.valid"),
-                        force = TRUE,
-                        intgroup = "Grupo",
-                        do.logtransform = FALSE)
-  }
   
   # Add the section to the report 
-  report.s1s4a <- newSection( "Quality control (raw data)" );
+  my.report.s1s4a <- newSection( "Quality control (", my.QCdesc, ")" );
   report.s1p4a1 <- newParagraph( "Different types of quality checks have been performed on the raw data \
                             before deciding that they were valid for the analysis. \
                             Indeed they have been repeated twice: once with raw data and \
@@ -943,157 +1020,49 @@ if (QCrType == 1) {
   report.s1p4a3 <- newParagraph( "After reviewing the quality checks on raw data it has been decided to remove ", 
                                  asStrong( samples2remove.count ), " sample/s",
                                  asStrong( samples2remove.collapsed.text ), ".");
-  report.s1h4 <- newHtml( "<iframe src=\"", resultsRelDir, "/QCDir.raw.valid/index.html\" frameborder=1 height=600 scrolling=auto width=\"900\"></iframe>", style="background-color: snow;" )
-  report.s1s4a <- addTo( report.s1s4a, report.s1p4a1, report.s1p4a2, report.s1p4a3, report.s1h4 ) 
+  report.s1h4 <- newHtml( "<iframe src=\"", resultsRelDir, "/", my.QCddir, "/index.html\" frameborder=1 height=600 scrolling=auto width=\"900\"></iframe>", style="background-color: snow;" )
+  my.report.s1s4a <- addTo( my.report.s1s4a, report.s1p4a1, report.s1p4a2, report.s1p4a3, report.s1h4 ) 
+  return (my.report.s1s4a)
+}
 
-} # end of section depending on QCrType
-
-
-#############################
-# Quality Control (norm)
-#############################
-# Types of Quality Control: 0=none, 1=Custom QC, 2=ArrayQualityMetrics 
-# QCrType = for raw data
-# QCnType = for normalized data
-if (QCnType == 1) {
-  # ---------------------------
-  # Custom QC (norm)
-  # ---------------------------
-  phenoData(my.eset.all)$SampleName<-targets.all$SampleName
-  phenoData(my.eset.all)$Grupo<-targets.all$Grupo
-  phenoData(my.eset.all)$ShortName<-targets.all$ShortName
-  phenoData(my.eset.all)$Colores<-targets.all$Colores
-  phenoData(my.eset)$SampleName<-targets$SampleName
-  phenoData(my.eset)$Grupo<-targets$Grupo
-  phenoData(my.eset)$ShortName<-targets$ShortName
-  phenoData(my.eset)$Colores<-targets$Colores
+# Do QC with ArrayQualityMetrics (from Bioconductor - "Bioc") - Normalized Data
+doQCBiocNorm <- function(my.QCdata, my.QCdesc, my.QCsampleNames,  my.QCsampleColor, my.QCgroup, my.QCDir) {
   
-  # This step doQC with normalized data fails, due to missing values in X for he prcomp function
-  qc.filenames.all <- list()
-  qc.filenames.all <- doQC(my.eset.all, "Normalized.AllSamples", sampleNames.all, sampleColor.all, group.all) 
-  qc.filenames <- list()
-  qc.filenames <- doQC(my.eset, "Normalized.ValidSamples", sampleNames, sampleColor, group) 
+  phenoData(my.QCdata)$Grupo      <-my.QCgroup
+  phenoData(my.QCdata)$ShortName  <-my.QCsampleNames
+  phenoData(my.QCdata)$Colores    <-my.QCsampleColor
   
-  # Add the section to the report 
-  report.s1s5c <- newSection( "Quality control (normalized data)" );
-  
-  # Define here the following objects since they are common for both cases below of QCrType
-  outFileNameRelPath.pdf <- file.path(resultsRelDir, qc.filenames[[4]])
-  
-  # Add BOXPLOT to the report as screenshot
-  outFileNameRelPath.png <- file.path(resultsRelDir, qc.filenames[[1]])
-  report.s1f5c1png <- newFigure( outFileNameRelPath.png, 
-                                 fileHighRes=outFileNameRelPath.pdf,
-                                 "QC Plot (Normalized - Valid Samples) - BoxPlot" );
-  
-  # Add DENDROGRAM to the report as screenshot
-  outFileNameRelPath.png <- file.path(resultsRelDir, qc.filenames[[2]])
-  report.s1f5c2png <- newFigure( outFileNameRelPath.png, 
-                                 fileHighRes=outFileNameRelPath.pdf,
-                                 "QC Plot (Normalized - Valid Samples) - Dendrogram" );
-  
-  # Add PCA to the report as screenshot
-  outFileNameRelPath.png <- file.path(resultsRelDir, qc.filenames[[3]])
-  report.s1f5c3png <- newFigure( outFileNameRelPath.png, 
-                                 fileHighRes=outFileNameRelPath.pdf,
-                                 "QC Plot (Normalized - Valid Samples) - PCA" );
-  # Add PCA to the report as Interactive SVG
-  pca.filename <- paste0(resultsRelDir, "/QCPlots.Normalized.ValidSamples.pca.", aID, ".html")
-  report.s1f5c3html <- newHtml( "Interactive Version of the PCA File (HTML): <a href=\"", pca.filename,"\">", pca.filename, "</a>",
-                                style="background-color: snow;" )
-  
-  # Add link to multichart QCPlot PDF
-  report.s1f5c <- newHtml( "Multipage File with the 3 static charts (PDF): <a href=\"", outFileNameRelPath.pdf,"\">",
-                           outFileNameRelPath.pdf, "</a>",
-                           style="background-color: snow;" )
-  
-  # In case you requested a QC on normalized data only (QCrType != 1, 
-  # no previous section on raw data), some extra paragraph needs to be added here
-  if (QCrType != 1) {
-    report.s1p5c1 <- newParagraph( "Different types of quality checks have been performed on the normalized data \
-                            before deciding that they were valid for the analysis. ");
-    report.s1p5c2 <- newParagraph( "The checks consist of 3 plots \
-                               that can be seen below.");
-    # Create text strings about which samples are removed and their count (if any)
-    samples2remove.count <- length(samples2remove[samples2remove != ""]) 
-    samples2remove.collapsed <- paste(samples2remove, collapse=", ") 
-    if (samples2remove.count > 0) {
-      samples2remove.collapsed.text <- paste0(": ", samples2remove.collapsed) 
-    } else {
-      samples2remove.collapsed.text <- ""
-    }
-    report.s1p5c3 <- newParagraph( "After reviewing the quality checks on normalized data it has been decided to remove ", 
-                                   asStrong( samples2remove.count ), " sample/s",
-                                   asStrong( samples2remove.collapsed.text ), ".");
-    # Write the resulting files to the report
-    report.s1s5c  <- addTo( report.s1s5c,  report.s1p5c1, report.s1p5c2, report.s1p5c3,
-                            report.s1f5c1png, report.s1f5c2png, report.s1f5c3png, 
-                            report.s1f5c3html, report.s1f5c)
-
-  } else {
-    report.s1p5c <- newParagraph( "A similar quality check has been performed on the samples after they have been normalized. \
-                                The results are consistent with those obtained with raw data confirming the decision \
-                                to remove ",
-                                  asStrong( samples2remove.count ), " sample/s",
-                                  asStrong( samples2remove.collapsed.text ), ".");
-    # Write the resulting files to the report
-    report.s1s5c  <- addTo( report.s1s5c,  report.s1s5c,
-                            report.s1f5c1png, report.s1f5c2png, report.s1f5c3png, 
-                            report.s1f5c3html, report.s1f5c)
-  }
-  
-} else if (QCnType == 2) {
-  # ---------------------------
-  # ArrayQualityMetrics (norm)
-  # ---------------------------
-  # Section borrowed from the the standard Basic Pipe code.
-  phenoData(my.eset.all)$Grupo<-targets.all$Grupo
-  phenoData(my.eset.all)$ShortName<-targets.all$ShortName
-  phenoData(my.eset.all)$Colores<-targets.all$Colores
-  phenoData(my.eset)$Grupo<-targets$Grupo
-  phenoData(my.eset)$ShortName<-targets$ShortName
-  phenoData(my.eset)$Colores<-targets$Colores
-  
-  arrayQualityMetrics(expressionset = my.eset.all,
-                      outdir = file.path(resultsDir, "QCDir.norm.all"),
+  arrayQualityMetrics(expressionset =my.QCdata,
+                      outdir = file.path(resultsDir, my.QCDir),
                       force = TRUE,
                       intgroup = "Grupo",
                       do.logtransform = FALSE)
-  
-  if (samples2remove != "") {
-    # Do the QC again with the subset of samples only (removing the ones indicated in samples2remove)
-    arrayQualityMetrics(expressionset = my.eset,
-                        outdir = file.path(resultsDir, "QCDir.norm.valid"),
-                        force = TRUE,
-                        intgroup = "Grupo",
-                        do.logtransform = FALSE)
-  }
-  
+
   # Create text strings about which samples are removed and their count (if any)
   samples2remove.count <- length(samples2remove[samples2remove != ""]) 
   samples2remove.collapsed <- paste(samples2remove, collapse=", ") 
   
   # Add the section to the report 
-  report.s1s5a <- newSection( "Quality control (normalized data)" );
+  my.report.s1s5a <- newSection( "Quality control (", my.QCdesc, ")" );
   
   # Define here these 2 objects since they are common for both cases below of QCrType
-  report.s1h5 <- newHtml( "<iframe src=\"", resultsRelDir, "/QCDir.norm.valid/index.html\" frameborder=1 height=600 scrolling=auto width=\"900\"></iframe>", style="background-color: snow;" )
-  report.s1f5 <- newHtml( "File (HTML): <a href=\"", resultsRelDir,"/QCDir.norm.valid/index.html\">QCDir.norm.valid/index.html</a>",
+  report.s1h5 <- newHtml( "<iframe src=\"", resultsRelDir, "/", my.QCdir, "/index.html\" frameborder=1 height=600 scrolling=auto width=\"900\"></iframe>", style="background-color: snow;" )
+  report.s1f5 <- newHtml( "File (HTML): <a href=\"", resultsRelDir,"/", my.QCdir, "/index.html\">QCDir.norm.valid/index.html</a>",
                           style="background-color: snow;" )
   
   # In case you requested a QC on normalized data only (no previous section on raw data), some extra paragraph needs to be added here
   if (QCrType != 2) {
     report.s1p5a1 <- newParagraph( "Different types of quality checks have been performed on the normalized data \
-                              before deciding that they were valid for the analysis. \
-                              A comprehensive report is provided for the normalized data \
-                              (QCDir.norm/index.html) to help the user to understand \
-                              whether a particular array can be considered as an outlier.");
+                                   before deciding that they were valid for the analysis. \
+                                   A comprehensive report is provided for the normalized data \
+                                   (", my.QCdir, "/index.html) to help the user to understand \
+                                   whether a particular array can be considered as an outlier.");
     report.s1p5a2 <- newParagraph( "The check consists of a relatively high number of summaries and plots \
-                                 that can be seen below. Each plot is acompanied by a brief description \
-                                 of what this means and how it may be interpreted. The quality report \
-                                 also contains a summary table providing advice on which samples \
-                                 might be candidates for being considered as outliers and should perhaps \
-                                 be removed.");
+                                   that can be seen below. Each plot is acompanied by a brief description \
+                                   of what this means and how it may be interpreted. The quality report \
+                                   also contains a summary table providing advice on which samples \
+                                   might be candidates for being considered as outliers and should perhaps \
+                                   be removed.");
     # Create text strings about which samples are removed and their count (if any)
     samples2remove.count <- length(samples2remove[samples2remove != ""]) 
     samples2remove.collapsed <- paste(samples2remove, collapse=", ") 
@@ -1105,16 +1074,104 @@ if (QCnType == 1) {
     report.s1p5a3 <- newParagraph( "After reviewing the quality checks on normalized data it has been decided to remove ", 
                                    asStrong( samples2remove.count ), " sample/s",
                                    asStrong( samples2remove.collapsed.text ), ".");
-    report.s1s5a <- addTo( report.s1s5a, report.s1p5a, report.s1p5b, report.s1p5c,
-                           report.s1h5, report.s1f5 ) 
+    my.report.s1s5a <- addTo( my.report.s1s5a, report.s1p5a, report.s1p5b, report.s1p5c,
+                           report.s1h5, report.s1f5 )
+    return (my.report.s1s5a)
+    
   } else {
-    report.s1p5a <- newParagraph( "A similar quality check has been performed on the samples after they have been normalized. \
-                                The results are consistent with those obtained with raw data confirming the decision \
-                                to remove ",
+    my.report.s1p5a <- newParagraph( "A similar quality check has been performed on the samples after they have been normalized. \
+                                  The results are consistent with those obtained with raw data confirming the decision \
+                                  to remove ",
                                   asStrong( samples2remove.count ), " sample/s",
                                   asStrong( samples2remove.collapsed.text ), ".");
-    report.s1s5a <- addTo( report.s1s5a, report.s1p5, report.s1h5, report.s1f5 ) 
+    my.report.s1s5a <- addTo( my.report.s1s5a, report.s1p5a, report.s1h5, report.s1f5 ) 
+    return (my.report.s1s5a)
+    
   }
+}
+########-------------------
+
+# Re-set just in case the working dir to the results Dir
+setwd(resultsDir)
+#DEFINE SOME USEFUL VARIABLES FOR THE GRAPHICS
+sampleNames.all <- as.character(targets.all$ShortName)
+sampleColor.all <- as.character(targets.all$Colores)
+group.all       <- as.character(targets.all$Grupo)
+sampleNames     <- as.character(targets$ShortName)
+sampleColor     <- as.character(targets$Colores)
+group           <- as.character(targets$Grupo)
+
+#############################
+# Quality Control (raw)
+#############################
+# Types of Quality Control: 0=none, 1=Custom QC, 2=ArrayQualityMetrics 
+# QCrType = for raw data
+# QCnType = for normalized data
+
+if (QCrType == 1) {
+  
+  # ---------------------------
+  # Custom QC
+  # ---------------------------
+  # do QC on all the sample set (removing no samples yet, if any defined in samples2remove)
+  report.s1s4c.all <- doQCCustomRaw(rawData.all, "Raw.AllSamples", sampleNames.all, sampleColor.all, group.all)
+  # check if we have any sample set in param samples2remove
+  if (samples2remove != "") {
+    # Repeat the Custom QC but with only the valid samples (removing the ones deinfed in samples2remove)
+    report.s1s4c.valid <- doQCCustomRaw(rawData, "Raw.ValidSamples", sampleNames, sampleColor, group)
+  }
+  
+  
+} else if (QCrType == 2) {
+  # ---------------------------
+  # ArrayQualityMetrics
+  # ---------------------------
+  #rawData <- xx
+  # or ????
+  rawData.all <- rawData2.all
+  rawData <- rawData2
+  
+  report.s1s4a.all <- doQCBiocRaw(rawData.all, "Raw.AllSamples", sampleNames.all, sampleColor.all, group.all, "QCDir.raw.all")
+
+  if (samples2remove != "") {
+    # Do the QC again with the subset of samples only (removing the ones indicated in samples2remove)
+    report.s1s4a.valid <- doQCBiocRaw(rawData, "Raw.ValidSamples", sampleNames, sampleColor, group, "QCDir.raw.valid")
+  }
+
+} # end of section depending on QCrType
+
+
+#############################
+# Quality Control (norm)
+#############################
+# Types of Quality Control: 0=none, 1=Custom QC, 2=ArrayQualityMetrics 
+# QCrType = for raw data
+# QCnType = for normalized data
+if (QCnType == 1) {
+  
+  # ---------------------------
+  # Custom QC (norm)
+  # ---------------------------
+  # do QC on all the sample set (removing no samples yet, if any defined in samples2remove)
+  report.s1s5c.all <- doQCCustomNorm(my.eset.all, "Normalized.AllSamples", sampleNames.all, sampleColor.all, group.all) 
+  # check if we have any sample set in param samples2remove
+  if (samples2remove != "") {
+    # Repeat the Custom QC but with only the valid samples (removing the ones deinfed in samples2remove)
+    report.s1s5c.valid <- doQCCustomNorm(my.eset, "Normalized.ValidSamples", sampleNames, sampleColor, group) 
+  }
+  
+  
+} else if (QCnType == 2) {
+  # ---------------------------
+  # ArrayQualityMetrics (norm)
+  # ---------------------------
+  report.s1s5a.all <- doQCBiocNorm(my.eset.all, "Normalized.AllSamples", sampleNames.all, sampleColor.all, group.all, "QCDir.norm.all")
+  
+  if (samples2remove != "") {
+    # Do the QC again with the subset of samples only (removing the ones indicated in samples2remove)
+    report.s1s5a.valid <- doQCBiocNorm(my.eset, "Normalized.ValidSamples", sampleNames, sampleColor, group, "QCDir.norm.valid")
+  }
+  
 }
 
 
@@ -1524,6 +1581,12 @@ print.xtable(tex.table.nFC,
 ###################################################
 ## Volcano Plots
 ###################################################
+# NOTE (Xavier. Jan 8th, 2016): If we ever want to try some interactive version (svg showing point names, etc)
+# we can have a look at how others did it:
+# http://www.enpicom.com/visual-lab/interactive-volcano-plot/tutorial/
+# https://gist.github.com/danhalligan
+# Plot.ly: https://plot.ly/~ShmuelGleizer/206/volcano-plot-for-mutated-genes/
+
 # Add it to the report
 report.s2s3 <- newSection( "Volcano plots" );
 report.s2p3 <- newParagraph( "Files with the volcano plot for each comparison");
@@ -2061,26 +2124,54 @@ report.s0b <- addTo( report.s0b, report.s0b.p1, report.s0b.p2);
 # report.s1 will get different sections regarding QC depending on the params set above for the desired QC type for each Analysis
     # QC Type with Raw data
     if (QCrType ==1){
-      report.s1s4 <- report.s1s4c # Custom QC 
+      report.s1s4.all   <- report.s1s4c.all # Custom QC - With All Samples
+      report.s1s4.valid <- report.s1s4c.valid # Custom QC - With Valid Samples
     } else if (QCrType ==2) {
-      report.s1s4 <- report.s1s4a # QC usingn ArrayQualityMetrics 
+      report.s1s4.all   <- report.s1s4a.all # QC using ArrayQualityMetrics - With All Samples
+      report.s1s4.valid <- report.s1s4a.valid # QC using ArrayQualityMetrics - With Valid Samples
     } else {
-      report.s1s4 <- NULL # no QC
+      report.s1s4.all   <- NULL # no QC
+      report.s1s4.valid <- NULL # no QC
     }
+
     # QC Type with Normalized data
     if (QCnType ==1){
-      report.s1s5 <- report.s1s5c # Custom QC 
-    } else if (QCrType ==2) {
-      report.s1s5 <- report.s1s5a # QC usingn ArrayQualityMetrics 
+      report.s1s5.all <- report.s1s5c.all # Custom QC - With All Samples
+      report.s1s5.valid <- report.s1s5c.valid # Custom QC - With Valid Samples
+    } else if (QCnType ==2) {
+      report.s1s5.all <- report.s1s5a.all # QC using ArrayQualityMetrics - With All Samples
+      report.s1s5.valid <- report.s1s5a.valid # QC using ArrayQualityMetrics - With Valid Samples
     } else {
-      report.s1s5 <- NULL # no QC
+      report.s1s5.all <- NULL # no QC
+      report.s1s5.valid <- NULL # no QC
     }
 if (QCrType !=0 && QCnType !=0){
-  report.s1 <- addTo( report.s1, report.s1s1, report.s1s2, report.s1s4, report.s1s5, report.s1s7); # sections s1s3 and s1s6 have been removed from the report by Alex.
+  # Check if samples2remove has some Sample so that there is a section report.s1s5a.valid that needs to be added also
+  if (samples2remove == ""){
+    report.s1 <- addTo( report.s1, report.s1s1, report.s1s2, report.s1s4, report.s1s5.all,
+                        report.s1s7); # sections s1s3 and s1s6 have been removed from the report by Alex.
+  } else { # There are some samples removed, so that a section report.s1s5.valid needs to be added
+    report.s1 <- addTo( report.s1, report.s1s1, report.s1s2, report.s1s4, report.s1s5.all,
+                        report.s1s5.valid, report.s1s7); # sections s1s3 and s1s6 have been removed from the report by Alex.
+  }
 } else if (QCrType ==0 && QCnType !=0) {
-  report.s1 <- addTo( report.s1, report.s1s1, report.s1s2, report.s1s5, report.s1s7); # sections s1s3 and s1s6 have been removed from the report by Alex.
+  # Check if samples2remove has some Sample so that there is a section report.s1s5a.valid that needs to be added also
+  if (samples2remove == ""){
+    report.s1 <- addTo( report.s1, report.s1s1, report.s1s2, report.s1s5.all,
+                        report.s1s7); # sections s1s3 and s1s6 have been removed from the report by Alex.
+  } else { # There are some samples removed, so that a section report.s1s5.valid needs to be added
+    report.s1 <- addTo( report.s1, report.s1s1, report.s1s2, report.s1s5.all,
+                        report.s1s5.valid,report.s1s7); # sections s1s3 and s1s6 have been removed from the report by Alex.
+  }
 } else if (QCrType !=0 && QCnType ==0) {
-  report.s1 <- addTo( report.s1, report.s1s1, report.s1s2, report.s1s4, report.s1s7); # sections s1s3 and s1s6 have been removed from the report by Alex.
+  # Check if samples2remove has some Sample so that there is a section report.s1s4.valid that needs to be added also
+  if (samples2remove == ""){
+    report.s1 <- addTo( report.s1, report.s1s1, report.s1s2, report.s1s4.all,
+                        report.s1s7); # sections s1s3 and s1s6 have been removed from the report by Alex.
+  } else { # There are some samples removed, so that a section report.s1s4.valid needs to be added
+    report.s1 <- addTo( report.s1, report.s1s1, report.s1s2, report.s1s4.all,
+                        report.s1s4.valid, report.s1s7); # sections s1s3 and s1s6 have been removed from the report by Alex.
+  }
 } else if (QCrType ==0 && QCnType ==0) {
   report.s1 <- addTo( report.s1, report.s1s1, report.s1s2, report.s1s7); # sections s1s3 and s1s6 have been removed from the report by Alex.
 }
