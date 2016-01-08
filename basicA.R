@@ -6,7 +6,7 @@
 ## See git hostory to see contributors
 ## to this script.
 ##
-## UEB-VHIR (2015) http://ueb.vhir.org 
+## UEB-VHIR (2016) http://ueb.vhir.org 
 ##
 ###################################################
 
@@ -305,13 +305,16 @@ if (file.exists(file.path(dataRelDir, paste0("rma.", aID, ".ec.annotated.txt")))
   data.lastcol.idx <- which(colnames(data.rma.ec.annot)=="Species Scientific Name")-1
   #head(data.rma.ec[,1:data.lastcol.idx])
   # Then we can remove column 1 (ProbesetID) and all the others after  data.lastcol.idx
-  data.rma.ec <- as.matrix(data.rma.ec.annot[,2:data.lastcol.idx])
+  data.rma.ec.all <- as.matrix(data.rma.ec.annot[,2:data.lastcol.idx])
+
   # head(data.rma.ec)
   # Sort columns with natural sort
   require(naturalsort)
-  ns.cols.data.rma.ec <-naturalsort(colnames(data.rma.ec)) # ns -> natural sort
-  data.rma.ec <- data.rma.ec[, ns.cols.data.rma.ec] # Indexes from data.vsn.rma sorted with natural sort
+  ns.cols.data.rma.ec.all <-naturalsort(colnames(data.rma.ec.all)) # ns -> natural sort
+  data.rma.ec.all <- data.rma.ec.all[, ns.cols.data.rma.ec.all] # Indexes from data.vsn.rma sorted with natural sort
   #head(data.rma.ec)  
+  col2remove.idx <- which(colnames(data.rma.ec.all) %in% samples2remove) 
+  data.rma.ec.valid <- data.rma.ec.all[,-col2remove.idx]
   
   #class(data.rma.ec)
   #head(data.rma.ec)
@@ -341,6 +344,7 @@ if (file.exists(file.path(dataRelDir, paste0("rma.", aID, ".ec.annotated.txt")))
   rownames(pData.all) <- pData.all$SampleName
   rownames(pData) <- pData$SampleName
   #summary(pData)
+  #table(rownames(pData.all)==colnames(data.rma.ec.all))
   #table(rownames(pData)==colnames(data.rma.ec))
   #sapply(pData, class)
   
@@ -350,21 +354,21 @@ if (file.exists(file.path(dataRelDir, paste0("rma.", aID, ".ec.annotated.txt")))
   #class(phenoData)
   
   # Assemble the expression set
-  eset.data.rma.ec.all <- ExpressionSet(assayData=data.rma.ec,
+  eset.data.rma.ec.all <- ExpressionSet(assayData=data.rma.ec.all,
                                     phenoData=phenoData.all
                                     #                           , experimentData=experimentData
                                     #                           , annotation="hgu95av2")
   )
-  eset.data.rma.ec <- ExpressionSet(assayData=data.rma.ec,
+  eset.data.rma.ec.valid <- ExpressionSet(assayData=data.rma.ec.valid,
                                     phenoData=phenoData
                                     #                           , experimentData=experimentData
                                     #                           , annotation="hgu95av2")
   )
-  
+
   # Assign the expression set we will use in further steps in the pipeline 
   # to the object we created here
   my.eset.all <- eset.data.rma.ec.all
-  my.eset <- eset.data.rma.ec
+  my.eset <- eset.data.rma.ec.valid
   
 } else if (!exists("data.eset.vsn.rma2.filtered") || !exists("data.eset.vsn.rma2.filtered.all") ){
   # If the object with normalized data exists, load it. Otherwise, generate it again
@@ -669,7 +673,7 @@ plotPCA <- function ( X, labels=NULL, colors=NULL, dataDesc="", scale=FALSE, for
   title(paste("Plot of first 2 PCs for expressions in", dataDesc, sep=" "), cex=0.8)
 }
 
-plotPCAsvg  <- function ( X, aID=NULL, colors=NULL, dataDesc=NULL, scale=FALSE, myCex=0.8, ...)
+plotPCAsvg  <- function ( X, aID=NULL, group=NULL, colors=NULL, dataDesc=NULL, scale=FALSE, myCex=0.8, ...)
 {
   # Calculate again the PCA itself
   pcX<-prcomp(t(X), scale=scale) # o prcomp(t(X))
@@ -686,7 +690,7 @@ plotPCAsvg  <- function ( X, aID=NULL, colors=NULL, dataDesc=NULL, scale=FALSE, 
   
   # Using Dimple. Derived from http://timelyportfolio.github.io/rCharts_systematic_cluster/pimco_pcplots.html
   # See http://timelyportfolio.github.io/docs/_build/html/dimple/api.html
-  pca.df <- data.frame(rownames(pcX$x),targets.all$Grupo,pcX$x[,1],pcX$x[,2])
+  pca.df <- data.frame(rownames(pcX$x), group, pcX$x[,1], pcX$x[,2])
   colnames(pca.df) <- c("Sample","Group","PC1","PC2")
   dP <- dPlot(
     PC2 ~ PC1,
@@ -748,26 +752,25 @@ plotPCAsvg  <- function ( X, aID=NULL, colors=NULL, dataDesc=NULL, scale=FALSE, 
   dP$save(paste("QCPlots", dataDesc, "pca", aID, "html", sep="."))
 }
 
-doQC <- function ( my.data, my.data.type ) {
+doQC <- function ( my.data, my.data.type, my.sampleNames, my.sampleColor, my.group) {
   # Values for manual debugging
-  #my.data <- rawData
-  #my.data.type <- "Raw" # Set it to "Raw" or "Normalized"
-  #my.data <- my.eset
-  #my.data.type <- "Normalized"
+  #my.data <- rawData; my.data.type <- "Raw" # Set it to "Raw" or "Normalized"
+  #my.data <- my.eset.all; my.data.type <- "Normalized.AllSamples"; my.sampleNames <- sampleNames.all; my.sampleColor <- sampleColor.all;
+  #my.data <- my.eset; my.data.type <- "Normalized.ValidSamples"; my.sampleNames <- sampleNames; my.sampleColor <- sampleColor;
   
   #BOXPLOT & SAVE TO A PNG FILE
   boxplot.png <- paste("QCPlots", my.data.type, "boxplot", aID, "png", sep=".")
   png(boxplot.png)
   boxplot(my.data, las=2, 
           main=paste0("Intensity distribution of ", my.data.type," data"),
-          cex.axis=0.6, col=sampleColor, names=sampleNames)
+          cex.axis=0.6, col=my.sampleColor, names=my.sampleNames)
   dev.off()
   
   #HIERARQUICAL CLUSTERING & SAVE TO A PNG FILE
   dendrogram.png <- paste("QCPlots", my.data.type, "dendrogram", aID, "png", sep=".")
   png(dendrogram.png)
   clust.euclid.average <- hclust(dist(t(exprs(my.data))),method="average")
-  plot(clust.euclid.average, labels=sampleNames, 
+  plot(clust.euclid.average, labels=my.sampleNames, 
        main=paste0("Hierarchical clustering of ", my.data.type,"Data"), 
        cex=0.7,  hang=-1)
   dev.off()
@@ -775,9 +778,9 @@ doQC <- function ( my.data, my.data.type ) {
   #PCA & SAVE TO A PNG FILE
   pca.png <- paste("QCPlots", my.data.type, "pca", aID, "png", sep=".")
   png(pca.png)
-  plotPCA(exprs(my.data), labels=sampleNames, 
+  plotPCA(exprs(my.data), labels=my.sampleNames, 
           dataDesc=paste0(my.data.type," data"),
-          colors=sampleColor, formapunts=c(rep(16,4),rep(17,4)), myCex=0.6)
+          colors=my.sampleColor, formapunts=c(rep(16,4),rep(17,4)), myCex=0.6)
   dev.off()
   
   #SAVE TO A PDF FILE
@@ -785,17 +788,17 @@ doQC <- function ( my.data, my.data.type ) {
   pdf(QCPlots.all.pdf)
   boxplot(my.data, las=2, 
           main=paste0("Intensity distribution of ", my.data.type," data"),
-          cex.axis=0.6, col=sampleColor, names=sampleNames)
-  plot(clust.euclid.average, labels=sampleNames, 
+          cex.axis=0.6, col=my.sampleColor, names=my.sampleNames)
+  plot(clust.euclid.average, labels=my.sampleNames, 
        main=paste0("Hierarchical clustering of samples of ", my.data.type,"Data"), 
        cex=0.7,  hang=-1)
-  plotPCA(exprs(my.data), labels=sampleNames, 
+  plotPCA(exprs(my.data), labels=my.sampleNames, 
           dataDesc=paste0(my.data.type),
-          colors=sampleColor, formapunts=c(rep(16,4),rep(17,4)), myCex=0.6)
+          colors=my.sampleColor, formapunts=c(rep(16,4),rep(17,4)), myCex=0.6)
   dev.off()
   # SAVE SVG version of just the PCA
   plotPCAsvg(exprs(my.data), dataDesc=my.data.type,
-             aID=aID, colors=sampleColor, myCex=0.6)
+             aID=aID, group=my.group, colors=my.sampleColor, myCex=0.6)
 
   # Return filenames of files produced
   return (list(boxplot.png, dendrogram.png, pca.png, QCPlots.all.pdf))
@@ -805,8 +808,12 @@ doQC <- function ( my.data, my.data.type ) {
 # Re-set just in case the working dir to the results Dir
 setwd(resultsDir)
 #DEFINE SOME USEFUL VARIABLES FOR THE GRAPHICS
-sampleNames <- as.character(targets$ShortName)
-sampleColor<- as.character(targets$Colores)
+sampleNames.all <- as.character(targets.all$ShortName)
+sampleColor.all <- as.character(targets.all$Colores)
+group.all       <- as.character(targets.all$Grupo)
+sampleNames     <- as.character(targets$ShortName)
+sampleColor     <- as.character(targets$Colores)
+group           <- as.character(targets$Grupo)
 
 #############################
 # Quality Control (raw)
@@ -819,9 +826,9 @@ if (QCrType == 1) {
   # Custom QC
   # ---------------------------
   qc.filenames.all <- list()
-  qc.filenames.all <- doQC(rawData.all, "Raw.AllSamples")  
+  qc.filenames.all <- doQC(rawData.all, "Raw.AllSamples", sampleNames.all, sampleColor.all, group.all)  
   qc.filenames <- list()
-  qc.filenames <- doQC(rawData, "Raw.ValidSamples")  
+  qc.filenames <- doQC(rawData, "Raw.ValidSamples", sampleNames, sampleColor, group)  
   
   # Add the section to the report 
   report.s1s4c <- newSection( "Quality control (raw data)" );
@@ -952,11 +959,20 @@ if (QCnType == 1) {
   # ---------------------------
   # Custom QC (norm)
   # ---------------------------
+  phenoData(my.eset.all)$SampleName<-targets.all$SampleName
+  phenoData(my.eset.all)$Grupo<-targets.all$Grupo
+  phenoData(my.eset.all)$ShortName<-targets.all$ShortName
+  phenoData(my.eset.all)$Colores<-targets.all$Colores
+  phenoData(my.eset)$SampleName<-targets$SampleName
+  phenoData(my.eset)$Grupo<-targets$Grupo
+  phenoData(my.eset)$ShortName<-targets$ShortName
+  phenoData(my.eset)$Colores<-targets$Colores
+  
   # This step doQC with normalized data fails, due to missing values in X for he prcomp function
   qc.filenames.all <- list()
-  qc.filenames.all <- doQC(my.eset.all, "Normalized.AllSamples")
+  qc.filenames.all <- doQC(my.eset.all, "Normalized.AllSamples", sampleNames.all, sampleColor.all, group.all) 
   qc.filenames <- list()
-  qc.filenames <- doQC(my.eset, "Normalized.ValidSamples")
+  qc.filenames <- doQC(my.eset, "Normalized.ValidSamples", sampleNames, sampleColor, group) 
   
   # Add the section to the report 
   report.s1s5c <- newSection( "Quality control (normalized data)" );
