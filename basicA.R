@@ -502,11 +502,13 @@ if (exists("compNamesAll")) rm(compNamesAll)
 compNamesAll <- list()
 for (ii in 1:length(wCont)) {
   compNamesAll[[ii]] <- colnames(cont.matrix)[ wCont[[ii]] ]
-  names(compNamesAll)[ii] <- compGroupName[[ii]]  
+  names(compNamesAll)[ii] <- compGroupName[ii]  
 }
 
 # Create a latex version of the R object
-tex.table.compNamesAll <-xtable(data.frame(t(plyr::ldply(compNamesAll, rbind))),
+compNamesAll.table <- plyr::ldply(compNamesAll, rbind)
+rownames(compNamesAll.table) <- compNamesAll.table$.id
+tex.table.compNamesAll <-xtable(data.frame(t(compNamesAll.table[-1])),
                    label='compNamesAll',
                    caption='Comparison names within each group')
 #print(tex.table, tabular.environment='longtable', floating=FALSE, size="small")
@@ -515,7 +517,8 @@ print.xtable(tex.table.compNamesAll,
              tabular.environment='longtable', 
              floating=FALSE, 
              include.rownames=FALSE,
-             size="tiny")
+             size="small")
+#             size="tiny")
 #             size="footnotesize")
 
 #print(cont.matrix) #comentar aquesta linia si no es vol visualitzar la matriu de contrasts
@@ -1374,19 +1377,19 @@ topTabLoop <- foreach (ii = 1:length(wCont)) %do% { # ii is the index of the lis
   #wCont[ii] ; ii <- 1; jj <- 1;
   foreach (jj = 1:length(wCont[[ii]])) %do% { # jj is the index of the list with the single comparisons from within each group of comparisons
     
-    my.compName[[ii]] <- colnames(cont.matrix)[ wCont[[ii]][jj] ]
-    my.conds[[ii]] <- unlist(strsplit(my.compName[[ii]], splitterCond, fixed = TRUE)) 
-    my.conds.units[[ii]] <- unlist(strsplit(my.conds[[ii]], splitterIntracond, fixed = TRUE)) 
+    my.compName[[ wCont[[ii]][jj] ]] <- colnames(cont.matrix)[ wCont[[ii]][jj] ]
+    my.conds[[ wCont[[ii]][jj] ]] <- unlist(strsplit(my.compName[[ wCont[[ii]][jj] ]], splitterCond, fixed = TRUE)) 
+    my.conds.units[[ wCont[[ii]][jj] ]] <- unlist(strsplit(my.conds[[ wCont[[ii]][jj] ]], splitterIntracond, fixed = TRUE)) 
     
     # my.cels.idx and my.cels below are the list of cel files to be appended to the TopTable object
     # before the csv generation, but avoided when printing the html version
     # We keep the values in a list since we will use this info later when creating heatmaps
-#    my.cels.idx[[ wCont[[ii]][jj] ]] <- grep( paste0(my.conds[[ii]], collapse="|"), targets$Grupo)
-    my.cels.idx[[ wCont[[ii]][jj] ]] <- grep( paste0(my.conds.units[[ii]], collapse="|"), targets$Grupo)
+#    my.cels.idx[[ wCont[[ii]][jj] ]] <- grep( paste0(my.conds[ wCont[[ii]][jj] ], collapse="|"), targets$Grupo)
+    my.cels.idx[[ wCont[[ii]][jj] ]] <- grep( paste0(my.conds.units[[ wCont[[ii]][jj] ]], collapse="|"), targets$Grupo)
     my.cels[[ wCont[[ii]][jj] ]] <- as.character(targets$SampleName[ my.cels.idx[[ wCont[[ii]][jj] ]] ] ) 
     write.csv2(cbind(my.cels.idx[[ wCont[[ii]][jj] ]], my.cels[[ wCont[[ii]][jj] ]]), 
                file=file.path( resultsDir, paste("celfiles.in.comparison.",
-                                                 my.compName[[ii]], ".csv", sep="")) )
+                                                 my.compName[[ wCont[[ii]][jj] ]], ".csv", sep="")) )
     
     #head(topTab[[ wCont[[ii]][jj] ]] )
     topTabExtended[[ wCont[[ii]][jj] ]] <- cbind(topTab[[ wCont[[ii]][jj] ]],
@@ -2293,6 +2296,7 @@ save(tex.table.compNamesAll,
      celfilesDir,
      reportsDir,
      targets.all,
+     column2design,
      cont.matrix,
      design,
      cont.fA.title,
@@ -2307,6 +2311,7 @@ save(tex.table.compNamesAll,
      wCont,
      compNamesAll,
      compGroupName,
+     compGroupName.desc,
      my.compName,
      my.conds,
      my.conds.units,

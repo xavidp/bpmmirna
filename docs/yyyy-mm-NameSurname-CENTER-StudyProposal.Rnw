@@ -10,6 +10,7 @@
 \usepackage[table,xcdraw]{xcolor}
 \usepackage{fancyhdr}
 \usepackage{eurosym}
+\usepackage{underscore}
 \renewcommand{\baselinestretch}{1.2} % per canviar interlineado
 \pagestyle{fancy}
 
@@ -99,27 +100,28 @@ The main objective of this study is %to find differentially expressed genes in s
 
 The experimental conditions to be considered in this study are:
 
-\begin{enumerate}
- \item \Sexpr{cont.fA.title} (\emph{A})% <-- put here the name of Factor A
-    \begin{enumerate}
-      \item \Sexpr{cont.fA.level.count[1]} samples from level \Sexpr{cont.fA.level.descs[1]} (\emph{\Sexpr{cont.fA.level.names[1]}})% <-- Level A1
-      \item \Sexpr{cont.fA.level.count[2]} samples from level \Sexpr{cont.fA.level.descs[2]} (\emph{\Sexpr{cont.fA.level.names[2]}})% <-- Level A2
-      \item \Sexpr{cont.fA.level.count[3]} samples from level \Sexpr{cont.fA.level.descs[3]} (\emph{\Sexpr{cont.fA.level.names[3]}})% <-- Level A3
-    \end{enumerate}
- \item \Sexpr{cont.fB.title} (\emph{B})% <-- put here the name of Factor B
-    \begin{enumerate}
-      \item \Sexpr{cont.fB.level.count[1]} samples from level \Sexpr{cont.fB.level.descs[1]} (\emph{\Sexpr{cont.fB.level.names[1]}})% <-- Level B1
-      \item \Sexpr{cont.fB.level.count[2]} samples from level \Sexpr{cont.fB.level.descs[2]} (\emph{\Sexpr{cont.fB.level.names[2]}})% <-- Level B2
-    \end{enumerate}
-\end{enumerate}
+% \begin{enumerate}
+%  \item \Sexpr{cont.fA.title} (\emph{A})% <-- put here the name of Factor A
+%     \begin{enumerate}
+%       \item \Sexpr{cont.fA.level.count[1]} samples from level \Sexpr{cont.fA.level.descs[1]} (\emph{\Sexpr{cont.fA.level.names[1]}})% <-- Level A1
+%       \item \Sexpr{cont.fA.level.count[2]} samples from level \Sexpr{cont.fA.level.descs[2]} (\emph{\Sexpr{cont.fA.level.names[2]}})% <-- Level A2
+%       \item \Sexpr{cont.fA.level.count[3]} samples from level \Sexpr{cont.fA.level.descs[3]} (\emph{\Sexpr{cont.fA.level.names[3]}})% <-- Level A3
+%     \end{enumerate}
+%  \item \Sexpr{cont.fB.title} (\emph{B})% <-- put here the name of Factor B
+%     \begin{enumerate}
+%       \item \Sexpr{cont.fB.level.count[1]} samples from level \Sexpr{cont.fB.level.descs[1]} (\emph{\Sexpr{cont.fB.level.names[1]}})% <-- Level B1
+%       \item \Sexpr{cont.fB.level.count[2]} samples from level \Sexpr{cont.fB.level.descs[2]} (\emph{\Sexpr{cont.fB.level.names[2]}})% <-- Level B2
+%     \end{enumerate}
+% \end{enumerate}
 
-The distribution of samples among experimental conditions is as follows:  \\
+\clearpage
+The distribution of samples among groups is shown in Table \ref{SamplesPerCondition}.
 <<countSamplesbyExpcond, echo=FALSE, results='asis'>>=
 countsDesign <- data.frame(colSums(design))
 colnames(countsDesign) <- "Number of samples"
 #print(countsDesign)
 #class(countsDesign)
-xtable(countsDesign, digits=0)
+#xtable(countsDesign, digits=0)
 @
 
 <<dplytGroupby, echo=FALSE, results='asis', eval=TRUE>>=
@@ -133,7 +135,8 @@ counts.all <- group_by(targets.all, vv[1], vv[2], vv[3] )
 reshape.counts = dcast(counts.all, get(vv[1]) ~ get(vv[2]) + get(vv[3]),
                        fun.aggregate= length,
                        value.var = colnames(targets.all[column2design] ) )
-xtable(reshape.counts, digits=0)
+rownames(reshape.counts) <- reshape.counts[,1]
+xtable(reshape.counts[-1], digits=0, caption="Number of samples per condition", label="SamplesPerCondition")
 @
 
 %------------------------------------------------------------------------------------------------------------
@@ -142,48 +145,51 @@ xtable(reshape.counts, digits=0)
 
 %--------- Si es vol generar una taula diferent  http://www.tablesgenerator.com/
 
-\begin{table}[h]
-\begin{tabular}{cccc}
-\multicolumn{4}{c}{The distribution of samples among experimental conditions is as follows: } \\
- & \multicolumn{3}{c}{\textbf{\Sexpr{cont.fB.title}}} \\ \cline{2-4} 
-\multicolumn{1}{c |}{} & \multicolumn{1}{c|}{\cellcolor[HTML]{BFC0E1}} & \multicolumn{1}{p{5cm}|}{\cellcolor[HTML]{BFC0E1}\centering{\vspace{0cm}\Sexpr{cont.fB.level.names[1]}}} & \multicolumn{1}{p{5cm}|}{\cellcolor[HTML]{BFC0E1}{\color[HTML]{000000} \centering{ \hspace{1.5cm}\Sexpr{cont.fB.level.names[2]}}}} \\ \cline{2-4} 
-\multicolumn{1}{c |}{} & \multicolumn{1}{c|}{\cellcolor[HTML]{BFC0E1}
-\Sexpr{cont.fA.level.names[1]}} & \multicolumn{1}{c|}{	\Sexpr{cont.fAB.level.count[1,1]}	} & \multicolumn{1}{c|}{	\Sexpr{cont.fAB.level.count[1,2]}	} \\ \cline{2-4}    % Cambiar `` 	2	''
-\multicolumn{1}{c |}{} & \multicolumn{1}{c|}{\cellcolor[HTML]{BFC0E1}
-\Sexpr{cont.fA.level.names[2]}} & \multicolumn{1}{c|}{	\Sexpr{cont.fAB.level.count[2,1]}	} & \multicolumn{1}{c|}{	\Sexpr{cont.fAB.level.count[2,2]}	} \\ \cline{2-4}    % Cambiar `` 	2	''
-\multicolumn{1}{c |}{\multirow{-3}{*}{\textbf{\Sexpr{cont.fA.title}}}} & \multicolumn{1}{c|}{\cellcolor[HTML]{BFC0E1}
-\Sexpr{cont.fA.level.names[3]}} & \multicolumn{1}{c|}{  \Sexpr{cont.fAB.level.count[3,1]}	} & \multicolumn{1}{c|}{	\Sexpr{cont.fAB.level.count[3,2]}	} \\ \cline{2-4}    % Cambiar `` 	2	''
-\end{tabular}
-\end{table}
-\newpage
+% \begin{table}[h]
+% \begin{tabular}{cccc}
+% \multicolumn{4}{c}{The distribution of samples among experimental conditions is as follows: } \\
+%  & \multicolumn{3}{c}{\textbf{\Sexpr{cont.fB.title}}} \\ \cline{2-4} 
+% \multicolumn{1}{c |}{} & \multicolumn{1}{c|}{\cellcolor[HTML]{BFC0E1}} & \multicolumn{1}{p{5cm}|}{\cellcolor[HTML]{BFC0E1}\centering{\vspace{0cm}\Sexpr{cont.fB.level.names[1]}}} & \multicolumn{1}{p{5cm}|}{\cellcolor[HTML]{BFC0E1}{\color[HTML]{000000} \centering{ \hspace{1.5cm}\Sexpr{cont.fB.level.names[2]}}}} \\ \cline{2-4} 
+% \multicolumn{1}{c |}{} & \multicolumn{1}{c|}{\cellcolor[HTML]{BFC0E1}
+% \Sexpr{cont.fA.level.names[1]}} & \multicolumn{1}{c|}{	\Sexpr{cont.fAB.level.count[1,1]}	} & \multicolumn{1}{c|}{	\Sexpr{cont.fAB.level.count[1,2]}	} \\ \cline{2-4}    % Cambiar `` 	2	''
+% \multicolumn{1}{c |}{} & \multicolumn{1}{c|}{\cellcolor[HTML]{BFC0E1}
+% \Sexpr{cont.fA.level.names[2]}} & \multicolumn{1}{c|}{	\Sexpr{cont.fAB.level.count[2,1]}	} & \multicolumn{1}{c|}{	\Sexpr{cont.fAB.level.count[2,2]}	} \\ \cline{2-4}    % Cambiar `` 	2	''
+% \multicolumn{1}{c |}{\multirow{-3}{*}{\textbf{\Sexpr{cont.fA.title}}}} & \multicolumn{1}{c|}{\cellcolor[HTML]{BFC0E1}
+% \Sexpr{cont.fA.level.names[3]}} & \multicolumn{1}{c|}{  \Sexpr{cont.fAB.level.count[3,1]}	} & \multicolumn{1}{c|}{	\Sexpr{cont.fAB.level.count[3,2]}	} \\ \cline{2-4}    % Cambiar `` 	2	''
+% \end{tabular}
+% \end{table}
+% \newpage
 
 	 		
-The specific objective of the study is to find differential expression in the following comparisons:
+The comparisons performed can be grouped in several sets of comparisons (summarised in \ref{compNamesAll}).
 
 \input{../reports/tex.compNamesAll.tex}
 
+If the comparison name is called as Condition 1 vs Condition 2, the resulting comparison is the product of substracting the effect of differential expression in Condition 2 minus the effect in Condition 2. Therefore, the previous table can be explained as follows:
 \begin{enumerate}
- \item Effect of the A condition...   			% modificar
-    \begin{enumerate}
-      \item  A2 vs A1 = A2 -- A1 = $\Delta _1$ 	% modificar	
-      \item ...						% modificar
-    \end{enumerate}
+% \item Effect of the A condition...   			% modificar
+%    \begin{enumerate}
+%      \item  A2 vs A1 = A2 -- A1 = $\Delta _1$ 	% modificar	
+%      \item ...						% modificar
+%    \end{enumerate}
 
 %Generate the list of Conditions dynamically
-<<my.conds, echo=FALSE, results='asis'>>=
+<<my.conds, echo=FALSE, results='asis', eval=TRUE>>=
 item2print <- NULL
 dd <- 0 # global counter for Delta
 for (ii in 1:length(wCont)) {
-  cat(paste0("\\item Effect of condition ", compGroupName[ii],":       "))
+  cat(paste0("\\item ", compGroupName.desc[ii]," [\"", compGroupName[ii],"\"]:       "))
   cat("    \\begin{enumerate} ")
     for (jj in 1:length(wCont[[ii]])) {
+      ## ii <- 2; jj <- 1
       dd <- dd +1 # raise one value the global counter for delta
-      cat(paste0("\\item ", my.conds[[ii]][jj], " vs ", my.conds[[ii]][jj+1], " = ", my.conds[[ii]][jj+1], " - ", my.conds[[ii]][jj], " = $\\Delta _", dd, "$ "))
+      cat(paste0("\\item ", my.conds[[ wCont[[ii]][jj] ]][1], " vs ", my.conds[[ wCont[[ii]][jj] ]][2], " = ", my.conds[[ wCont[[ii]][jj] ]][2], " - ", my.conds[[ wCont[[ii]][jj] ]][1], " = $\\Delta _{", dd, "}$ "))
     }
   cat("    \\end{enumerate} ")
 }
 #my.conds.units
 @
+
 
 % \item Effect of Factor A condition...       	% modificar
 %    \begin{enumerate}
