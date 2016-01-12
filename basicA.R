@@ -1190,14 +1190,6 @@ if (QCnType == 1) {
 }
 
 
-#############################
-# Display Feature selection Parameters
-#############################
-#report.s1s6 <- newSubSection( "Feature selection" );
-#report.s1p6 <- newParagraph( "Feature selection was performed with the following parameters");
-#report.s1t6 <- newTable( key.params, "Key parameters used");
-#report.s1s6 <- addTo( report.s1s6, report.s1p6, report.s1t6 ) # parent, child_1, ..., child_n 
-
 ## Controlem que el nombre d'elements dels parametres anteriors sigui igual
 if(class(wCont)!="list") warning("L'objecte wCont no és una llista! Això pot provocar errors en els passos següents.")
 if(length(wCont)!=length(compGroupName)) warning("L'objecte wCont ha de tenir el mateix nombre d'elements que compGroupName!")
@@ -1517,11 +1509,6 @@ topTabLoop <- foreach (ii = 1:length(wCont)) %do% { # ii is the index of the lis
 ###################################################
 ## NumFeatureChanged (formarly named NumGeneChanged )
 ###################################################
-# Add it to the report
-report.s2s2 <- newSubSection( "Number of features changed in each case" );
-report.s2p2 <- newParagraph( "Summary table with the number of features changed in each case for each pValue Type (adjusted or not) and Cutoff");
-report.s2s2 <- addTo( report.s2s2, report.s2p2)
-
 setwd(baseDir)
 # Carrega numGeneChangedFC.R
 source(file.path(baseDir,"Rcode", "numFeatureChangedFC.R"))
@@ -1567,15 +1554,65 @@ outFileName <- paste("numFeaturesChangedFC0.csv",sep="")
 outFileNameRelPath <- file.path( resultsRelDir, outFileName )
 numFeatureChangedFC.df <- read.table(file = file.path(resultsDir, outFileName),
                                   header = TRUE, sep = ";")
+# Add it to the report
+report.s2s2 <- newSubSection( "Number of features changed in each case" );
+
 # Write the resulting files to the report
-report.s2t2a <- newTable( numFeatureChangedFC.df[,1:6], 
+# First create the tables with the data.
+report.s2t2a <- newTable( numFeatureChangedFC.df[,1:5], 
                          file=outFileNameRelPath,
-                         "Number of features changed between comparisons for given p.value cutoffs and methods (adjusted p.value or not). First comparisons." ); # w/ caption
-# report.s2t2b <- newTable( numFeatureChangedFC.df[,c(1,7:ncol(numFeatureChangedFC.df))], 
-#                           file=outFileNameRelPath,
-#                           "Number of features changed between comparisons for given p.value cutoffs and methods (adjusted p.value or not). Last comparisons." ); # w/ caption
-# report.s2s2 <- addTo( report.s2s2, report.s2t2a, report.s2t2b)
-report.s2s2 <- addTo( report.s2s2, report.s2t2a)
+                         "Number of features changed between comparisons for given p.value cutoffs and methods (adjusted p.value or not). First comparisons (G1 and G2)." ); # w/ caption
+report.s2t2b <- newTable( numFeatureChangedFC.df[,c(1,6:8)], 
+                          file=outFileNameRelPath,
+                          "Number of features changed between comparisons for given p.value cutoffs and methods (adjusted p.value or not). Next comparisons (G3)." ); # w/ caption
+report.s2t2c <- newTable( numFeatureChangedFC.df[,c(1,9:ncol(numFeatureChangedFC.df))], 
+                          file=outFileNameRelPath,
+                          "Number of features changed between comparisons for given p.value cutoffs and methods (adjusted p.value or not). Last comparisons (G4)." ); # w/ caption
+
+# Then, add highlighting to the rows of the key.params
+# rows.selected.idx <- c(9,10) 
+# key.params <- rbind(pValCutOff, adjMethod, minLogFoldChange)
+for ( rr in 1:length(rows.selected.idx) ) {
+  # First part of the table. columns: all 
+  for ( cc in 1:ncol(numFeatureChangedFC.df[,1:5]) ) {
+  result1 <- newResult( "", isSignificant=TRUE );
+  report.s2t2a <- addTo(report.s2t2a, result1, row=rows.selected.idx[rr], column=cc );
+  }
+  # Second part of the table. columns: all 
+  for ( cc in 1:ncol(numFeatureChangedFC.df[,c(1,6:8)]) ) {
+    result1 <- newResult( "", isSignificant=TRUE );
+    report.s2t2b <- addTo(report.s2t2b, result1, row=rows.selected.idx[rr], column=cc );
+  }
+  # Third part of the table. columns: all 
+  for ( cc in 1:ncol(numFeatureChangedFC.df[,c(1,9:ncol(numFeatureChangedFC.df))]) ) {
+    result1 <- newResult( "", isSignificant=TRUE );
+    report.s2t2c <- addTo(report.s2t2c, result1, row=rows.selected.idx[rr], column=cc );
+  }
+}
+
+# Display Feature selection Parameters
+report.s2s2p6 <- newParagraph( "Feature selection was performed with the following parameters for the generation of \
+                                Venn Diagrams and Heatmap Plots below.");
+report.s2s2t6 <- newTable( key.params[1:2,], "Feature selection parameters for the Venn Diagrams and Heatmap Plots");
+
+# Define a few objects as references in the report, so that they can be cross referenced.
+#report.r <- addToReferences( report.r, report.s2t2a, report.s2s2t6 );
+
+# Use the defined references
+report.s2s2p1 <- newParagraph( "Summary table with the number of features changed in each case \
+                               for each pValue Type (adjusted or not) and Cutoff (", asReference( 
+                                 report.s2t2a ), " and subsequent similar tables)");
+report.s2s2p2 <- newParagraph( "Chosen parameters for pValue and Cutoff are shown in \
+                               ", asReference(report.s2s2t6 ), " \
+                               and you can see their corresponding rows highlighted for clarity.");
+
+
+# Add these objects to the report
+report.s2s2 <- addTo( report.s2s2, report.s2s2p1, report.s2s2p2)
+report.s2s2 <- addTo( report.s2s2, report.s2t2a, report.s2t2b, report.s2t2c)
+report.s2s2 <- addTo( report.s2s2, report.s2s2p6, report.s2s2t6 ) 
+
+#report.s2s2 <- addTo( report.s2s2, report.s2t2a)
 #report.s2file <- newParagraph( "File: <a href=\"", outFileNameRelPath,"\">",
 #                                 outFileNameRelPath, "</a>")
 #report.s2s2 <- addTo( report.s2s2, report.s2file)
