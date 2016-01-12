@@ -191,7 +191,7 @@ report.s0b.p2 <- newParagraph( "Report with description of methodology and main 
 report.s1 <- newSection( "Base information" );
 
 # Report
-report.s1s1 <- newSection( "Samples and Groups" );
+report.s1s1 <- newSubSection( "Samples and Groups" );
 
 ## ----matDesign, eval=TRUE------------------------------------------------
 #design<-matrix(
@@ -435,20 +435,20 @@ cont.matrix <- makeContrasts(
 #   CAN.MetvsCAN.NoM    = ( (CAN.ht25.NoM*5/10) + (CAN.lt25.NoM*5/10) ) - ( (CAN.ht25.Met*5/10) + (CAN.lt25.Met*5/10) ),
 #   CTL.ht25vsCTL.lt25  = ( (CTL.lt25.NoM*4/10) + (CTL.lt25.Met*6/10) ) - ( (CTL.ht25.NoM*5/10) + (CTL.ht25.Met*5/10) ),
 #   CTL.MetvsCTL.NoM    = ( (CTL.ht25.NoM*5/10) + (CTL.lt25.NoM*4/10) ) - ( (CTL.ht25.Met*5/10) + (CTL.lt25.Met*6/10) ),
-  CANvsCTL                  = ( (CTL.Obe.NoM*5/10) + (CTL.Obe.Met*5/10) + (CTL.NoO.NoM*4/10) + (CTL.NoO.Met*6/10) ) -
-                              ( (CAN.Obe.NoM*5/10) + (CAN.Obe.Met*5/10) + (CAN.NoO.NoM*5/10) + (CAN.NoO.Met*5/10) ), 
-  CAN.ObevsCTL.Obe          = ( (CTL.Obe.NoM*5/10) + (CTL.Obe.Met*5/10) ) - ( (CAN.Obe.NoM*5/10) + (CAN.Obe.Met*5/10) ),
-  CAN.NoOvsCTL.NoO          = ( (CTL.NoO.NoM*4/10) + (CTL.NoO.Met*6/10) ) - ( (CAN.NoO.NoM*5/10) + (CAN.NoO.Met*5/10) ),
-  ObevsNoO                  = (( (CTL.Obe.NoM*5/10) + (CTL.Obe.Met*5/10) ) - ( (CAN.Obe.NoM*5/10) + (CAN.Obe.Met*5/10) )) -
-                              (( (CTL.NoO.NoM*4/10) + (CTL.NoO.Met*6/10) ) - ( (CAN.NoO.NoM*5/10) + (CAN.NoO.Met*5/10) )),
-  CAN.MetvsCTL.Met          = ( (CTL.Obe.Met*5/10) + (CTL.NoO.Met*6/10) ) - ( (CAN.Obe.Met*5/10) + (CAN.NoO.Met*5/10) ),
-  CAN.NoMvsCTL.NoM          = ( (CTL.Obe.NoM*5/10) + (CTL.NoO.NoM*4/10) ) - ( (CAN.Obe.NoM*5/10) + (CAN.NoO.NoM*5/10) ),
-  MetvsNoM                  = (( (CTL.Obe.Met*5/10) + (CTL.NoO.Met*6/10) ) - ( (CAN.Obe.Met*5/10) + (CAN.NoO.Met*5/10) )) -
-                              (( (CTL.Obe.NoM*5/10) + (CTL.NoO.NoM*4/10) ) - ( (CAN.Obe.NoM*5/10) + (CAN.NoO.NoM*5/10) )),
-  CAN.Obe.MetvsCTL.Obe.Met  = ( (CTL.Obe.Met*5/10) - ( CAN.Obe.Met*5/10 ) ),
-  CAN.Obe.NoMvsCTL.Obe.NoM  = ( (CTL.Obe.NoM*5/10) - ( CAN.Obe.NoM*5/10 ) ),
-  CAN.NoO.MetvsCTL.NoO.Met  = ( (CTL.NoO.Met*5/10) - ( CAN.NoO.Met*5/10 ) ),
-  CAN.NoO.NoMvsCTL.NoO.NoM  = ( (CTL.NoO.NoM*4/10) - ( CAN.NoO.NoM*6/10 ) ),
+  CANvsCTL                  = ( (CAN.Obe.NoM*5/10) + (CAN.Obe.Met*5/10) + (CAN.NoO.NoM*5/10) + (CAN.NoO.Met*5/10) ) -
+                              ( (CTL.Obe.NoM*5/10) + (CTL.Obe.Met*5/10) + (CTL.NoO.NoM*4/10) + (CTL.NoO.Met*6/10) ), 
+  CAN.ObevsCTL.Obe          = ( (CAN.Obe.NoM*5/10) + (CAN.Obe.Met*5/10) ) - ( (CTL.Obe.NoM*5/10) + (CTL.Obe.Met*5/10) ),
+  CAN.NoOvsCTL.NoO          = ( (CAN.NoO.NoM*5/10) + (CAN.NoO.Met*5/10) ) - ( (CTL.NoO.NoM*4/10) + (CTL.NoO.Met*6/10) ),
+  ObevsNoO                  = (( (CTL.NoO.NoM*4/10) + (CTL.NoO.Met*6/10) ) - ( (CAN.NoO.NoM*5/10) + (CAN.NoO.Met*5/10) )) -
+                              (( (CTL.Obe.NoM*5/10) + (CTL.Obe.Met*5/10) ) - ( (CAN.Obe.NoM*5/10) + (CAN.Obe.Met*5/10) )),
+  CAN.MetvsCTL.Met          = ( (CAN.Obe.Met*5/10) + (CAN.NoO.Met*5/10) ) - ( (CTL.Obe.Met*5/10) + (CTL.NoO.Met*6/10) ),
+  CAN.NoMvsCTL.NoM          = ( (CAN.Obe.NoM*5/10) + (CAN.NoO.NoM*5/10) ) - ( (CTL.Obe.NoM*5/10) + (CTL.NoO.NoM*4/10) ),
+  MetvsNoM                  = (( (CTL.Obe.NoM*5/10) + (CTL.NoO.NoM*4/10) ) - ( (CAN.Obe.NoM*5/10) + (CAN.NoO.NoM*5/10) )) -
+                              (( (CTL.Obe.Met*5/10) + (CTL.NoO.Met*6/10) ) - ( (CAN.Obe.Met*5/10) + (CAN.NoO.Met*5/10) )),
+  CAN.Obe.MetvsCTL.Obe.Met  = ( ( CAN.Obe.Met*5/10 ) - (CTL.Obe.Met*5/10) ),
+  CAN.Obe.NoMvsCTL.Obe.NoM  = ( ( CAN.Obe.NoM*5/10 ) - (CTL.Obe.NoM*5/10) ),
+  CAN.NoO.MetvsCTL.NoO.Met  = ( ( CAN.NoO.Met*5/10 ) - (CTL.NoO.Met*5/10) ),
+  CAN.NoO.NoMvsCTL.NoO.NoM  = ( ( CAN.NoO.NoM*6/10 ) - (CTL.NoO.NoM*4/10) ),
   levels = design)
 
 # Attempt to make this dynamic and parametrized
@@ -522,7 +522,7 @@ print.xtable(tex.table.compNamesAll,
 #             size="footnotesize")
 
 #print(cont.matrix) #comentar aquesta linia si no es vol visualitzar la matriu de contrasts
-report.s1s2 <- newSection( "Comparisons performed" );
+report.s1s2 <- newSubSection( "Comparisons performed" );
 report.s1p2a <- newParagraph( "The researchers have indicated which comparisons they were interested in. \
                             Some comparisons can be naturally grouped, for example because \
                             they are comparing all different cancer subtypes to a given control type, \
@@ -609,7 +609,7 @@ print.xtable(tex.table.key.params,
              floating=FALSE, 
              size="small")
 
-#report.s1s3 <- newSection( "Section removed/refactored (it doesn't exist anymore)" );
+#report.s1s3 <- newSubSection( "Section removed/refactored (it doesn't exist anymore)" );
 
 #############################
 # Fetch rawData affyBatch object (load or create it)
@@ -813,7 +813,7 @@ doQCCustomRaw <- function(my.QCdata, my.QCdesc, my.QCsampleNames,  my.QCsampleCo
   qc.filenames <- doQCPlots(my.QCdata, my.QCdesc, my.QCsampleNames, my.QCsampleColor, my.QCgroup)  
   
   # Add the section to the report 
-  my.report.s1s4c <- newSection( "Quality control (", my.QCdesc, ")" );
+  my.report.s1s4c <- newSubSection( "Quality control (", my.QCdesc, ")" );
   report.s1p4a1 <- newParagraph( "Different types of quality checks have been performed on the raw data \
                                  before deciding that they were valid for the analysis. \
                                  Indeed they have been repeated twice: once with raw data and \
@@ -859,9 +859,10 @@ doQCCustomRaw <- function(my.QCdata, my.QCdesc, my.QCsampleNames,  my.QCsampleCo
   } else {
     samples2remove.collapsed.text <- ""
   }
+  report.result.s2r <- newResult( asParameter( "" ), "", asValue( samples2remove.collapsed.text ), isSignificant=TRUE );
   report.s1p4a3 <- newParagraph( "After reviewing the quality checks on ", my.QCdesc," it has been decided to remove ", 
                                  asStrong( samples2remove.count ), " sample/s",
-                                 asStrong( samples2remove.collapsed.text ), ".");
+                                 report.result.s2r, ".");
   
   # Write the resulting files to the report
   my.report.s1s4c  <- addTo( my.report.s1s4c,  report.s1p4a1, report.s1p4a2, report.s1p4a3, 
@@ -882,7 +883,7 @@ doQCCustomNorm <- function(my.QCdata, my.QCdesc, my.QCsampleNames,  my.QCsampleC
   qc.filenames <- doQCPlots(my.QCdata, my.QCdesc, my.QCsampleNames, my.QCsampleColor, my.QCgroup)  
    
   # Add the section to the report 
-  my.report.s1s5c <- newSection( "Quality control (", my.QCdesc, ")" );
+  my.report.s1s5c <- newSubSection( "Quality control (", my.QCdesc, ")" );
   
   # Define here the following objects since they are common for both cases below of QCrType
   outFileNameRelPath.pdf <- file.path(resultsRelDir, qc.filenames[[4]])
@@ -934,19 +935,20 @@ doQCCustomNorm <- function(my.QCdata, my.QCdesc, my.QCsampleNames,  my.QCsampleC
                               before deciding that they were valid for the analysis. ");
         report.s1p5c2.all <- newParagraph( "The checks consist of 3 plots \
                                  that can be seen below.");
+        report.result.s2r <- newResult( asParameter( "" ), "", asValue( samples2remove.collapsed.text ), isSignificant=TRUE );
         report.s1p5c3.all <- newParagraph( "After reviewing the quality checks on the Normalized data set, it has been decided to remove ", 
                                            asStrong( samples2remove.count ), " sample/s",
-                                           asStrong( samples2remove.collapsed.text ), ".");
+                                           report.result.s2r, ".");
         my.report.s1s5c  <- addTo( my.report.s1s5c,  report.s1p5c1.all, report.s1p5c2.all, report.s1p5c3.all,
                                    report.s1f5c1png, report.s1f5c2png, report.s1f5c3png, 
                                    report.s1f5c3html, report.s1f5c)
     
       } else if (length(grep("ValidSamples", my.QCdesc, fixed=TRUE)) > 0) { # We made the QC with only valid samples this time, given that samples2remove has some Samples
 
-      
+        report.result.s2r <- newResult( asParameter( "" ), "", asValue( samples2remove.collapsed.text ), isSignificant=TRUE );
         report.s1p5c.valid <- newParagraph( "After removing this/these ", 
                                             asStrong( samples2remove.count ), " sample/s ",
-                                            asStrong( samples2remove.collapsed.text ), ", the same plots were repeated \
+                                            report.result.s2r, ", the same plots were repeated \
                                          to see the new quality of the dataset finally used for the rest of the analysis.");
         my.report.s1s5c  <- addTo( my.report.s1s5c,  report.s1p5c.valid,
                                    report.s1f5c1png, report.s1f5c2png, report.s1f5c3png, 
@@ -959,19 +961,24 @@ doQCCustomNorm <- function(my.QCdata, my.QCdesc, my.QCsampleNames,  my.QCsampleC
     # Write the resulting files to the report
     # In case we made the QC with all samples again...
     if (samples2remove == "" || (length(grep("AllSamples", my.QCdesc, fixed=TRUE)) > 0)) {
+
+        report.result.s2r <- newResult( asParameter( "" ), "", asValue( samples2remove.collapsed.text ), isSignificant=TRUE );
+      
         report.s1p5c.all <- newParagraph( "A similar quality check has been performed on the samples after they have been normalized. \
                                     The results are consistent with those obtained with raw data confirming the decision \
                                     to remove ",
                                       asStrong( samples2remove.count ), " sample/s",
-                                      asStrong( samples2remove.collapsed.text ), ".");
+                                      report.result.s2r, ".");
         # Write the resulting files to the report
         my.report.s1s5c  <- addTo( my.report.s1s5c,  report.s1p5c,
                                 report.s1f5c1png, report.s1f5c2png, report.s1f5c3png, 
                                 report.s1f5c3html, report.s1f5c)
     } else if (length(grep("ValidSamples", my.QCdesc, fixed=TRUE)) > 0) { # We made the QC with only valid samples this time, given that samples2remove has some Samples
+        report.result.s2r <- newResult( asParameter( "" ), "", asValue( samples2remove.collapsed.text ), isSignificant=TRUE );
+      
         report.s1p5c.valid <- newParagraph( "After removing this/these ", 
                                             asStrong( samples2remove.count ), " sample/s ",
-                                            asStrong( samples2remove.collapsed.text ), ", the same plots were repeated \
+                                            report.result.s2r, ", the same plots were repeated \
                                        to see the new quality of the dataset finally used for the rest of the analysis.");
         # Write the resulting files to the report
         my.report.s1s5c  <- addTo( my.report.s1s5c,  report.s1p5c.valid,
@@ -998,7 +1005,7 @@ doQCBiocRaw <- function(my.QCdata, my.QCdesc, my.QCsampleNames,  my.QCsampleColo
                       do.logtransform = FALSE)
   
   # Add the section to the report 
-  my.report.s1s4a <- newSection( "Quality control (", my.QCdesc, ")" );
+  my.report.s1s4a <- newSubSection( "Quality control (", my.QCdesc, ")" );
   report.s1p4a1 <- newParagraph( "Different types of quality checks have been performed on the raw data \
                             before deciding that they were valid for the analysis. \
                             Indeed they have been repeated twice: once with raw data and \
@@ -1020,9 +1027,12 @@ doQCBiocRaw <- function(my.QCdata, my.QCdesc, my.QCsampleNames,  my.QCsampleColo
   } else {
     samples2remove.collapsed.text <- ""
   }
+  
+  report.result.s2r <- newResult( asParameter( "" ), "", asValue( samples2remove.collapsed.text ), isSignificant=TRUE );
+
   report.s1p4a3 <- newParagraph( "After reviewing the quality checks on raw data it has been decided to remove ", 
                                  asStrong( samples2remove.count ), " sample/s",
-                                 asStrong( samples2remove.collapsed.text ), ".");
+                                 report.result.s2r, ".");
   report.s1h4 <- newHtml( "<iframe src=\"", resultsRelDir, "/", my.QCddir, "/index.html\" frameborder=1 height=600 scrolling=auto width=\"900\"></iframe>", style="background-color: snow;" )
   my.report.s1s4a <- addTo( my.report.s1s4a, report.s1p4a1, report.s1p4a2, report.s1p4a3, report.s1h4 ) 
   return (my.report.s1s4a)
@@ -1046,7 +1056,7 @@ doQCBiocNorm <- function(my.QCdata, my.QCdesc, my.QCsampleNames,  my.QCsampleCol
   samples2remove.collapsed <- paste(samples2remove, collapse=", ") 
   
   # Add the section to the report 
-  my.report.s1s5a <- newSection( "Quality control (", my.QCdesc, ")" );
+  my.report.s1s5a <- newSubSection( "Quality control (", my.QCdesc, ")" );
   
   # Define here these 2 objects since they are common for both cases below of QCrType
   report.s1h5 <- newHtml( "<iframe src=\"", resultsRelDir, "/", my.QCdir, "/index.html\" frameborder=1 height=600 scrolling=auto width=\"900\"></iframe>", style="background-color: snow;" )
@@ -1074,19 +1084,21 @@ doQCBiocNorm <- function(my.QCdata, my.QCdesc, my.QCsampleNames,  my.QCsampleCol
     } else {
       samples2remove.collapsed.text <- ""
     }
+    report.result.s2r <- newResult( asParameter( "" ), "", asValue( samples2remove.collapsed.text ), isSignificant=TRUE );
     report.s1p5a3 <- newParagraph( "After reviewing the quality checks on normalized data it has been decided to remove ", 
                                    asStrong( samples2remove.count ), " sample/s",
-                                   asStrong( samples2remove.collapsed.text ), ".");
+                                   report.result.s2r, ".");
     my.report.s1s5a <- addTo( my.report.s1s5a, report.s1p5a, report.s1p5b, report.s1p5c,
                            report.s1h5, report.s1f5 )
     return (my.report.s1s5a)
     
   } else {
+    report.result.s2r <- newResult( asParameter( "" ), "", asValue( samples2remove.collapsed.text ), isSignificant=TRUE );
     my.report.s1p5a <- newParagraph( "A similar quality check has been performed on the samples after they have been normalized. \
                                   The results are consistent with those obtained with raw data confirming the decision \
                                   to remove ",
                                   asStrong( samples2remove.count ), " sample/s",
-                                  asStrong( samples2remove.collapsed.text ), ".");
+                                  report.result.s2r, ".");
     my.report.s1s5a <- addTo( my.report.s1s5a, report.s1p5a, report.s1h5, report.s1f5 ) 
     return (my.report.s1s5a)
     
@@ -1181,7 +1193,7 @@ if (QCnType == 1) {
 #############################
 # Display Feature selection Parameters
 #############################
-#report.s1s6 <- newSection( "Feature selection" );
+#report.s1s6 <- newSubSection( "Feature selection" );
 #report.s1p6 <- newParagraph( "Feature selection was performed with the following parameters");
 #report.s1t6 <- newTable( key.params, "Key parameters used");
 #report.s1s6 <- addTo( report.s1s6, report.s1p6, report.s1t6 ) # parent, child_1, ..., child_n 
@@ -1224,7 +1236,7 @@ outFile <- annotation.affy.hg.fileName.noext # Name set in DataPreprocessing.R
 outFileName <- paste0(outFile, ".csv")
 outFileNameRelPath <- file.path( resultsRelDir, outFileName )
   
-report.s1s7 <- newSection( "Feature annotation reference" );
+report.s1s7 <- newSubSection( "Feature annotation reference" );
 report.s1p7 <- newParagraph( "List of Transcript ID for the correspoding Probeset names and database name where to look for more information.");
 # Write the resulting files to the report
 report.s1file7a.csv <- newHtml( "File (CSV): <a href=", outFileNameRelPath,">",
@@ -1306,7 +1318,7 @@ registerDoParallel(cores=nCores-1)
 #############################################################
 # Add it to the report
 report.s2 <- newSection( "Results (Files)" );
-report.s2s1 <- newSection( "Top Tables" );
+report.s2s1 <- newSubSection( "Top Tables" );
 report.s2p1 <- newParagraph( "The analysis to select differentially expressed features (here a \"feature\" is a microRNA) \
                              has been based on adjusting a linear model with empirical bayes moderation \
                              of the variance. This is a technique similar to ANOVA which was specifically \
@@ -1479,7 +1491,7 @@ topTabLoop <- foreach (ii = 1:length(wCont)) %do% { # ii is the index of the lis
       outFileNameRelPath <- file.path( resultsRelDir, outFileName )
       
       # Create a new subsection (hidden by default) to display the html as an iframe
-      report.s2s1s1 <- newSection( names(compNamesAll)[ii], " | ", compNamesAll[[ii]][jj] );
+      report.s2s1s1 <- newSubSection( names(compNamesAll)[ii], " | ", compNamesAll[[ii]][jj] );
       
       # Write the resulting topTable files to the report
       report.s2s1h1 <- newHtml( "<iframe src=\"", outFileNameRelPath, "\" frameborder=1 height=500 scrolling=auto width=\"1000\"></iframe>", style="background-color: snow;" )
@@ -1506,7 +1518,7 @@ topTabLoop <- foreach (ii = 1:length(wCont)) %do% { # ii is the index of the lis
 ## NumFeatureChanged (formarly named NumGeneChanged )
 ###################################################
 # Add it to the report
-report.s2s2 <- newSection( "Number of features changed in each case" );
+report.s2s2 <- newSubSection( "Number of features changed in each case" );
 report.s2p2 <- newParagraph( "Summary table with the number of features changed in each case for each pValue Type (adjusted or not) and Cutoff");
 report.s2s2 <- addTo( report.s2s2, report.s2p2)
 
@@ -1589,9 +1601,12 @@ print.xtable(tex.table.nFC,
 # http://www.enpicom.com/visual-lab/interactive-volcano-plot/tutorial/
 # https://gist.github.com/danhalligan
 # Plot.ly: https://plot.ly/~ShmuelGleizer/206/volcano-plot-for-mutated-genes/
+# Through ggplot:
+## http://bioinformatics.knowledgeblog.org/2011/06/21/volcano-plots-of-microarray-data/
+## http://www.htmlwidgets.org/showcase_plotly.html
 
 # Add it to the report
-report.s2s3 <- newSection( "Volcano plots" );
+report.s2s3 <- newSubSection( "Volcano plots" );
 report.s2p3 <- newParagraph( "Files with the volcano plot for each comparison");
 report.s2s3 <- addTo( report.s2s3, report.s2p3)
 
@@ -1681,6 +1696,38 @@ for (ii in 1:length(wCont)) { # ii is the index of the list with the multiple co
     abline(v=c(-1,1))
     dev.off()
     
+#     # Attempt to produce interactive version of volcano plot
+#     # --------------------------
+#     gene_list <- topTable(fit.main, coef=colnames(cont.matrix)[ wCont[[ii]][jj] ],
+#                           number=nrow(fit.main), sort.by="logFC")
+#     require(ggplot2)
+#     require(htmlwidgets)
+#     require(plotly)
+#     py <- plot_ly(username='ueb', key='2gfg7ckkuz') # open plotly connection
+#     # See: https://plot.ly/r/getting-started/ for setting plotly variables for the R session
+#     Sys.setenv("plotly_username"="ueb") # it shouldn't be needed but it is in my machine "pentinella", for some reason
+#     Sys.setenv("plotly_api_key"="2gfg7ckkuz") # it shouldn't be needed but it is in my machine "pentinella", for some reason
+# 
+#     ##Highlight genes that have an absolute fold change > 1 and a p-value < Bonferroni cut-off
+#     gene_list$threshold = as.factor(abs(gene_list$logFC) > 1 & gene_list$adj.P.Val < 0.05)
+#     
+#     ##Construct the plot object
+#     g = ggplot(data=gene_list, aes(x=logFC, y=-log10(P.Value), colour=threshold)) +
+#       geom_point(alpha=0.4, size=1.75) +
+#     #  opts(legend.position = "none") +
+#       xlim(c(-10, 10)) + ylim(c(0, 15)) +
+#       xlab("log2 fold change") + ylab("-log10 p-value")
+#     #g
+#     d3g <- ggplotly(g, fileopt="new")
+#     # Create a local copy of the plot.ly chart as png
+#     d3.filename.noext <- outFileName.noext
+#     Png <- plotly_IMAGE(d3g, out_file = file.path(resultsDir, paste0(d3.filename.noext, ".png")))
+#     #?ggplotly
+# 
+#     saveWidget(d3g, file.path(resultsDir, paste0(d3.filename.noext, ".html")),
+#                selfcontained = TRUE, libdir = NULL)
+#     # --------------------------
+
     # Add it to the report as screenshot
     # figure file paths
     report.s2f3a <- newFigure( outFileNameRelPath.png, 
@@ -1700,7 +1747,7 @@ for (ii in 1:length(wCont)) { # ii is the index of the list with the multiple co
 ## Venn Diagram
 ###################################################
 # Add it to the report
-report.s2s4 <- newSection( "Venn Diagrams" );
+report.s2s4 <- newSubSection( "Venn Diagrams" );
 report.s2p4 <- newParagraph( "Files with the Venn Diagrams for the groups of comparisons (cases of more than one comparison in each group)");
 report.s2s4 <- addTo( report.s2s4, report.s2p4)
 
@@ -1870,7 +1917,7 @@ for (ii in 1:length(wCont)) { # ii is the index of the list with the multiple co
 ## Heatmaps
 ###################################################
 # Add it to the report
-report.s2s5 <- newSection( "Heatmap plots" );
+report.s2s5 <- newSubSection( "Heatmap plots" );
 report.s2p5 <- newParagraph( "Files with the Heatmap plots for each comparison");
 report.s2s5 <- addTo( report.s2s5, report.s2p5)
 
@@ -2082,7 +2129,7 @@ for (ii in 1:length(wCont)) { # ii is the index of the list with the multiple co
                                 file.path(resultsRelDir, d3.filename), "</a>",
                                 style="background-color: snow;" )
       report.s2s5 <- addTo( report.s2s5, report.s2f5d3)
-    } # end of plotly.heatmaps.report
+    } # end of d3.heatmaps.report
 
   } # end the loop of jj
 } # end of ii loop, the index of the list with the multiple comparison group names
@@ -2198,7 +2245,8 @@ report.r <- setCopyright( report.r, owner="UEB - VHIR", year=2016, statement="So
 # set contact information for error reports
 report.r <- setContactInformation( report.r, email="ueb@vhir.org", subject="Problem with this Report", message="Hello!\n\nPlease describe the issue here.", label="Report an Issue" );
 
-#report.r <- setCustomScreenCss( report.r, "paper.css" );
+#getCustomScreenCss(report.r)
+#report.r <- setCustomScreenCss( report.r, "my.css" );
 
 # Phase 3: render report to file
 writeReport( report.r, filename=report.filename ); # w/o extension
