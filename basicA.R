@@ -1476,14 +1476,14 @@ topTabLoop <- foreach (ii = 1:length(wCont)) %do% { # ii is the index of the lis
       outFileNameRelPath <- file.path( resultsRelDir, outFileName )
       filterable.dTable$save(outFileNameRelPath) 
     } # end of if create.dTable
-    
+
+    # Create a new subsection (hidden by default) to display the html as an iframe
+    report.s2s1s1 <- newSubSection( names(compNamesAll)[ii], " | ", compNamesAll[[ii]][jj] );
+
     report.dTable.topTab <- TRUE
     if (report.dTable.topTab == TRUE) {
       outFileName <- paste0(outFile, "-dTable.html")
       outFileNameRelPath <- file.path( resultsRelDir, outFileName )
-      
-      # Create a new subsection (hidden by default) to display the html as an iframe
-      report.s2s1s1 <- newSubSection( names(compNamesAll)[ii], " | ", compNamesAll[[ii]][jj] );
       
       # Write the resulting topTable files to the report
       report.s2s1h1 <- newHtml( "<iframe src=\"", outFileNameRelPath, "\" frameborder=1 height=500 scrolling=auto width=\"1000\"></iframe>", style="background-color: snow;" )
@@ -1492,7 +1492,7 @@ topTabLoop <- foreach (ii = 1:length(wCont)) %do% { # ii is the index of the lis
       report.s2s1s1 <- addTo( report.s2s1s1, report.s2s1h1, report.s2file1a.csv, report.s2file1b)
       report.s2s1 <- addTo( report.s2s1, report.s2s1s1)
     } else { # if no report of dTable, add at least, the link to the csv file
-      report.s2s1 <- addTo( report.s2s1, report.s2file1a.csv)
+      report.s2s1 <- addTo( report.s2s1, report.s2s1s1, report.s2file1a.csv)
     } # end of if report dTable
     
   } # end of the jj loop
@@ -1569,9 +1569,75 @@ report.s2t2c <- newTable( numFeatureChangedFC.df[,c(1,9:ncol(numFeatureChangedFC
                           file=outFileNameRelPath,
                           "Number of features changed between comparisons for given p.value cutoffs and methods (adjusted p.value or not). Last comparisons (G4)." ); # w/ caption
 
-# Then, add highlighting to the rows of the key.params
+# Then, add highlighting to the rows of the key.params. 
+# For the time being (as of Jan 13, 2016), this param rows.selected.idx is calculated assuming that all comparisons have the same params.
+## ToDo: calculate rows.selected.idx based on the values stored in key.params when they different between comparisons
+## key.params <- rbind(pValCutOff, adjMethod, minLogFoldChange)
+##
+## Example:
+# Parameter          G1.CAN.vs.CTL G2.Obesity G3.Metformin G4.ALL_bySubgroups
+# pValCutOff       "pValCutOff"       "0.01"        "0.01"     "0.01"       "0.01"            
+# adjMethod        "adjMethod"        "none"        "none"     "none"       "none"            
+# minLogFoldChange "minLogFoldChange" "0"           "0"        "0"          "0" 
+##
+## Some values for debugging purposes:
+#key.params[2,2:5] <- "adjusted"
+#key.params[1,2:5] <- "0.05"
+#key.params[2,2:5] <- "B"
+#key.params[1,2:5] <- "0"
+
+cases <- as.character(numFeatureChangedFC.df$X)
+# 1st step: Check if adjMethod is "none" 
+# (the string contains "P value" then; Indexes for rows 9-12)
+for (kk in 2:dim(key.params)[2]) {
+  # kk <- 2
+  # If we have non-adjusted p.values ("none"), do this:
+  if (length(grep("none", key.params[2,kk], fixed=TRUE)) > 0) { 
+    cases.p.idx <- grep("P value", cases, fixed=TRUE) # cases usually 9 10 11 12
+    # If we have a p.value of 0.05, do this:
+    if (length(grep("0.05", key.params[1,kk], fixed=TRUE)) > 0) { 
+      cases.p.t.idx <- grep("0.05", cases[cases.p.idx], fixed=TRUE)
+    } else if (length(grep("0.01", key.params[1,kk], fixed=TRUE)) > 0) {
+      # P.value of 0.01
+      cases.p.t.idx <- grep("0.01", cases[cases.p.idx], fixed=TRUE)
+    } else {
+      cat("Unrecognized p-value. Please, check your parameters. Expected values are \"0.01\", or \"0.05\"")
+      break;
+    }
+    
+  } else if (length(grep(paste(c("BH","adjusted"), collapse="|"), key.params[2,kk], ignore.case = TRUE)) > 0) {
+    # We have adjusted p.values ("BH", "adjusted", or similar), do this instead:
+    cases.p.idx <- grep(paste(c("BH","adjusted"), collapse="|"), cases, ignore.case = TRUE) # cases usually 3 4 5 6 7 8
+    # If we have a p.value of 0.01, do this:
+    if (length(grep("0.01", key.params[1,kk], fixed=TRUE)) > 0) { 
+      cases.p.t.idx <- grep("0.01", cases[cases.p.idx], fixed=TRUE)
+    } else if (length(grep("0.05", key.params[1,kk], fixed=TRUE)) > 0) {
+      # P.value of 0.05
+      cases.p.t.idx <- grep("0.05", cases[cases.p.idx], fixed=TRUE)
+    } else if (length(grep("0.25", key.params[1,kk], fixed=TRUE)) > 0) {
+      # P.value of 0.25
+      cases.p.t.idx <- grep("0.25", cases[cases.p.idx], fixed=TRUE)
+    } else {
+    cat("Unrecognized p-value. Please, check your parameters. Expected values are \"0.01\", \"0.05\", or \"0.25\"")
+    } # end of last edge ase of unrecognized value
+    
+  } else if (length(grep("B", cases, fixed=TRUE)) > 0) {
+    # We have the case for B values, do this instead:
+    cases.p.idx <- grep("B", cases, fixed=TRUE) # cases usually 1 2
+    cases.p.t.idx <- cases.p.idx
+  } else {   # end of case of adjusted p values.
+    cat("Unrecognized Adjusted method Please, check your parameters. Expected values are \"BH\" or \"adjusted\"")
+  }
+} # end of loop to find the row numbers of the case rows.selected.idx 
+
+## For Debugging purposes
 # rows.selected.idx <- c(9,10) 
-# key.params <- rbind(pValCutOff, adjMethod, minLogFoldChange)
+
+# Indexes that we need:
+rows.selected.idx <- cases.p.idx[cases.p.t.idx]
+## Double check the Corresponding Cases by hand if you want:
+#cases[cases.p.idx[cases.p.t.idx]]
+
 for ( rr in 1:length(rows.selected.idx) ) {
   # First part of the table. columns: all 
   for ( cc in 1:ncol(numFeatureChangedFC.df[,1:5]) ) {
@@ -2171,19 +2237,71 @@ for (ii in 1:length(wCont)) { # ii is the index of the list with the multiple co
   } # end the loop of jj
 } # end of ii loop, the index of the list with the multiple comparison group names
 
+###################################################
+## Genes potentially regulated by miRNA
+###################################################
+# Add it to the report
+report.s2s6 <- newSubSection( "Genes potentially regulated by miRNA" );
+report.s2s6p1 <- newParagraph( "The genes potentially regualted by miRNAs are indicated in the tables below, \
+                             one for each comparison, as in the '", asEmph("Top Table"), "' above.");
+report.s2s6p2 <- newParagraph( "The meaning \
+                             of the columns they contain is the following:");
 
-# ## ----listaArchivos,echo=FALSE,print=FALSE,results=tex, eval=TRUE---------
-# require(gdata)
-# listaArchivos <-read.table(file.path(resultsDir,"listaArchivos.txt"), head=TRUE, sep="\t") 
-# stopifnot(require(xtable))
-# x.big<-xtable(listaArchivos,
-#     label='listaArchivos',
-#     caption='Lista de archivos generados en este análisis')
-# print(x.big,tabular.environment='longtable',floating=FALSE)
-# 
-# ## ----listaArchivos2html,echo=FALSE,print=FALSE, eval=TRUE----------------
-# require(hwriter)
-# hwrite(listaArchivos,file.path(resultsDir, "listaArchivos.html"))
+report.s2s6 <- addTo( report.s2s6, report.s2s6p1, report.s2s6p2)
+
+setwd(baseDir)
+# Remove table if in memory already
+if (exists("genRegTab")) rm(genRegTab); genRegTab <- list()
+
+# Create genRegTab object
+# ----------------------
+for (ii in 1:length(wCont)) { # ii is the index of the list with the multiple comparison group names
+  #wCont[ii]
+  for (jj in 1:length(wCont[[ii]])) { # jj is the index of the list with the single comparisons from within each group of comparisons
+    
+    genRegTab[[ wCont[[ii]][jj] ]] <-  data.frame(rbind(c("10","20","30"),
+                                                        c("40","50","60")))
+    # XXX
+    
+    create.Table.genReg <- TRUE
+    if (create.Table.genReg == TRUE) {
+      # Write the resulting table to disk
+      outFile <- paste("Genes.potentially.regulated.by.miRNA.in.comparison.",
+                       colnames(cont.matrix)[ wCont[[ii]][jj] ], sep="")
+      outFileName <- paste0(outFile, ".csv")
+      outFileNameRelPath <- file.path( resultsRelDir, outFileName )
+      
+      
+      write.csv2(genRegTab[[ wCont[[ii]][jj] ]], 
+                 file=outFileNameRelPath )
+      # Write the resulting files to the report
+      report.s2s6file1a.csv <- newHtml( "File (CSV): <a href=", outFileNameRelPath,">",
+                                      outFileNameRelPath, "</a>",
+                                      style="background-color: snow;" )
+    }
+
+    # Create a new subsection (hidden by default) to display the html as an iframe
+    report.s2s6s1 <- newSubSection( names(compNamesAll)[ii], " | ", compNamesAll[[ii]][jj] );
+    
+    report.Table.genReg <- FALSE
+    if (report.Table.genReg == TRUE) {
+      outFileName <- paste0(outFile, "-Table.html")
+      outFileNameRelPath <- file.path( resultsRelDir, outFileName )
+      
+      # Write the resulting topTable files to the report
+      report.s2s6h1 <- newHtml( "<iframe src=\"", outFileNameRelPath, "\" frameborder=1 height=500 scrolling=auto width=\"1000\"></iframe>", style="background-color: snow;" )
+      report.s2s6file1b <- newHtml( "File (HTML): <a href=\"", outFileNameRelPath,"\">", outFileNameRelPath, "</a>",
+                                  style="background-color: snow;" )
+      report.s2s6s1 <- addTo( report.s2s6s1, report.s2s6h1, report.s2s6file1a.csv, report.s2s6file1b)
+      report.s2s6 <- addTo( report.s2s6, report.s2s6s1)
+    } else { # if no report of dTable, add at least, the link to the csv file
+      report.s2s6 <- addTo( report.s2s6, report.s2s6s1, report.s2s6file1a.csv)
+    } # end of if report dTable
+    
+  }
+}
+
+
 
 ###################################################
 ## Acknowledgement
@@ -2239,13 +2357,13 @@ if (QCrType !=0 && QCnType !=0){
                         report.s1s7); # sections s1s3 and s1s6 have been removed from the report by Alex.
   } else { # There are some samples removed, so that a section report.s1s5.valid needs to be added
     report.s1 <- addTo( report.s1, report.s1s1, report.s1s2, report.s1s4, report.s1s5.all,
-                        report.s1s5.valid, report.s1s7); # sections s1s3 and s1s6 have been removed from the report by Alex.
+                        report.s1s5.valid, report.s1s7); # sections s1s3 have been removed from the report by Alex.
   }
 } else if (QCrType ==0 && QCnType !=0) {
   # Check if samples2remove has some Sample so that there is a section report.s1s5a.valid that needs to be added also
   if (samples2remove == ""){
     report.s1 <- addTo( report.s1, report.s1s1, report.s1s2, report.s1s5.all,
-                        report.s1s7); # sections s1s3 and s1s6 have been removed from the report by Alex.
+                        report.s1s7); # sections s1s3 have been removed from the report by Alex.
   } else { # There are some samples removed, so that a section report.s1s5.valid needs to be added
     report.s1 <- addTo( report.s1, report.s1s1, report.s1s2, report.s1s5.all,
                         report.s1s5.valid,report.s1s7); # sections s1s3 and s1s6 have been removed from the report by Alex.
@@ -2263,7 +2381,7 @@ if (QCrType !=0 && QCnType !=0){
   report.s1 <- addTo( report.s1, report.s1s1, report.s1s2, report.s1s7); # sections s1s3 and s1s6 have been removed from the report by Alex.
 }
 #rm(report.r); rm(report.s1)
-report.s2 <- addTo( report.s2, report.s2s1, report.s2s2, report.s2s3, report.s2s4, report.s2s5 );
+report.s2 <- addTo( report.s2, report.s2s1, report.s2s2, report.s2s3, report.s2s4, report.s2s5, report.s2s6);
 report.r <- addTo( report.r, report.s0a, report.s0b, report.s1, report.s2 );
 report.r <- addTo( report.r, report.s10 ); # "Other considerations" section, at the end.
 
@@ -2340,9 +2458,18 @@ replaceResult <- foreach (ff = 1:length(filenames)) %dopar% {
   yy <- gsub( base_path_in_local_urls1, "", xx )
   yy <- gsub( base_path_in_local_urls2, "", yy )
   cat(yy, file=filenames[ff], sep="\n")
-  
 }
 
+# Make some replacements to the Nozzle report once generated
+report.filename.full <- file.path(baseDir, paste0(report.filename, ".html"))
+zz <- readLines(report.filename.full)
+string2change.from  <- "http://www.github.com/parklab/Nozzle"
+string2change.to    <- "https://cran.r-project.org"
+zz <- gsub( string2change.from, string2change.to, zz )
+string2change.from  <- "Made with Nozzle"
+string2change.to    <- "Made with R"
+zz <- gsub( string2change.from, string2change.to, zz )
+cat(zz, file=report.filename.full, sep="\n")
 
 # copy over the results folder the other main documents produced elsewhere
 files2create <- c(study.proposalFileName, study.reportFileName)
