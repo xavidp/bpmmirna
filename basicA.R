@@ -51,8 +51,9 @@ column2design <- 6   # Columna del ''targets'' en que es basa la matriu de disse
 # En dissenys de més d'un factor nombre de grups = nivells(1)*nivells(2)*...
 
 datacreacioTargets <- "YYYY-MM-DD1"             # format "aaa-mm-dd"
-dataInici <- "YYYY-MM-DD2"
-
+date.start <- "YYYY-MM-DD2"
+Sys.setlocale("LC_TIME", "C") # Needed for the date/time be shown in English 
+date.report <- format(Sys.Date(), format="%B %d, %Y")
 analysisTitle <- "Differentially expressed miRNA between ... and ..."   # Titol de l'estudi (en angles)
 analysts <- "Xavier de Pedro, Ferran Brians&oacute; and Alex S&aacute;nchez"                               # Nom analista/es i Alex Sanchez
 
@@ -71,7 +72,8 @@ samples2remove <- "" # c("41.CEL","42.CEL","44.CEL")
 
 # the name of the main html file where the list of files produced is shown.
 report.filename <- "ResultsFiles"
-study.proposalFileName <- "YYYY-MM-XXX-YYY-ANNN-StudyBudget.pdf"
+study.proposalFileName <- "YYYY-MM-XXX-YYY-ANNN-Proposal.pdf"
+study.budgetFileName <- "YYYY-MM-XXX-YYY-ANNN-Budget.pdf"
 study.reportFileName <- "YYYY-MM-XXX-YYY-ANNN-MainReport.pdf"
 
 # Choice of Quality Control Type 
@@ -126,6 +128,7 @@ pCRAN <- c("devtools",
               "rjson",
               "d3heatmap",
               "htmlwidgets",
+              "googleVis",
               "doMC")
 
 if( any(!pCRAN %in% rownames(installed.packages())) ){
@@ -165,9 +168,10 @@ if (file.exists(paste0(report.filename, ".RData"))) file.remove(paste0(report.fi
 # Phase 1: create report elements
 report.r <- newCustomReport( "Results Files for Analysis ", aID );
 #report.r <- setReportSubTitle( report.r, "Analysis of differentially expressed miRNA between ... cancer and ... control samples from Affymetrix miRNA 4.0 plate arrays");
+report.s0.p <- newParagraph( "\"", analysisTitle, "\". ", date.report);
 
 report.s0a <- newSection( "Overview" );
-report.s0a.p1 <- newParagraph( "Results Files, Version 1. Analysis: ", analysisTitle );
+report.s0a.p1 <- newParagraph( "Results Files, Version 1." );
 report.s0a.p2 <- newParagraph( "This html file contains links to a series of files with results generated \
                     in the analyses performed in the Statistics and Bioinformatics Unit.");
 report.s0a.p3 <- newParagraph( "Briefly stated the main goal of the study is \
@@ -182,10 +186,12 @@ report.s0a.p5 <- newParagraph( "Most results are stored as ", asStrong(".txt"), 
                     general purpose office suits, internet browsers or pdf readers." );
  
 report.s0b <- newSection( "Main Documents" );
+study.budgetRelFileName <- file.path(resultsRelDir, study.budgetFileName)
+report.s0b.p1 <- newParagraph( "Study budget: ", asLink(study.budgetRelFileName, study.budgetRelFileName ));
 study.proposalRelFileName <- file.path(resultsRelDir, study.proposalFileName)
-report.s0b.p1 <- newParagraph( "Study proposal: ", asLink(study.proposalRelFileName, study.proposalRelFileName ));
+report.s0b.p2 <- newParagraph( "Study proposal: ", asLink(study.proposalRelFileName, study.proposalRelFileName ));
 study.reportRelFileName <- file.path(resultsRelDir, study.reportFileName)
-report.s0b.p2 <- newParagraph( "Report with description of methodology and main results: ", asEmph("Not available yet")) ;
+report.s0b.p3 <- newParagraph( "Report with description of methodology and main results: ", asEmph("Not available yet")) ;
                                #, asLink(study.reportRelFileName, study.reportRelFileName ));
 
 report.s1 <- newSection( "Base information" );
@@ -218,13 +224,70 @@ if (length(row2remove.idx) > 0) {
 }
 
 report.s1p1 <- newParagraph( "The table below -usually known as the 'Targets' table- shows the classification \
-                    of each sample, that is if the sample corresponds to an affected ('Cancer') or \
+                    of each sample, that is if the sample corresponds to an affected ('CAN') or \
                     unaffected ('CTL') patient and to which subtype it has been assigned. \
                     The table also contains information about how the sample is labelled (to be shown in plots) \
                     or which colors are used in plots for each Group-Subgroup combination.");
 report.s1t1 <- newTable( targets.all, "Targets file" ); # w/ caption
-report.s1s1 <- addTo( report.s1s1, report.s1p1, report.s1t1 )
 
+# Assign file name for the targets.all.colored, for use in its creation of reporting in the the noozle report
+outFileName <- paste0("targets.", aID,"all.colored.html")
+outFileNameRelPath <- file.path( resultsRelDir, outFileName )
+
+# Clone the targets file from dataDir to resultsDir
+f2c <- c(targetsFileName)
+from  <- file.path(dataDir, f2c)
+to    <- file.path(resultsDir, f2c)
+if (!file.exists(to) && file.exists(from)) {
+  resultsFileLink <- file.link(from, to)
+} # end if clause for file copy 
+
+create.targets.all.colored <- T
+if (create.targets.all.colored == TRUE) {
+  require(googleVis)
+  # Make a clone of targets.all, with a first extra column for id or samples (with 2 digits for easy re-sorting later on)
+  targets.all.colored <- cbind(sprintf("%02d", as.numeric(rownames(targets.all))), targets.all) 
+  colnames(targets.all.colored)[1] <- "#"
+  # Prepare column colores to accepted new strings as html div with that bg color and black font with white shadow 
+  targets.all.colored$Colores <- as.character(targets.all$Colores)
+  
+  ## Loop to process all cells of Colors
+  for (cc in 1:length(targets.all$Colores)) { # cc stands for cell in the table
+    oldstring <- targets.all$Colores[cc]
+    newstring <- paste0("<div style=\"background-color:", targets.all$Colores[cc],
+                        ";text-shadow: 1px 1px white;\">",
+                        targets.all$Colores[cc], "</div>")
+    targets.all.colored$Colores[cc] <- newstring
+  }
+  ## Table with enabled paging
+  gvT <- gvisTable(targets.all.colored, options=list(page='disable',
+                                             height='automatic',
+                                             width='automatic'))
+  # plot(gvT)
+  # save the googlevis table somehow to disk
+  
+  # Display just the chart in the generated html
+  cat(gvT$html$chart, file=outFileNameRelPath)
+  ## Display the chart and the googleVis references below, in the generated html
+  #cat(unlist(gvT$html), file=outFileNamePath)
+}
+
+report.targets.all.colored <- T
+if (report.targets.all.colored == TRUE) {
+  # Write the resulting files to the report
+  iframe.height <- 22*dim(targets.all.colored)[1]
+  report.s1s1h <- newHtml( "<iframe src=\"", outFileNameRelPath, "\" frameborder=0 height=", iframe.height," scrolling=auto width=\"100%\"></iframe>", style="background-color: white" )
+  report.s1t1trimed <- newTable( colnames(targets.all), "Targets file", file=file.path(resultsRelDir, targetsFileName) ); # w/ caption
+  report.s1s1bfile <- newHtml( "File (HTML): <a href=\"", outFileNameRelPath,"\">", outFileNameRelPath, "</a>",
+                               style="background-color: snow;" )
+  # Add to the report
+  report.s1s1 <- addTo( report.s1s1, report.s1p1 )
+  report.s1s1 <- addTo( report.s1s1, report.s1s1h )
+  report.s1s1 <- addTo( report.s1s1, report.s1t1trimed, report.s1s1bfile )
+  
+} else {
+  report.s1s1 <- addTo( report.s1s1, report.s1p1, report.s1t1 )
+}
 
 # XXX Si haguessin efectes batch, o altres efectes a tenir en compte com a factors, caldria afegir noves línies aquí.
 lev <- targets[,column2design]  # nom de la columna del targets.txt que conte
@@ -291,6 +354,51 @@ if (file.exists(file.path(dataRelDir, paste0("rma.", aID, ".ec.annotated.txt")))
     , data.table=FALSE   # set to FALSE to produce a data.frame
   )
   #colnames(data.rma.ec.annot)
+  # Last columns are:
+  # [1] "Probe Set ID"            "10_B07_P2.CEL"           "11_C05.CEL"              "12_C07.CEL"             
+  # (...)
+  # [42]  "Species Scientific Name" "Sequence Type"           "Sequence Source"        
+  # [45] "Transcript_ID"           "Alignments"              "Probe Set Name"          "Accession"              
+  # [49] "Genome Context"          "Target Genes"
+  # head(data.rma.ec.annot[,42:50])
+  # data.rma.ec.annot[1,42:50]
+  # 
+  #my.string <- "foo /// bar"
+  #my.genes <- unlist(strsplit(my.string, " /// ", fixed = TRUE))
+  #length(my.string)
+  #Sys.getlocale()
+  data.col.sp.idx <- which(colnames(data.rma.ec.annot)=="Species Scientific Name")
+  # Filter first the data set in (data.rma.ec.annot) for records valids for human and non-control ones.
+  # so that top tables and putative gene lists do not contain them.
+  data.rma.ec.annot <- data.rma.ec.annot[data.rma.ec.annot$"Species Scientific Name" == "Homo sapiens",]
+  # First case to check for controls
+  data.rma.ec.annot.control.idx <- grep("Spike-in controls", data.rma.ec.annot$"Sequence Type", fixed=TRUE)
+  # Check if there is anything to remove, otherwise the whole df becomes empty!
+  if (length(data.rma.ec.annot.control.idx) > 0) {
+    data.rma.ec.annot <- data.rma.ec.annot[-data.rma.ec.annot.control.idx,]
+  }
+  # Second case to check for controls
+  data.rma.ec.annot.control2.idx <- grep("spike_in-control", data.rma.ec.annot$"Probe Set Name", fixed=TRUE)
+  # Check if there is anything to remove, otherwise the whole df becomes empty!
+  if (length(data.rma.ec.annot.control2.idx) > 0) {
+    data.rma.ec.annot <- data.rma.ec.annot[-data.rma.ec.annot.control2.idx,]
+  }
+  
+  # Get the first column (Probe Set Name), and all columns after the expression values for the CEL files;
+  # the first of these columns is "Species Scientific Name" (data.col.sp.idx), adn the last one is
+  # the number of columns: ncol(data.rma.ec.annot)
+  data.p.genes <- data.rma.ec.annot[,c(1,data.col.sp.idx:ncol(data.rma.ec.annot))]# data.p.genes stands for putative genes
+  data.p.genes <- data.p.genes[,c(1,4:10)]# data.p.genes stands for putative genes
+  
+  #dim(data.p.genes)
+  #table(data.p.genes$"Species Scientific Name")
+  #dim(data.p.genes[data.p.genes$"Species Scientific Name" == "Homo sapiens",])
+  # dim(data.p.genes); colnames(data.p.genes); str(data.p.genes)
+  #length(data.p.genes$"Probe Set Name")
+  #length(unique(data.p.genes$"Probe Set Name"))
+  #Sys.setlocale(locale="C")
+  #data.p.genes$"Target Genes"    = unlist(strsplit(data.rma.ec.annot[,50], " /// ", fixed = TRUE))
+  #str(data.p.genes)
   psn.col.idx <- which(colnames(data.rma.ec.annot)=="Probe Set Name")
   rownames(data.rma.ec.annot) <- as.character(data.frame(data.rma.ec.annot)[,psn.col.idx])
   
@@ -535,8 +643,10 @@ report.s1p2a <- newParagraph( "The researchers have indicated which comparisons 
 
 report.s1p2b <- newParagraph( "For each individual comparison the following information is provided:");
 report.s1l1 <- newList( isNumbered=FALSE,
-                newParagraph( "A 'Top Table' containing the list of all features analyzed, sorted from smallest to greatest P-value." ),
-                newParagraph( "A 'Volcano plot' showing how big -or how small- is the biological or the statistical effect." )
+                newParagraph( "A ", asStrong("'Top Table'"), " containing the list of all features analyzed, sorted from smallest to greatest P-value." ),
+                newParagraph( "A ", asStrong("'Volcano plot'"), " showing how big -or how small- is the biological or the statistical effect." ),
+                newParagraph( "A list of ", asStrong("'Potentially Regulated Genes'"), " by the significant miRNA obtained in the 'Top Table' \
+                              matching the selection parameters chosen for this analysis." )
                 ); # end of list
 
 #   list <- newList( isNumbered=FALSE,
@@ -550,18 +660,18 @@ report.s1l1 <- newList( isNumbered=FALSE,
 #                 newParagraph( "Or unnumbered." )  
 #                 ); # end of list		
 
-report.s1p2c <- newParagraph( "See the text in sections 'Top Table' and 'Volcano Plot' \
-                              for a more detailed description of their content and meaning. \
+report.s1p2c <- newParagraph( "See the text in sections ", asEmph("'Top Table'"), ", ", asEmph("'Volcano plot'"), " \
+                              and ", asEmph("'Potentially Regulated Genes'"), " for a more detailed description of their content and meaning. \
                               Besides the previous tables and plots, for each group of comparisons \
                               it is provided:");
 report.s1l2 <- newList( isNumbered=FALSE,
-                        newParagraph( "A 'Venn Diagram' showing the number of features that have been selected \
+                        newParagraph( "A ", asStrong("'Venn Diagram'"), " showing the number of features that have been selected \
                                       in each comparison (according to a standard cutoff) and \
                                       allowing to determine how many of these features are in common \
                                       between the different comparisons in the same group. \
                                       Obviously these Venn Diagrams are only depicted \
                                       if there is more than one comparison in the group." ),
-                        newParagraph( "A 'Heat Map' showing -according to a color code- \
+                        newParagraph( "A ", asStrong("'Heat Map'"), " showing -according to a color code- \
                                       if each feature selected in this group of comparisons \
                                       is up or down regulated in each sample that has been included \
                                       in the comparison." )
@@ -601,7 +711,7 @@ colnames(key.params) <- c("Parameter", colnames(df.compNamesAll))
 # Create a latex version of the R object
 tex.table.key.params <-xtable(key.params,
                    label='key.params',
-                   caption='Key parameters used in this analysis')
+                   caption='Key parameters used in this analysis for the Venn Diagrams, Heatmap Plots and lists of potentially regulated genes')
 #print(tex.table, tabular.environment='longtable', floating=FALSE, size="small")
 print.xtable(tex.table.key.params, 
              file = file.path(reportsDir, paste0("tex.key.params.tex")),
@@ -1641,32 +1751,32 @@ rows.selected.idx <- cases.p.idx[cases.p.t.idx]
 for ( rr in 1:length(rows.selected.idx) ) {
   # First part of the table. columns: all 
   for ( cc in 1:ncol(numFeatureChangedFC.df[,1:5]) ) {
-  result1 <- newResult( "", isSignificant=TRUE );
+  result1 <- newResult( "", isSignificant=FALSE );
   report.s2t2a <- addTo(report.s2t2a, result1, row=rows.selected.idx[rr], column=cc );
   }
   # Second part of the table. columns: all 
   for ( cc in 1:ncol(numFeatureChangedFC.df[,c(1,6:8)]) ) {
-    result1 <- newResult( "", isSignificant=TRUE );
+    result1 <- newResult( "", isSignificant=FALSE );
     report.s2t2b <- addTo(report.s2t2b, result1, row=rows.selected.idx[rr], column=cc );
   }
   # Third part of the table. columns: all 
   for ( cc in 1:ncol(numFeatureChangedFC.df[,c(1,9:ncol(numFeatureChangedFC.df))]) ) {
-    result1 <- newResult( "", isSignificant=TRUE );
+    result1 <- newResult( "", isSignificant=FALSE );
     report.s2t2c <- addTo(report.s2t2c, result1, row=rows.selected.idx[rr], column=cc );
   }
 }
 
 # Display Feature selection Parameters
 report.s2s2p6 <- newParagraph( "Feature selection was performed with the following parameters for the generation of \
-                                Venn Diagrams and Heatmap Plots below.");
-report.s2s2t6 <- newTable( key.params[1:2,], "Feature selection parameters for the Venn Diagrams and Heatmap Plots");
+                                ", asStrong("Venn Diagrams"), ", ", asStrong("Heatmap Plots"), " and ", asStrong("lists of potentially regulated genes"), ", shown further down in this report.");
+report.s2s2t6 <- newTable( key.params[1:2,], "Feature selection parameters for the Venn Diagrams, Heatmap Plots  and lists of potentially regulated genes");
 
 # Define a few objects as references in the report, so that they can be cross referenced.
 #report.r <- addToReferences( report.r, report.s2t2a, report.s2s2t6 );
 
 # Use the defined references
 report.s2s2p1 <- newParagraph( "Summary table with the number of features changed in each case \
-                               for each pValue Type (adjusted or not) and Cutoff (", asReference( 
+                               for each ", asStrong("pValue Type"), " (adjusted or not) and ", asStrong("Cutoff"), " (", asReference( 
                                  report.s2t2a ), " and subsequent similar tables)");
 report.s2s2p2 <- newParagraph( "Chosen parameters for pValue and Cutoff are shown in \
                                ", asReference(report.s2s2t6 ), " \
@@ -1708,10 +1818,44 @@ print.xtable(tex.table.nFC,
 ## http://bioinformatics.knowledgeblog.org/2011/06/21/volcano-plots-of-microarray-data/
 ## http://www.htmlwidgets.org/showcase_plotly.html
 
+###################################################
+# Function VolcanoPlot from limma
+#------------------------------------------------------------------
+volcanoplot2 <- function (fit, coef = 1, highlight = 0, names = fit$genes$ID, 
+          xlab = "Log Fold Change", ylab = "Log Odds", pch = 16, cex = 0.35, 
+          ...) 
+{
+  if (!is(fit, "MArrayLM")) 
+    stop("fit must be an MArrayLM")
+  if (is.null(fit$lods)) 
+    stop("No B-statistics found, perhaps eBayes() not yet run")
+  x <- as.matrix(fit$coef)[, coef]
+  y <- as.matrix(fit$lods)[, coef]
+  plot(x, y, xlab = xlab, ylab = ylab, pch = pch, cex = cex, 
+       ...)
+  if (highlight > 0) {
+    if (is.null(names)) 
+      names <- 1:length(x)
+    names <- as.character(names)
+    o <- order(y, decreasing = TRUE)
+    i <- o[1:highlight]
+    text(x[i], y[i], labels = substring(names[i], 1, 15), 
+         cex = 0.8, col = "blue")
+  }
+  invisible()
+}
+
 # Add it to the report
 report.s2s3 <- newSubSection( "Volcano plots" );
-report.s2p3 <- newParagraph( "Files with the volcano plot for each comparison");
-report.s2s3 <- addTo( report.s2s3, report.s2p3)
+report.s2p3a <- newParagraph( "Files with the volcano plot for each comparison.");
+report.s2p3b <- newParagraph( "This type of plot arranges genes along dimensions of biological and statistical significance. The \
+                              first (horizontal) dimension is the fold change between the two groups (on a \
+                              log scale, so that up and down regulation appear symmetric), and the second \
+                              (vertical) axis represents the p-value from the moderated-test on a negative log \
+                              scale, so smaller p-values appear higher up. The first axis indicates biological \
+                              impact of the change; the second indicates the statistical evidence, or reliability \
+                              of the change.");
+report.s2s3 <- addTo( report.s2s3, report.s2p3a, report.s2p3b)
 
 ## ----volcanos, results=tex,echo=FALSE, eval=TRUE-------------------------
 for (ii in 1:length(wCont)) { # ii is the index of the list with the multiple comparison group names
@@ -1740,11 +1884,15 @@ for (ii in 1:length(wCont)) { # ii is the index of the list with the multiple co
     # E.g.: "14q0" instead of "14q0_st". Or "hsa-let-7a-5p" instead of "MIMAT0000062_st"  
     #head(volcanoPointNames)
     #head(annotation.affy.hg)
-    df1 <- data.frame(volcanoPointNames)
-    colnames(df1) <-"Probe.Set.Name"
-    df2 <- annotation.affy.hg
-    volcanoPointNames_df <- merge(df1,df2, all.x=TRUE)
-    volcanoPointNames_df <- volcanoPointNames_df$Transcript_ID
+    #colnames(data.p.genes)
+    #colnames(dicc)
+    #table(data.p.genes$"Transcript ID(Array Design)" == dicc$Transcript_ID)
+#     df1 <- data.frame(volcanoPointNames)
+#     colnames(df1) <-"Probe.Set.Name"
+#     df2 <- annotation.affy.hg
+#     volcanoPointNames_df <- merge(df1,df2, all.x=TRUE)
+#     volcanoPointNames_df <- volcanoPointNames_df$Transcript_ID
+    volcanoPointNames <- data.p.genes$"Transcript ID(Array Design)"
     #length(volcanoPointNames_df)
     
 #     # ---------------------------------
@@ -1787,14 +1935,14 @@ for (ii in 1:length(wCont)) { # ii is the index of the list with the multiple co
                                 
     # Generate the pdf
     pdf(file=outFileName.pdf, paper="special", width=6, height=6)
-    volcanoplot(fit.main, coef= wCont[[ii]][jj] , highlight=10, names=volcanoPointNames_df, 
+    volcanoplot2(fit.main, coef= wCont[[ii]][jj] , highlight=10, names=volcanoPointNames, 
                 main=paste("Differentially expressed features in ", my.compName[[ii]], sep="\n"))
     abline(v=c(-1,1))
     dev.off()
     #cat("\\includegraphics{", file, "}\n\n", sep="")
     # Generate the png
     png(file=outFileName.png)
-    volcanoplot(fit.main, coef= wCont[[ii]][jj] , highlight=10, names=volcanoPointNames_df, 
+    volcanoplot2(fit.main, coef= wCont[[ii]][jj] , highlight=10, names=volcanoPointNames, 
                 main=paste("Differentially expressed features in ", my.compName[[ii]], sep="\n"))
     abline(v=c(-1,1))
     dev.off()
@@ -1851,8 +1999,11 @@ for (ii in 1:length(wCont)) { # ii is the index of the list with the multiple co
 ###################################################
 # Add it to the report
 report.s2s4 <- newSubSection( "Venn Diagrams" );
-report.s2p4 <- newParagraph( "Files with the Venn Diagrams for the groups of comparisons (cases of more than one comparison in each group)");
-report.s2s4 <- addTo( report.s2s4, report.s2p4)
+report.s2p4a <- newParagraph( "Files with the Venn Diagrams for the groups of comparisons.");
+report.s2p4b <- newParagraph( "These type of diagram shows the number of features in common \
+                              to each set of comparisons (i.e. only for cases of more than one \
+                              comparison in each group).");
+report.s2s4 <- addTo( report.s2s4, report.s2p4a, report.s2p4b)
 
 if(!require(VennDiagram)) install.packages("VennDiagram")
 require(VennDiagram)
@@ -2021,8 +2172,17 @@ for (ii in 1:length(wCont)) { # ii is the index of the list with the multiple co
 ###################################################
 # Add it to the report
 report.s2s5 <- newSubSection( "Heatmap plots" );
-report.s2p5 <- newParagraph( "Files with the Heatmap plots for each comparison");
-report.s2s5 <- addTo( report.s2s5, report.s2p5)
+report.s2p5a <- newParagraph( "Files with the Heatmap plots for each comparison");
+report.s2p5b <- newParagraph( "Features selected as being differentially expressed were clustered to look for \
+                                common patterns of expression. \
+                                Hierarchical clustering with euclidean distance \
+                                was used to form the groups and heatmaps (colour coded graphs with samples \
+                                in columns and features in rows) were used to visualize them in this type of plots. \
+                                Intensities are colour coded in order to highlight possible expression patterns between conditions. \
+                                The color code (palette) is usually: 'blue' for low values, 'red' for high expression values and 'white' \
+                                for non-expression, although this may be easily changed upon request.");
+
+report.s2s5 <- addTo( report.s2s5, report.s2p5a, report.s2p5b)
 
 ## ----prepareData, eval=TRUE----------------------------------------------
 if (exists("exprs2cluster")) rm(exprs2cluster); exprs2cluster <- list()
@@ -2241,13 +2401,26 @@ for (ii in 1:length(wCont)) { # ii is the index of the list with the multiple co
 ## Genes potentially regulated by miRNA
 ###################################################
 # Add it to the report
-report.s2s6 <- newSubSection( "Genes potentially regulated by miRNA" );
+report.s2s6 <- newSubSection( "Potentially regulated genes" );
 report.s2s6p1 <- newParagraph( "The genes potentially regualted by miRNAs are indicated in the tables below, \
-                             one for each comparison, as in the '", asEmph("Top Table"), "' above.");
-report.s2s6p2 <- newParagraph( "The meaning \
-                             of the columns they contain is the following:");
+                             one for each comparison, as in the previous '", asEmph("Top Table"), "'.");
+report.s2s6p2 <- newParagraph( "This annotation is obtained from '", asEmph("Affymetrix"), "' ",
+                                asLink("http://www.affymetrix.com/support/technical/annotationfilesmain.affx", "annotation databases" ),
+                                " through its software '", asLink("http://www.affymetrix.com/estore/browse/level_seven_software_products_only.jsp?productId=131414#1_1", "Expression Console"), "'. \
+                               The columns of the following ", asEmph(".csv"), " files are:");
 
-report.s2s6 <- addTo( report.s2s6, report.s2s6p1, report.s2s6p2)
+report.s2s6l1 <- newList( isNumbered=FALSE, 
+                        newParagraph( asStrong("Probe.Set.Name"), " is the text identifier of each feature in the array."),
+                        newParagraph( asStrong("Probe.Set.ID"), " is the numeric identifier of each feature in the array."),
+                        newParagraph( asStrong("Sequence.Source"), " is the database where the annotation information was taken from."),
+                        newParagraph( asStrong("Transcript.ID(Array.Design)"), " is the identifier of each feature in the reference database."),
+                        newParagraph( asStrong("Alignments"), " is the chromosome, position and strand where the microRNA is located."),
+                        newParagraph( asStrong("Accession"), " is the only truely stable identifier for an entry -- miRNA names may change from those published as relationships between sequences become clear."),
+                        newParagraph( asStrong("Genome.Context"), " refers to the genome regions expected to be regulated by the miRNA. Records are splitted with three slashes \" /// \""),
+                        newParagraph( asStrong("Target.Genes"), " is the list of Genes potentially regulated by the microRNA. Records are splitted with three slashes \" /// \"")
+                        );
+
+report.s2s6 <- addTo( report.s2s6, report.s2s6p1, report.s2s6p2, report.s2s6l1)
 
 setwd(baseDir)
 # Remove table if in memory already
@@ -2259,8 +2432,62 @@ for (ii in 1:length(wCont)) { # ii is the index of the list with the multiple co
   #wCont[ii]
   for (jj in 1:length(wCont[[ii]])) { # jj is the index of the list with the single comparisons from within each group of comparisons
     
-    genRegTab[[ wCont[[ii]][jj] ]] <-  data.frame(rbind(c("10","20","30"),
-                                                        c("40","50","60")))
+#     genRegTab[[ wCont[[ii]][jj] ]] <-  data.frame(rbind(c("10","20","30"),
+#                                                         c("40","50","60")))
+#     
+    if (key.params[2,2] == "none") {
+      p.value.column = "P.Value"
+    } else {
+      p.value.column = "adj.P.Val"
+    }
+    # colnames(topTab[[ wCont[[ii]][jj] ]])
+    # [1] "logFC"     "AveExpr"   "t"         "P.Value"   "adj.P.Val" "B"
+#     dim(topTab[[ wCont[[ii]][jj] ]]["P.Value"])
+#     dim(base::subset(topTab[[ wCont[[ii]][jj] ]], P.Value < 0.01))
+#     dim(base::subset(topTab[[ wCont[[ii]][jj] ]], get(p.value.column) < 0.01))
+#    dim(base::subset(topTab[[ wCont[[ii]][jj] ]], get(p.value.column) < as.numeric(key.params[1,2])))
+    genRegTab[[ wCont[[ii]][jj] ]] <-  base::subset(topTab[[ wCont[[ii]][jj] ]],
+                                                    get(p.value.column) < as.numeric(key.params[1,2]))
+    # dim(genRegTab[[ wCont[[ii]][jj] ]])
+    mx <- data.frame(rownames(genRegTab[[ wCont[[ii]][jj] ]]))
+    names(mx) <- "Probe Set Name"
+#colnames(mx); dim(mx);head(mx)
+    my <- data.p.genes
+#str(mx);str(my);str(data.p.genes)
+    #names(my$Probe.Set.Name) <- "Probe.Set.Name"
+# names(my)
+#head(my)
+#colnames(my); dim(my);head(my[,1:7])
+    # Merge both objects, using dplyr
+    mxy <- inner_join(mx, my, by='Probe Set Name')
+    #mxy <- left_join(mx, my, by='Probe.Set.Name')
+    #head(mxy)
+    #head(mxy[,1:5])
+    #dim(mxy)
+    #str(mxy)
+    #length(mxy$Other.info.Target.Genes)
+    #length(unique(mxy$Other.info.Target.Genes))
+    colnames(mxy) <- gsub(" ", ".", colnames(mxy), fixed=TRUE )
+    # > colnames(mxy)
+    # [1] "Probe.Set.Name"            "Probe.Set.ID"              "Species.Scientific.Name" "Sequence.Type"          
+    # [5] "Sequence.Source"         "Transcript_ID"           "Alignments"              "Probe.Set.Name"         
+    # [9] "Accession"               "Genome.Context"          "Target.Genes"
+
+# [1] "Probe.Set.Name"            "Probe.Set.ID"  "Transcript_ID"           "Alignments"              "Probe.Set.Name"         
+# [9] "Accession"               "Genome.Context"          "Target.Genes"
+
+    # reassign rownames to Probe.Set.Name
+    #rownames(mxy) <- mxy$Probe.Set.Name
+    # Remove columns of Transcript_ID and Probe.Set.Name after we confirmed by hand that the merge process did as expected 
+    #mxy.tid <- mxy[!names(mxy) %in% c("Probe.Set.ID", "Transcript_ID")]
+    genRegTab[[ wCont[[ii]][jj] ]] <- mxy
+    # data.p.genes stands for putative genes
+    #length(data.p.genes$ProbeSetName)
+    #length(unique(data.p.genes$ProbeSetName))
+    
+    #Sys.setlocale(locale="C")
+    #data.p.genes$TargetGenes    = unlist(strsplit(data.rma.ec.annot[,50], " /// ", fixed = TRUE))
+    
     # XXX
     
     create.Table.genReg <- TRUE
@@ -2274,14 +2501,16 @@ for (ii in 1:length(wCont)) { # ii is the index of the list with the multiple co
       
       write.csv2(genRegTab[[ wCont[[ii]][jj] ]], 
                  file=outFileNameRelPath )
-      # Write the resulting files to the report
-      report.s2s6file1a.csv <- newHtml( "File (CSV): <a href=", outFileNameRelPath,">",
-                                      outFileNameRelPath, "</a>",
-                                      style="background-color: snow;" )
+
     }
 
+    # Write the resulting files to the report
+    report.s2s6file1a.csv <- newHtml( "File (CSV): <a href=", outFileNameRelPath,">",
+                                  outFileNameRelPath, "</a>",
+                                  style="background-color: snow;" )
+
     # Create a new subsection (hidden by default) to display the html as an iframe
-    report.s2s6s1 <- newSubSection( names(compNamesAll)[ii], " | ", compNamesAll[[ii]][jj] );
+    report.s2s6s1 <- newSubSubSection( names(compNamesAll)[ii], " | ", compNamesAll[[ii]][jj] );
     
     report.Table.genReg <- FALSE
     if (report.Table.genReg == TRUE) {
@@ -2293,10 +2522,12 @@ for (ii in 1:length(wCont)) { # ii is the index of the list with the multiple co
       report.s2s6file1b <- newHtml( "File (HTML): <a href=\"", outFileNameRelPath,"\">", outFileNameRelPath, "</a>",
                                   style="background-color: snow;" )
       report.s2s6s1 <- addTo( report.s2s6s1, report.s2s6h1, report.s2s6file1a.csv, report.s2s6file1b)
-      report.s2s6 <- addTo( report.s2s6, report.s2s6s1)
     } else { # if no report of dTable, add at least, the link to the csv file
-      report.s2s6 <- addTo( report.s2s6, report.s2s6s1, report.s2s6file1a.csv)
-    } # end of if report dTable
+      report.s2s6s1 <- addTo( report.s2s6s1, report.s2s6file1a.csv)
+    } # End of dynamic generation of report.s2s6s1
+    # Add report.s2s6s1 to the report
+    report.s2s6 <- addTo( report.s2s6, report.s2s6s1)
+    # end of if report dTable
     
   }
 }
@@ -2324,6 +2555,7 @@ report.s10 <- addTo( report.s10, report.s10.p1, report.s10.p2);
 # Report with Nozzle.R1
 # Phase 2: assemble report structure bottom-up
 report.s0a <- addTo( report.s0a, report.s0a.p1, report.s0a.p2, report.s0a.p3, report.s0a.p4, report.s0a.p5);
+#report.s0b <- addTo( report.s0b, report.s0b.p1, report.s0b.p2, report.s0b.p3);
 report.s0b <- addTo( report.s0b, report.s0b.p1, report.s0b.p2);
 
 # report.s1 will get different sections regarding QC depending on the params set above for the desired QC type for each Analysis
@@ -2382,7 +2614,7 @@ if (QCrType !=0 && QCnType !=0){
 }
 #rm(report.r); rm(report.s1)
 report.s2 <- addTo( report.s2, report.s2s1, report.s2s2, report.s2s3, report.s2s4, report.s2s5, report.s2s6);
-report.r <- addTo( report.r, report.s0a, report.s0b, report.s1, report.s2 );
+report.r <- addTo( report.r, report.s0.p, report.s0a, report.s0b, report.s1, report.s2 );
 report.r <- addTo( report.r, report.s10 ); # "Other considerations" section, at the end.
 
 # Ensure that the report is created at the baseDir, and not at resultsDir
@@ -2407,16 +2639,20 @@ report.r <- setContactInformation( report.r, email="ueb@vhir.org", subject="Prob
 writeReport( report.r, filename=report.filename ); # w/o extension
 #Two files called my_report.html and my_report.RData will be written to the current working directory.
 
-# Phase 4: edit the report and other html files produced so that css and js libraries use relative paths and not absolute, so that they work when moved to another computer
+# Phase 4: edit the report and other html files produced
 
-# For html edition as simple text from R, we can use the base functions "readLines" and "cat" (to file)
+# 4.1: Add css, js and images
+# --------------------------- 
 # Copy the css and js files from the reports folder to the results folder for later reuse within the ResultsFiles.html generated 
 #file.link(from, to)
+
 # Create folders for js and css in results Dir if they don't exist yet
-folders2create <- c("js", "css")
+folders2create <- c("js", "css", "img")
 files2create1 <- list(c("jquery.js", "jquery.dataTables.js"),
-                     c("demo_table.css", "jquery.dataTables_themeroller.css", "jquery.dataTables.css"))
+                     c("demo_table.css", "jquery.dataTables_themeroller.css", "jquery.dataTables.css"),
+                     c("imatgelogotip.jpg", "IR.jpg", "UEBblanc.jpg", "UEBlila.jpg"))
 files2create2 <- list(c("d3.v3.js", "dimple.v2.1.0.js"),
+                      c(""),
                       c(""))
 names(files2create1) <- folders2create
 names(files2create2) <- folders2create
@@ -2447,6 +2683,11 @@ for (folder in folders2create) {
   
 } # loop over folders
 
+# 4.2: Make urls relative
+# ---------------------------
+# so that css and js libraries use relative paths and not absolute, so that they work when moved to another computer
+# For html edition as simple text from R, we can use the base functions "readLines" and "cat" (to file)
+
 # to be compressed and send elsewhere for the researcher with all the required css and js files in it. Copyright licenses should be respected (citation, etc).
 filenames <- list.files(path = resultsDir, pattern = "html")
 setwd(resultsDir)
@@ -2460,19 +2701,36 @@ replaceResult <- foreach (ff = 1:length(filenames)) %dopar% {
   cat(yy, file=filenames[ff], sep="\n")
 }
 
-# Make some replacements to the Nozzle report once generated
+# 4.3: Make some replacements to the Nozzle report once generated
+# ----------------------------------------------------------------
 report.filename.full <- file.path(baseDir, paste0(report.filename, ".html"))
 zz <- readLines(report.filename.full)
+# 4.3.1
 string2change.from  <- "http://www.github.com/parklab/Nozzle"
 string2change.to    <- "https://cran.r-project.org"
 zz <- gsub( string2change.from, string2change.to, zz )
+# 4.3.2
 string2change.from  <- "Made with Nozzle"
 string2change.to    <- "Made with R"
 zz <- gsub( string2change.from, string2change.to, zz )
+# 4.3.3
+string2change.from  <- "<div class=\"main\">"
+string2change.to    <- "<div class=\"main\">\n<table width=\"100%\"  border=\"0\"> \n  <tr>\n    <td width=\"24%\"> \n      <div align=\"center\"> \n        <a href=\"http://www.vhir.org\" target=\"_blank\"> \n          <img src=\"results/img/IR.jpg\" width=\"195\" height=\"73\" border=\"0\"> \n        </a> \n      </div> \n    </td> \n    <td width=\"53%\"> \n    </td> \n    <td width=\"23%\"> \n      <div align=\"center\"> \n        <a href=\"http://ueb.vhir.org\" target=\"_blank\"> \n          <img src=\"results/img/UEBblanc.jpg\" width=\"204\" height=\"48\" border=\"0\"> \n        </a> \n      </div>\n    </td> \n  </tr> \n</table>"
+zz <- gsub( string2change.from, string2change.to, zz )
+
+# 4.3.4
+string2change.from  <- "<div class=\"copyright\">"
+string2change.to    <- "<table width=\"100%\"  border=\"0\">\n  <tr height=\"50\"><td width=\"100%\"> </td></tr> \n  <tr><td width=\"100%\"><div align=\"center\"> \n  <a href=\"http://www.vhir.org\" target=\"_blank\"><img width=\"90%\" src=\"results/img/imatgelogotip.jpg\" border=\"0\"></a> \n  </div></td></tr>\n</table>\n<div class=\"copyright\">"
+zz <- gsub( string2change.from, string2change.to, zz )
+
+# Write the report again to disk
 cat(zz, file=report.filename.full, sep="\n")
 
-# copy over the results folder the other main documents produced elsewhere
-files2create <- c(study.proposalFileName, study.reportFileName)
+# 4.4: Copy over the results folder the other main documents produced elsewhere
+# -----------------------------------------------------------------------------
+files2create <- c(study.budgetFileName,
+                  study.proposalFileName,
+                  study.reportFileName)
 for (f2c in files2create) { # f2c = file to create
   # prepare to copy files if they do not exist yet in destination
   from  <- file.path(docsDir, f2c)
@@ -2482,15 +2740,7 @@ for (f2c in files2create) { # f2c = file to create
   } # end if clause for file copy 
 } # loop over files
 
-#   # For html edition from R, See: http://blog.rstudio.org/2015/04/21/xml2/
-#   require(xml2)
-#   base_url <- "/home/xavi/R/x86_64-pc-linux-gnu-library/3.2/rCharts/libraries/datatables/"
-#   #file2edit <- file.path(resultsRelDir, paste0(report.filename, ".html"))
-#   file2edit <- paste0(report.filename, ".html")
-#   #f2e <- read_html(file2edit)
-#   # xml_url(f2e)
-#   # xml_contents(f2e)
-#   # url_relative(f2r, basde_url)
+
 
 ###################################################
 ## Save other R objects to Rda on disk to be reused by Rnw
