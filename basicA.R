@@ -34,12 +34,14 @@ docsRelDir <- "docs"
 resultsRelDir <- "results"
 celfilesRelDir <- "celfiles"
 reportsRelDir <- "reports"
+logsRelDir <- "logs"
 # Absolute Paths to subdirs
 dataDir <-file.path(workingDir, dataRelDir)
 docsDir <-file.path(workingDir, docsRelDir)
 resultsDir <- file.path(workingDir, resultsRelDir)
 celfilesDir <- file.path(workingDir, celfilesRelDir)
 reportsDir <- file.path(workingDir, reportsRelDir)
+logsDir <- file.path(workingDir, logsRelDir)
 
 # Sourcing the whole set of functions from the standard Basic Pipe: AnalysisFunctions2Pack.R 
 source(file.path(baseDir,"Rcode", "AnalysisFunctions2Pack.R"))
@@ -1333,7 +1335,7 @@ if (!exists("annotation.affy.hg")){
     setwd(baseDir)
   }
 }
-annotation.affy.hg.fileName.noext <- "featureAnotation" 
+annotation.affy.hg.fileName.noext <- "featureAnnotation" 
 outFile <- annotation.affy.hg.fileName.noext # Name set in DataPreprocessing.R
 outFileName <- paste0(outFile, ".csv")
 outFileNameRelPath <- file.path( resultsRelDir, outFileName )
@@ -1344,6 +1346,8 @@ report.s1p7 <- newParagraph( "List of Transcript ID for the correspoding Probese
 report.s1file7a.csv <- newHtml( "File (CSV): <a href=", outFileNameRelPath,">",
                                 outFileNameRelPath, "</a>",
                                 style="background-color: snow;" )
+
+write.csv2(annotation.affy.hg[,1:ncol(annotation.affy.hg)], file=outFileNameRelPath )
 
 # When requested, create the dTable, filterable and sortable, etc.
 create.dTable.featAnot <- T
@@ -2740,6 +2744,54 @@ for (f2c in files2create) { # f2c = file to create
   } # end if clause for file copy 
 } # loop over files
 
+###################################################
+## Check that there are no broken links in the report
+###################################################
+# Use linklint which is fast, easyly installable and run (highly effective program!)
+# http://www.linklint.org
+# Install in your Debian/Ubuntu computer with: 
+# sudo apt-get install linklint
+setwd(baseDir)
+# Run linklint but do not attempt to produce a report o the console. We'll display the summary
+# when some errors are found
+linkLint.output.files <- list.files(file.path(logsRelDir, "linklint"))
+if (length(linkLint.output.files) > 0) {
+  remove.out <- file.remove(file.path(logsRelDir, "linklint", linkLint.output.files))
+}
+system(paste0("linklint ", paste0(report.filename, ".html") ," -doc ", 
+              file.path(logsRelDir, "linklint"), " > /dev/null 2>&1"))
+linkLint.output.txt.files <- list.files(file.path(logsRelDir, "linklint"), ".txt")
+linkLint.error.txt.files <- grep("error", linkLint.output.txt.files, fixed=TRUE )
+if (length(linkLint.error.txt.files) > 0) {
+  files2load <- file.path(logsRelDir, 
+                          "linklint", 
+                          linkLint.output.txt.files[linkLint.error.txt.files])
+  readLines(files2load[1])
+  errorInfo <- apply(data.frame(files2load), 1, FUN=readLines)
+  print(errorInfo)
+}
+
+###################################################
+## Pack the report into a zip file in the baseDir
+###################################################
+# Make a zip file with the Report html file and all files inside the results folder
+setwd(baseDir)
+files2zip <- dir(resultsDir, full.names = FALSE)
+files2zip <- file.path(resultsRelDir, files2zip)
+files2zip <- c(files2zip, paste0(report.filename, ".html"))
+AccessID <- paste0("A", substr(aID, 4, 6)) # Convert the analysis ID like LUQ320 into A320
+ResearcherInstitution <- paste0("_", substr(analysisName, 9, nchar(analysisName)-5), "_") # To convert a string like "2015-05-FooResearcher-BarInstitution-A320" into "_FooResearcher-BarInstitution_"
+zippedFileName <- paste0(AccessID, ResearcherInstitution, format(Sys.Date(), format="%y%m%d"))
+zipLog <- zip(zipfile = zippedFileName, files = files2zip)
+
+###################################################
+## Send the ftp file to the VHIR ftp for the researcher
+###################################################
+# Pending / ToDo. See this info for the time being:
+# http://ueb.vhir.org/tiki-index.php?page=Transfer%C3%A8ncia+d%27Arxius+per+sFTP#Servidor_FTP_del_VHIR_2015_
+# lftp will be probably our best friend to a have a scripted easy ftp transfer.
+# sudo apt-get install lftp 
+# (& See: http://lftp.yar.ru )
 
 
 ###################################################
@@ -2783,3 +2835,24 @@ if (!file.exists(file.to) && file.exists(file.from)) {
   texFileLink <- file.link(file.from, file.to)
 }
 
+###################################################
+# Store session info (package versions, etc) in the logs folder
+###################################################
+sink(file.path(logsRelDir, paste0("log_", format(Sys.Date(), format="%y%m%d"), "_", aID, ".txt")))
+cat("Sys.info() : \n")
+cat("--------------------\n")
+data.frame(Sys.info())
+if (exists("biocValid")) {
+  cat("\n\nbiocValid() : \n")
+  cat("--------------------\n")
+  biocValid()
+} else { # Only show sessionInfo() if no biocValid() is found since it's already included in it.
+  cat("\n\nsessionInfo() : \n")
+  cat("--------------------\n")
+  sessionInfo()
+}
+sink()
+
+# End the R Profiler
+# RRprofStop()
+# RRprofReport()
