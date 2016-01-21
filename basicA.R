@@ -1958,10 +1958,10 @@ for (ii in 1:length(wCont)) { # ii is the index of the list with the multiple co
 #     require(ggplot2)
 #     require(htmlwidgets)
 #     require(plotly)
-#     py <- plot_ly(username='ueb', key='2gfg7ckkuz') # open plotly connection
+#     py <- plot_ly(username='my.user', key='my.api.key') # open plotly connection
 #     # See: https://plot.ly/r/getting-started/ for setting plotly variables for the R session
-#     Sys.setenv("plotly_username"="ueb") # it shouldn't be needed but it is in my machine "pentinella", for some reason
-#     Sys.setenv("plotly_api_key"="2gfg7ckkuz") # it shouldn't be needed but it is in my machine "pentinella", for some reason
+#     Sys.setenv("plotly_username"="my.user") # it shouldn't be needed but it is in my machine "pentinella", for some reason
+#     Sys.setenv("plotly_api_key"="my.api.key") # it shouldn't be needed but it is in my machine "pentinella", for some reason
 # 
 #     ##Highlight genes that have an absolute fold change > 1 and a p-value < Bonferroni cut-off
 #     gene_list$threshold = as.factor(abs(gene_list$logFC) > 1 & gene_list$adj.P.Val < 0.05)
@@ -2296,10 +2296,10 @@ for (ii in 1:length(wCont)) { # ii is the index of the list with the multiple co
       # remove.packages("plotly")
       #install.packages("plotly")
       require(scales)
-      py <- plot_ly(username='ueb', key='2gfg7ckkuz') # open plotly connection
+      py <- plot_ly(username='my.user', key='my.api.key') # open plotly connection
       # See: https://plot.ly/r/getting-started/ for setting plotly variables for the R session
-      Sys.setenv("plotly_username"="ueb") # it shouldn't be needed but it is in my machine "pentinella", for some reason
-      Sys.setenv("plotly_api_key"="2gfg7ckkuz") # it shouldn't be needed but it is in my machine "pentinella", for some reason
+      Sys.setenv("plotly_username"="my.user") # it shouldn't be needed but it is in my machine "pentinella", for some reason
+      Sys.setenv("plotly_api_key"="my.api.key") # it shouldn't be needed but it is in my machine "pentinella", for some reason
       mainTitle <- paste0("Heatmap_plotly", my.compName[[ii]]) ## Titol
       # Save Heatmap to file online (it can't be saved on disk, it seems, other than in temporary session)
       # Testing Plotly
