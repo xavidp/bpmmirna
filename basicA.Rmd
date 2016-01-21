@@ -20,22 +20,22 @@ Basic Analysis of Microarrays when the standard
 See git hostory to see contributors
 to this script.
 
-UEB-VHIR (2015) http://ueb.vhir.org 
+UEB-VHIR (2016) http://ueb.vhir.org 
 
 ## Basic hardcoded parameters for the pipeline
 
 ```{r Basic hardcoded parameters for the pipeline}
 analysisName <- "YYYY-MM-XXX-YYY-ANNN"            # Nom del directori del projecte (e.g. "aaaa-mm-NomCognomInvestigador-CENTRE-IdEstudi")
-aID <- "LUQ320"                                               # Canviar XXXnnn per les 3 lletres de l'investigador/a + l'Id numeric de l'estudi
+aID <- "AAANNN"                                               # Canviar XXXnnn per les 3 lletres de l'investigador/a + l'Id numeric de l'estudi
 ## ----preparaDirectorios, eval=TRUE---------------------------------------
 # Some parameters for the reports in html produced by data.tables, Nozzle, etc.
 # base_url will be replaced by nothing at the end of the pipeline from absolute url's in html files produced
 # so that absolute url's links are converted into relative url's, and therefore, they do work in other computers. 
 base_path_in_local_urls <- "/home/xavi/R/x86_64-pc-linux-gnu-library/3.2/rCharts/libraries/datatables/"
 # Base Working directory and subdirectories
-baseDir <- paste0("/home/xavi/Estudis/", analysisName) # Pentinella
+#baseDir <- paste0("/home/xavi/Estudis/", analysisName) # Pentinella
 #baseDir <- "/mnt/magatzem02/tmp/YYYY-MM-XXX-YYY-ANNN" # MainHead
-#baseDir <- "."
+baseDir <- "."
 workingDir <- baseDir
 setwd(workingDir)
 # Relative Paths to subdirs
@@ -63,15 +63,12 @@ column2design <- 6   # Columna del ''targets'' en que es basa la matriu de disse
 datacreacioTargets <- "YYYY-MM-DD1"             # format "aaa-mm-dd"
 dataInici <- "YYYY-MM-DD2"
 
-analysisTitle <- "Differentially expressed miRNA between ... and ..."   # Titol de l'estudi (en angles)
-analysts <- "Xavier de Pedro, Ferran Brians&oacute; and Alex S&aacute;nchez"                               # Nom analista/es i Alex Sanchez
+analysisTitle <- "Differentially expressed miRNA between ... and ..."   # 
+analysts <- "Analyst 1, Analyst 2 and Analyst 3"                               # 
 
 clientNames <- "Foo Bar"                                         # Nom investigador(a) responsable
 lab_or_depart <- "Instituto Foo de Bar (FooBar)"                # Nom del lab o Institucio si es forani (e.g. "Neurovascular diseases")
 contact_email <- "foobar@example.com"                                     # e-mail de l'investigador(a)
-
-UEB <- TRUE                                                 # TRUE => capcalera d'UEB
-# FALSE => capcalera EstBioinfo
 
 # If some samples were too rare in the PCA from the ArrayQualityMetrics report (even at the raw report), consider
 # running the script again removing those from the analysis. You can define which samples to be taken out of the 
@@ -147,7 +144,7 @@ for (ii in 1:length(packages)) {
 
 ```{r Basic dynamic parameters for the pipeline}
 ## number of cores to use from your computer (with doMC or parallel packages)
-nCores <- detectCores(all.tests = FALSE, logical = FALSE) # In case of doubt, use just all -1 core.
+nCores <- detectCores(all.tests = FALSE, logical = FALSE)-1 # In case of doubt, use just all -1 core.
 ```
 
 ## Start Report with Nozzle.R1
@@ -772,27 +769,6 @@ if (create.dTable.featAnot == TRUE) {
                          sScrollY = "300px",
                          aaSorting=list() ) # This list() should indicate to avoid any attempt of sorting client side at display time 
                          # aaSorting=list(c(4, "asc")) ) # This c(4, "asc") sorts ascending on the 5th column. 
-  #str(featAnot.dTable)
-  # featAnot.dTable$LIB$url
-  # featAnot.dTable$html_assets # ...$js & ...$css
-  # Disabled tweaking these params here since they change the url for some of the paths, not all (js and css from datatables, for instance, are not converted into relative paths)
-  #featAnot.dTable$html_assets$js  <- "foobarjs"
-  #featAnot.dTable$html_assets$css <- "foobarcss"
-    #     <!doctype HTML>
-    #       <meta charset = 'utf-8'>
-    #       <html>
-    #       <head>
-    #       <link rel='stylesheet' href='/home/xavi/R/x86_64-pc-linux-gnu-library/3.2/rCharts/libraries/datatables/css/jquery.dataTables.css'>
-    #       <link rel='stylesheet' href='/home/xavi/R/x86_64-pc-linux-gnu-library/3.2/rCharts/libraries/datatables/css/jquery.dataTables_themeroller.css'>
-    #       <link rel='stylesheet' href='/home/xavi/R/x86_64-pc-linux-gnu-library/3.2/rCharts/libraries/datatables/css/demo_table.css'>
-    #       <link rel='stylesheet' href='foobarjs'>
-    #       
-    #       <script src='/home/xavi/R/x86_64-pc-linux-gnu-library/3.2/rCharts/libraries/datatables/js/jquery.js' type='text/javascript'></script>
-    #       <script src='/home/xavi/R/x86_64-pc-linux-gnu-library/3.2/rCharts/libraries/datatables/js/jquery.dataTables.js' type='text/javascript'></script>
-    #       <script src='foobarcss' type='text/javascript'></script>
-    #       (...)
-    #     
-  
   
   # If you want no initial sorting client side because it's been sorted server side already, 
   # you can disable this client initialization with
@@ -1059,26 +1035,6 @@ numFeatureChangedFC(filenames=numFeatureChangedFilenames,
                  comparisons= colnames(cont.matrix),
                  FC=0) # FC needs to be hardcoded to Zero at this step
 
-# ---
-# Forma alternativa d'obtenir l'objecte numGenesChanged, a partir dels objectes de topTable en memoria,
-# per comprovar que coincideix amb la formad e la Miriam de lapply a partir d'arxius en disk de genes de cada comparacio
-# Conclusió: un cop arreglat el DataPreprocessing.R, i siguen coherents en la forma de procedir, 
-# coincideixen els dos mètodes. Xavier. 18 Des'15.
-# Codi de l'Alex per fer numGenesChanged - Pendent de concloure si cal canviar-ho o no
-# https://github.com/alexsanchezpla/scripts/blob/master/numGenesChanged.R
-#source("https://raw.githubusercontent.com/alexsanchezpla/scripts/master/numGenesChanged.R")
-# # Code derived from Alex's code
-# # It can be aggregated with a loop over all comparisons in colnames(cont.matrix)
-# numFeatureChanged.df <- data.frame(matrix(nrow = 12))[,-1]
-# for (ii in 1:ncol(cont.matrix)) {
-#   colnames(cont.matrix)[ii]
-#   numFeatureChanged.tmp <- numGenesChanged(topTab[[ii]],
-#                                                  colnames(cont.matrix)[ii] )
-#   numFeatureChanged.df <- cbind(numFeatureChanged.df, numFeatureChanged.tmp)
-# }
-# # Write it to disk
-# write.csv2( numFeatureChanged.df, file=paste0("numFeaturesChangedAlex.", aID, ".csv") )
-# ---
 
 
 #class(numFeatureChanged.df); class(numFeatureChanged.tmp)
@@ -1143,43 +1099,6 @@ for (ii in 1:length(wCont)) { # ii is the index of the list with the multiple co
     volcanoPointNames_df <- volcanoPointNames_df$Transcript_ID
     #length(volcanoPointNames_df)
     
-#     # ---------------------------------
-#     # Attempt to reproduce the same behavior with package data.tables instead, which is k own to be more efficient
-#     # However, I end up commenting out this chunk of code since ther results where not identical in some cases, 
-#       due to the sorting performed internally in the data.table way, which seems to be needed for it's improvement in performance
-#       and I don't know yet how to force to keep the same order in the first results, so I end up using the first methods which keeps 
-#       the original order we need.
-#     # ---------------------------------
-#     require(data.table)
-#     dt1 <- data.table(volcanoPointNames)
-#     colnames(dt1) <-"Probe.Set.Name"
-#     dt2 <- data.table(annotation.affy.hg)
-#     #?merge.data.table
-#     setkey(dt1,"Probe.Set.Name")
-#     setkey(dt2,"Probe.Set.Name")
-#     volcanoPointNames_dt <- dt2[dt1]
-#     dim(volcanoPointNames_dt)
-#     volcanoPointNames_dtid <- volcanoPointNames_dt$Transcript_ID
-#     volcanoPointNames_dtidpn <- data.table(volcanoPointNames_dt$Probe.Set.Name, volcanoPointNames_dt$Transcript_ID)
-#     colnames(volcanoPointNames_dtidpn) <- c("Probe.Set.Name", "Transcript_ID")
-#     
-#     table(volcanoPointNames_df == volcanoPointNames_dtid)
-#     diff.idx <- which(volcanoPointNames_df != volcanoPointNames_dtid)
-#     volcanoPointNames_df[diff.idx[1]-1]
-#     volcanoPointNames_df[diff.idx[1:2]]
-#     volcanoPointNames_df[c(diff.idx[1]-1, diff.idx[1:2])];
-# 
-#     volcanoPointNames_dtid[diff.idx[1]-1];
-#     volcanoPointNames_dtid[diff.idx[1:2]];
-#     volcanoPointNames_dtidpn[c(diff.idx[1]-1, diff.idx[1:2])];
-#     
-#     annotation.affy.hg[annotation.affy.hg$Transcript_ID=="ACA59",]
-#     volcanoPointNames[grep("ACA59",volcanoPointNames)]
-#     str(volcanoPointNames_df);str(volcanoPointNames_dtid);
-#     head(volcanoPointNames_df);head(volcanoPointNames_dtid);
-#     tail(volcanoPointNames_df);tail(volcanoPointNames_dtid);
-#     table(sort(volcanoPointNames_df) == sort(volcanoPointNames_dtid))
-
                                 
     # Generate the pdf
     pdf(file=outFileName.pdf, paper="special", width=6, height=6)
@@ -1267,7 +1186,6 @@ for (ii in 1:length(wCont)) { # ii is the index of the list with the multiple co
     venn.plot <- venn.diagram(listVenn.tid[ wCont[[ii]] ], # The list of DE features in each comparison of each multiple comparison group
                               category.names = colnames(cont.matrix)[ wCont[[ii]]  ], ## Comparacions
                               fill = rainbow( length(wCont[[ii]]) ),
-                              #fill = c("tomato", "orchid4", "turquoise3"),
                               alpha = 0.50,
                               resolution = 600,
                               cat.cex = 0.9,
@@ -1356,37 +1274,6 @@ for (ii in 1:length(wCont)) { # ii is the index of the list with the multiple co
 
 ```
 
-## htmlPages (unused chunk so far)
-
-```{r htmlPages (unused chunk so far)}
-# ## ----htmlPages-----------------------------------------------------------
-# listOfTables <- list(AvsB = topTab_AvsB, AvsL = topTab_AvsL, BvsL = topTab_BvsL) 
-# for (i in 1:length(listOfTables)){
-#   # Seleccionamos la "topTable"
-#   topTab <- listOfTables[[i]]
-#   # Escogemos los grupos de sondas a incluir en la tabla
-#   whichGenes<-topTab["P.Value"]<0.05
-#   selectedIDs <- topTab$ID[whichGenes]
-#   # Los convertimos a identificadores Entrez ("EG") y a Gene Symbols
-#   genes<- getEG(selectedIDs, "hgu133a.db")
-#   simbols <-getSYMBOL(selectedIDs, "hgu133a.db")
-#   # Haremos la columna de Entrez sea hiperenlazable
-#   paraEnlace <- list (misgenes=genes)
-#   # Preparamos el data.frame con el que se creará el archivo de resultados
-#   otherNames = data.frame(selectedIDs, simbols, topTab[whichGenes,-1])
-#   names(otherNames) = c("Affy ID", "Gene Symbol", colnames(topTab)[-1])
-#   # Invocamos la función "htmlpage"
-#   comparison <- names(listOfTables)[i]
-#   htmlpage(paraEnlace, 
-#            filename =file.path(resultsDir, 
-#            paste("Selected Genes in comparison ",comparison,".html", sep="")) , 
-#            title = paste("Diff. expressed genes in comparison ", comparison, sep=""), 
-#            othernames = otherNames, 
-#            table.head = c("Entrez IDs", names(otherNames)),
-#            table.center = TRUE, 
-#            repository=list("en"))
-# }
-```
 
 ## Heatmaps generation
 
@@ -1467,15 +1354,7 @@ for (ii in 1:length(wCont)) { # ii is the index of the list with the multiple co
             #main = mainTitle, xlab="Samples", ylab="Features")
     dev.off()
     
-#     ## ----plotHeatMap2, fig=T, eval=TRUE--------------------------------------
-#      require("gplots")
-#      heatmap.2(as.matrix(mxy.tid), 
-#                col=bluered(75), scale="row",
-#                ColSideColors=groupColors[[ wCont[[ii]][jj] ]], key=TRUE, symkey=FALSE, 
-#                density.info="none", trace="none", cexCol=1, main = mainTitle)    
-# 
-#     dev.off()
-    
+  
     # Add it to the report as screenshot
     # figure file paths
     figureFile1 <- paste0(outFileNameRelPath.noext, ".png");
@@ -1504,10 +1383,10 @@ for (ii in 1:length(wCont)) { # ii is the index of the list with the multiple co
       # remove.packages("plotly")
       #install.packages("plotly")
       require(scales)
-      py <- plot_ly(username='ueb', key='2gfg7ckkuz') # open plotly connection
+      py <- plot_ly(username='my.user', key='my.api.key') # open plotly connection
       # See: https://plot.ly/r/getting-started/ for setting plotly variables for the R session
-      Sys.setenv("plotly_username"="ueb") # it shouldn't be needed but it is in my machine "pentinella", for some reason
-      Sys.setenv("plotly_api_key"="2gfg7ckkuz") # it shouldn't be needed but it is in my machine "pentinella", for some reason
+      Sys.setenv("plotly_username"="my.user") # it shouldn't be needed but it is in my machine "pentinella", for some reason
+      Sys.setenv("plotly_api_key"="my.api.key") # it shouldn't be needed but it is in my machine "pentinella", for some reason
       mainTitle <- paste0("Heatmap_plotly", my.compName) ## Titol
       # Save Heatmap to file online (it can't be saved on disk, it seems, other than in temporary session)
       # Testing Plotly
@@ -1570,22 +1449,6 @@ for (ii in 1:length(wCont)) { # ii is the index of the list with the multiple co
 } # end of ii loop, the index of the list with the multiple comparison group names
 ```
 
-## list files (unused chunk so far)
-
-```{r list files (unused chunk so far)}
-# ## ----listaArchivos,echo=FALSE,print=FALSE,results=tex, eval=TRUE---------
-# require(gdata)
-# listaArchivos <-read.table(file.path(resultsDir,"listaArchivos.txt"), head=TRUE, sep="\t") 
-# stopifnot(require(xtable))
-# x.big<-xtable(listaArchivos,
-#     label='listaArchivos',
-#     caption='Lista de archivos generados en este análisis')
-# print(x.big,tabular.environment='longtable',floating=FALSE)
-# 
-# ## ----listaArchivos2html,echo=FALSE,print=FALSE, eval=TRUE----------------
-# require(hwriter)
-# hwrite(listaArchivos,file.path(resultsDir, "listaArchivos.html"))
-```
 
 ## Acknowledgement request
 
@@ -1630,7 +1493,7 @@ report.r <- setMaintainerEmail( report.r, "ueb@vhir.org" );
 report.r <- setMaintainerAffiliation( report.r, "Statistics and Bioinformatics Unit - Vall d'Hebron Research Institute" );
 
 # set the copyright notice for this report
-report.r <- setCopyright( report.r, owner="UEB - VHIR", year=2015, statement="Some rights reserved.", url="http://ueb.vhir.org" ); 
+report.r <- setCopyright( report.r, owner="UEB - VHIR", year=2016, statement="Some rights reserved.", url="http://ueb.vhir.org" ); 
 
 # set contact information for error reports
 report.r <- setContactInformation( report.r, email="ueb@vhir.org", subject="Problem with this Report", message="Hello!\n\nPlease describe the issue here.", label="Report an Issue" );
@@ -1714,18 +1577,4 @@ replaceResult <- foreach (ff = 1:length(filenames)) %dopar% {
   
 }
 
-```
-
-### html edition from R using XML nodes (not used yet)
-
-```{r html edition from R using XML nodes (not used yet)}
-#   # For html edition from R, See: http://blog.rstudio.org/2015/04/21/xml2/
-#   require(xml2)
-#   base_url <- "/home/xavi/R/x86_64-pc-linux-gnu-library/3.2/rCharts/libraries/datatables/"
-#   #file2edit <- file.path(resultsRelDir, paste0(report.filename, ".html"))
-#   file2edit <- paste0(report.filename, ".html")
-#   #f2e <- read_html(file2edit)
-#   # xml_url(f2e)
-#   # xml_contents(f2e)
-#   # url_relative(f2r, basde_url)
 ```
